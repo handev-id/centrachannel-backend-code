@@ -26,120 +26,225 @@ func NewCampaignHandlerWithService(service CampaignService) *CampaignHandler {
 
 func (h *CampaignHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
-	q := ListCampaignQuery{
-		Page:   page,
-		Limit:  limit,
-		Search: c.Query("search"),
-	}
-
-	result, err := h.service.List(c.Context(), q, t)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	result, err := h.service.List(c.Context(), ListCampaignQuery{Page: page, Limit: limit, Search: c.Query("search")}, t)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 	return response.OK(c, "success", result)
 }
 
 func (h *CampaignHandler) Show(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid ID", nil)
-	}
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
 
 	campaign, err := h.service.GetByID(c.Context(), t.ID, id)
-	if err != nil {
-		return response.NotFound(c, err.Error())
-	}
+	if err != nil { return response.NotFound(c, err.Error()) }
 	return response.OK(c, "success", campaign)
 }
 
 func (h *CampaignHandler) Store(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	userID, err := middleware.GetUserID(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	var req CreateCampaignRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return response.BadRequest(c, "Invalid payload", nil)
-	}
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
 
 	campaign, err := h.service.Create(c.Context(), req, t, userID)
-	if err != nil {
-		return response.BadRequest(c, err.Error(), nil)
-	}
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
 	return response.Created(c, "Campaign created", campaign)
 }
 
 func (h *CampaignHandler) Update(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid ID", nil)
-	}
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
 
 	var req UpdateCampaignRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return response.BadRequest(c, "Invalid payload", nil)
-	}
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
 
 	campaign, err := h.service.Update(c.Context(), t.ID, id, req)
-	if err != nil {
-		return response.BadRequest(c, err.Error(), nil)
-	}
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
 	return response.OK(c, "Campaign updated", campaign)
 }
 
 func (h *CampaignHandler) Delete(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid ID", nil)
-	}
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
 
-	if err := h.service.Delete(c.Context(), t.ID, id); err != nil {
-		return response.BadRequest(c, err.Error(), nil)
-	}
+	if err := h.service.Delete(c.Context(), t.ID, id); err != nil { return response.BadRequest(c, err.Error(), nil) }
 	return response.OK(c, "Campaign deleted", nil)
 }
 
 func (h *CampaignHandler) Send(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+	if err != nil { return response.InternalServerError(c, err.Error()) }
 
 	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid ID", nil)
-	}
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
 
-	if err := h.service.Send(c.Context(), t.ID, id); err != nil {
+	if err := h.service.Send(c.Context(), t.ID, id); err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.OK(c, "Campaign send started", nil)
+}
+
+func (h *CampaignHandler) ListTemplates(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	templates, err := h.service.ListTemplates(c.Context(), t.ID)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+	return response.OK(c, "success", templates)
+}
+
+func (h *CampaignHandler) GetTemplate(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
+
+	template, err := h.service.GetTemplateByID(c.Context(), t.ID, id)
+	if err != nil { return response.NotFound(c, err.Error()) }
+	return response.OK(c, "success", template)
+}
+
+func (h *CampaignHandler) CreateTemplate(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	var req CreateTemplateRequest
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+
+	template, err := h.service.CreateTemplate(c.Context(), req, t)
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.Created(c, "Template created", template)
+}
+
+func (h *CampaignHandler) UpdateTemplate(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
+
+	var req UpdateTemplateRequest
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+
+	template, err := h.service.UpdateTemplate(c.Context(), t.ID, id, req)
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.OK(c, "Template updated", template)
+}
+
+func (h *CampaignHandler) DeleteTemplate(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
+
+	if err := h.service.DeleteTemplate(c.Context(), t.ID, id); err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.OK(c, "Template deleted", nil)
+}
+
+func (h *CampaignHandler) ListRecipientLists(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	lists, err := h.service.ListRecipientLists(c.Context(), t.ID)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+	return response.OK(c, "success", lists)
+}
+
+func (h *CampaignHandler) GetRecipientList(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
+
+	list, err := h.service.GetRecipientListByID(c.Context(), t.ID, id)
+	if err != nil { return response.NotFound(c, err.Error()) }
+	return response.OK(c, "success", list)
+}
+
+func (h *CampaignHandler) CreateRecipientList(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	var req CreateRecipientListRequest
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+
+	list, err := h.service.CreateRecipientList(c.Context(), req, t)
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.Created(c, "Recipient list created", list)
+}
+
+func (h *CampaignHandler) UpdateRecipientList(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
+
+	var req UpdateRecipientListRequest
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+
+	list, err := h.service.UpdateRecipientList(c.Context(), t.ID, id, req)
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.OK(c, "Recipient list updated", list)
+}
+
+func (h *CampaignHandler) DeleteRecipientList(c fiber.Ctx) error {
+	t, err := middleware.GetTenant(c)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid ID", nil) }
+
+	if err := h.service.DeleteRecipientList(c.Context(), t.ID, id); err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.OK(c, "Recipient list deleted", nil)
+}
+
+func (h *CampaignHandler) ListRecipientContacts(c fiber.Ctx) error {
+	listID, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid list ID", nil) }
+
+	contacts, err := h.service.ListRecipientContacts(c.Context(), listID)
+	if err != nil { return response.InternalServerError(c, err.Error()) }
+	return response.OK(c, "success", contacts)
+}
+
+func (h *CampaignHandler) AddRecipientContact(c fiber.Ctx) error {
+	listID, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid list ID", nil) }
+
+	var req AddContactToListRequest
+	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+
+	contact, err := h.service.AddRecipientContact(c.Context(), listID, req)
+	if err != nil { return response.BadRequest(c, err.Error(), nil) }
+	return response.Created(c, "Contact added to list", contact)
+}
+
+func (h *CampaignHandler) RemoveRecipientContact(c fiber.Ctx) error {
+	contactID, err := strconv.Atoi(c.Params("contactId"))
+	if err != nil { return response.BadRequest(c, "Invalid contact ID", nil) }
+
+	if err := h.service.RemoveRecipientContact(c.Context(), contactID); err != nil {
 		return response.BadRequest(c, err.Error(), nil)
 	}
-	return response.OK(c, "Campaign send started", nil)
+	return response.OK(c, "Contact removed from list", nil)
 }

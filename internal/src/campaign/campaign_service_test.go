@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"io"
 	"testing"
 	"time"
@@ -104,15 +105,28 @@ func (r *mockRows) Next(dest []driver.Value) error {
 // ---- mock repository ----
 
 type mockCampaignRepository struct {
-	listFunc                func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error)
-	getByIDFunc             func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
-	createFunc              func(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
-	updateFunc              func(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error
-	deleteFunc              func(ctx context.Context, q DBTX, tenantID int, id int) error
-	createContactFunc       func(ctx context.Context, q DBTX, campaignID int, contactID int) error
-	updateContactStatusFunc func(ctx context.Context, q DBTX, campaignID int, contactID int, status string, errorMsg *string) error
-	countPendingFunc        func(ctx context.Context, q DBTX, campaignID int) (int, error)
-	getPendingFunc          func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignContact, error)
+	listFunc                   func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error)
+	getByIDFunc                func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
+	createFunc                 func(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
+	updateFunc                 func(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error
+	deleteFunc                 func(ctx context.Context, q DBTX, tenantID int, id int) error
+	createRecipientFunc        func(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error)
+	updateRecipientStatusFunc  func(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error
+	countPendingRecipientsFunc func(ctx context.Context, q DBTX, campaignID int) (int, error)
+	getPendingRecipientsFunc   func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error)
+	listTemplatesFunc          func(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error)
+	getTemplateByIDFunc        func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignTemplate, error)
+	createTemplateFunc         func(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error)
+	updateTemplateFunc         func(ctx context.Context, q DBTX, tenantID int, id int, template *CampaignTemplate) error
+	deleteTemplateFunc         func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listRecipientListsFunc     func(ctx context.Context, q DBTX, tenantID int) ([]CampaignRecipientList, error)
+	getRecipientListByIDFunc   func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignRecipientList, error)
+	createRecipientListFunc    func(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error)
+	updateRecipientListFunc    func(ctx context.Context, q DBTX, tenantID int, id int, list *CampaignRecipientList) error
+	deleteRecipientListFunc    func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listRecipientContactsFunc  func(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error)
+	createRecipientContactFunc func(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (int, error)
+	deleteRecipientContactFunc func(ctx context.Context, q DBTX, id int) error
 }
 
 func (m *mockCampaignRepository) List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error) {
@@ -150,32 +164,123 @@ func (m *mockCampaignRepository) Delete(ctx context.Context, q DBTX, tenantID in
 	return nil
 }
 
-func (m *mockCampaignRepository) CreateContact(ctx context.Context, q DBTX, campaignID int, contactID int) error {
-	if m.createContactFunc != nil {
-		return m.createContactFunc(ctx, q, campaignID, contactID)
+func (m *mockCampaignRepository) CreateRecipient(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error) {
+	if m.createRecipientFunc != nil {
+		return m.createRecipientFunc(ctx, q, recipient)
+	}
+	return 1, nil
+}
+
+func (m *mockCampaignRepository) UpdateRecipientStatus(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error {
+	if m.updateRecipientStatusFunc != nil {
+		return m.updateRecipientStatusFunc(ctx, q, id, status, failedReason, deliveryTime)
 	}
 	return nil
 }
 
-func (m *mockCampaignRepository) UpdateContactStatus(ctx context.Context, q DBTX, campaignID int, contactID int, status string, errorMsg *string) error {
-	if m.updateContactStatusFunc != nil {
-		return m.updateContactStatusFunc(ctx, q, campaignID, contactID, status, errorMsg)
-	}
-	return nil
-}
-
-func (m *mockCampaignRepository) CountPendingContacts(ctx context.Context, q DBTX, campaignID int) (int, error) {
-	if m.countPendingFunc != nil {
-		return m.countPendingFunc(ctx, q, campaignID)
+func (m *mockCampaignRepository) CountPendingRecipients(ctx context.Context, q DBTX, campaignID int) (int, error) {
+	if m.countPendingRecipientsFunc != nil {
+		return m.countPendingRecipientsFunc(ctx, q, campaignID)
 	}
 	return 0, nil
 }
 
-func (m *mockCampaignRepository) GetPendingContacts(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignContact, error) {
-	if m.getPendingFunc != nil {
-		return m.getPendingFunc(ctx, q, campaignID, limit)
+func (m *mockCampaignRepository) GetPendingRecipients(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error) {
+	if m.getPendingRecipientsFunc != nil {
+		return m.getPendingRecipientsFunc(ctx, q, campaignID, limit)
 	}
 	return nil, nil
+}
+
+func (m *mockCampaignRepository) ListTemplates(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error) {
+	if m.listTemplatesFunc != nil {
+		return m.listTemplatesFunc(ctx, q, tenantID)
+	}
+	return nil, nil
+}
+
+func (m *mockCampaignRepository) GetTemplateByID(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignTemplate, error) {
+	if m.getTemplateByIDFunc != nil {
+		return m.getTemplateByIDFunc(ctx, q, tenantID, id)
+	}
+	return nil, nil
+}
+
+func (m *mockCampaignRepository) CreateTemplate(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error) {
+	if m.createTemplateFunc != nil {
+		return m.createTemplateFunc(ctx, q, template)
+	}
+	return 1, nil
+}
+
+func (m *mockCampaignRepository) UpdateTemplate(ctx context.Context, q DBTX, tenantID int, id int, template *CampaignTemplate) error {
+	if m.updateTemplateFunc != nil {
+		return m.updateTemplateFunc(ctx, q, tenantID, id, template)
+	}
+	return nil
+}
+
+func (m *mockCampaignRepository) DeleteTemplate(ctx context.Context, q DBTX, tenantID int, id int) error {
+	if m.deleteTemplateFunc != nil {
+		return m.deleteTemplateFunc(ctx, q, tenantID, id)
+	}
+	return nil
+}
+
+func (m *mockCampaignRepository) ListRecipientLists(ctx context.Context, q DBTX, tenantID int) ([]CampaignRecipientList, error) {
+	if m.listRecipientListsFunc != nil {
+		return m.listRecipientListsFunc(ctx, q, tenantID)
+	}
+	return nil, nil
+}
+
+func (m *mockCampaignRepository) GetRecipientListByID(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignRecipientList, error) {
+	if m.getRecipientListByIDFunc != nil {
+		return m.getRecipientListByIDFunc(ctx, q, tenantID, id)
+	}
+	return nil, nil
+}
+
+func (m *mockCampaignRepository) CreateRecipientList(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error) {
+	if m.createRecipientListFunc != nil {
+		return m.createRecipientListFunc(ctx, q, list)
+	}
+	return 1, nil
+}
+
+func (m *mockCampaignRepository) UpdateRecipientList(ctx context.Context, q DBTX, tenantID int, id int, list *CampaignRecipientList) error {
+	if m.updateRecipientListFunc != nil {
+		return m.updateRecipientListFunc(ctx, q, tenantID, id, list)
+	}
+	return nil
+}
+
+func (m *mockCampaignRepository) DeleteRecipientList(ctx context.Context, q DBTX, tenantID int, id int) error {
+	if m.deleteRecipientListFunc != nil {
+		return m.deleteRecipientListFunc(ctx, q, tenantID, id)
+	}
+	return nil
+}
+
+func (m *mockCampaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error) {
+	if m.listRecipientContactsFunc != nil {
+		return m.listRecipientContactsFunc(ctx, q, listID)
+	}
+	return nil, nil
+}
+
+func (m *mockCampaignRepository) CreateRecipientContact(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (int, error) {
+	if m.createRecipientContactFunc != nil {
+		return m.createRecipientContactFunc(ctx, q, contact)
+	}
+	return 1, nil
+}
+
+func (m *mockCampaignRepository) DeleteRecipientContact(ctx context.Context, q DBTX, id int) error {
+	if m.deleteRecipientContactFunc != nil {
+		return m.deleteRecipientContactFunc(ctx, q, id)
+	}
+	return nil
 }
 
 // ---- helpers ----
@@ -303,9 +408,8 @@ func TestCampaignService(t *testing.T) {
 		}
 	})
 
-	t.Run("Create campaign with contacts in transaction", func(t *testing.T) {
-		createdContactIDs := make([]int, 0)
-		var txPassedToCreate DBTX
+	t.Run("Create campaign with recipient list copies contacts", func(t *testing.T) {
+		createdRecipients := make([]*CampaignRecipient, 0)
 		mockTxObj := &mockTx{}
 
 		db := newMockDB(func() (driver.Tx, error) {
@@ -313,41 +417,29 @@ func TestCampaignService(t *testing.T) {
 		})
 		defer db.Close()
 
+		recipientListID := 10
 		repo := &mockCampaignRepository{
 			createFunc: func(ctx context.Context, q DBTX, campaign *Campaign) (int, error) {
-				txPassedToCreate = q
-				if campaign.Status != "draft" {
-					t.Errorf("expected Status draft, got %s", campaign.Status)
+				if campaign.RecipientListID == nil || *campaign.RecipientListID != recipientListID {
+					t.Errorf("expected RecipientListID %d", recipientListID)
 				}
-				if campaign.TenantID != 1 {
-					t.Errorf("expected TenantID 1, got %d", campaign.TenantID)
-				}
-				if campaign.Name != "Test Campaign" {
-					t.Errorf("expected Name 'Test Campaign', got %s", campaign.Name)
-				}
-				if campaign.MessageTemplate != "Hello" {
-					t.Errorf("expected MessageTemplate 'Hello', got %s", campaign.MessageTemplate)
-				}
-				if campaign.ChannelID != 5 {
-					t.Errorf("expected ChannelID 5, got %d", campaign.ChannelID)
-				}
-				if campaign.TotalCount != 2 {
-					t.Errorf("expected TotalCount 2, got %d", campaign.TotalCount)
-				}
-				if campaign.CreatedBy != 42 {
-					t.Errorf("expected CreatedBy 42, got %d", campaign.CreatedBy)
+				if campaign.TotalCount != 0 {
+					t.Errorf("expected TotalCount 0 when passed to Create, got %d", campaign.TotalCount)
 				}
 				return 7, nil
 			},
-			createContactFunc: func(ctx context.Context, q DBTX, campaignID int, contactID int) error {
-				if q != txPassedToCreate {
-					t.Error("CreateContact must use the same transaction as Create")
+			listRecipientContactsFunc: func(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error) {
+				if listID != recipientListID {
+					t.Errorf("expected listID %d, got %d", recipientListID, listID)
 				}
-				if campaignID != 7 {
-					t.Errorf("expected campaignID 7, got %d", campaignID)
-				}
-				createdContactIDs = append(createdContactIDs, contactID)
-				return nil
+				return []CampaignRecipientContact{
+					{ID: 101, FirstName: "Alice"},
+					{ID: 102, FirstName: "Bob"},
+				}, nil
+			},
+			createRecipientFunc: func(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error) {
+				createdRecipients = append(createdRecipients, recipient)
+				return 1, nil
 			},
 		}
 		svc := &campaignService{repo: repo, db: db, cfg: testConfig(), logger: testLogger()}
@@ -356,7 +448,7 @@ func TestCampaignService(t *testing.T) {
 			Name:            "Test Campaign",
 			MessageTemplate: "Hello",
 			ChannelID:       5,
-			ContactIDs:      []int{101, 102},
+			RecipientListID: &recipientListID,
 		}, testTenant(), 42)
 		if err != nil {
 			t.Fatalf("Create returned error: %v", err)
@@ -364,17 +456,29 @@ func TestCampaignService(t *testing.T) {
 		if result.ID != 7 {
 			t.Errorf("expected campaign ID 7, got %d", result.ID)
 		}
+		if result.TotalCount != 2 {
+			t.Errorf("expected TotalCount 2, got %d", result.TotalCount)
+		}
 		if !mockTxObj.commitCalled {
 			t.Error("expected transaction to be committed")
 		}
 		if mockTxObj.rollbackCalled {
 			t.Error("expected rollback not to be called when commit succeeds")
 		}
-		if len(createdContactIDs) != 2 {
-			t.Fatalf("expected 2 contacts, got %d", len(createdContactIDs))
+		if len(createdRecipients) != 2 {
+			t.Fatalf("expected 2 recipients, got %d", len(createdRecipients))
 		}
-		if createdContactIDs[0] != 101 || createdContactIDs[1] != 102 {
-			t.Errorf("expected contact IDs [101 102], got %v", createdContactIDs)
+		if createdRecipients[0].CampaignID != 7 {
+			t.Errorf("expected recipient CampaignID 7, got %d", createdRecipients[0].CampaignID)
+		}
+		if createdRecipients[0].RecipientContactID != 101 {
+			t.Errorf("expected RecipientContactID 101, got %d", createdRecipients[0].RecipientContactID)
+		}
+		if createdRecipients[0].Status != "pending" {
+			t.Errorf("expected Status 'pending', got %s", createdRecipients[0].Status)
+		}
+		if createdRecipients[1].RecipientContactID != 102 {
+			t.Errorf("expected RecipientContactID 102, got %d", createdRecipients[1].RecipientContactID)
 		}
 	})
 
@@ -391,9 +495,6 @@ func TestCampaignService(t *testing.T) {
 				capturedCampaign = campaign
 				return 1, nil
 			},
-			createContactFunc: func(ctx context.Context, q DBTX, campaignID int, contactID int) error {
-				return nil
-			},
 		}
 		svc := &campaignService{repo: repo, db: db, cfg: testConfig(), logger: testLogger()}
 
@@ -402,7 +503,6 @@ func TestCampaignService(t *testing.T) {
 			Name:            "Scheduled",
 			MessageTemplate: "Hi",
 			ChannelID:       1,
-			ContactIDs:      []int{1},
 			ScheduledAt:     &scheduledStr,
 		}, testTenant(), 1)
 		if err != nil {
@@ -427,9 +527,6 @@ func TestCampaignService(t *testing.T) {
 			createFunc: func(ctx context.Context, q DBTX, campaign *Campaign) (int, error) {
 				return 1, nil
 			},
-			createContactFunc: func(ctx context.Context, q DBTX, campaignID int, contactID int) error {
-				return nil
-			},
 		}
 		svc := &campaignService{repo: repo, db: db, cfg: testConfig(), logger: testLogger()}
 
@@ -438,11 +535,47 @@ func TestCampaignService(t *testing.T) {
 			Name:            "Bad",
 			MessageTemplate: "Hi",
 			ChannelID:       1,
-			ContactIDs:      []int{1},
 			ScheduledAt:     &badTime,
 		}, testTenant(), 1)
 		if err == nil {
 			t.Fatal("expected error for invalid scheduled_at format")
+		}
+	})
+
+	t.Run("Create with recipient list and transaction rollback on error", func(t *testing.T) {
+		mockTxObj := &mockTx{}
+		db := newMockDB(func() (driver.Tx, error) {
+			return mockTxObj, nil
+		})
+		defer db.Close()
+
+		recipientListID := 10
+		repo := &mockCampaignRepository{
+			createFunc: func(ctx context.Context, q DBTX, campaign *Campaign) (int, error) {
+				return 7, nil
+			},
+			listRecipientContactsFunc: func(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error) {
+				return []CampaignRecipientContact{
+					{ID: 101, FirstName: "Alice"},
+				}, nil
+			},
+			createRecipientFunc: func(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error) {
+				return 0, sql.ErrConnDone
+			},
+		}
+		svc := &campaignService{repo: repo, db: db, cfg: testConfig(), logger: testLogger()}
+
+		_, err := svc.Create(context.Background(), CreateCampaignRequest{
+			Name:            "Fail",
+			MessageTemplate: "Hi",
+			ChannelID:       1,
+			RecipientListID: &recipientListID,
+		}, testTenant(), 1)
+		if err == nil {
+			t.Fatal("expected error when CreateRecipient fails")
+		}
+		if mockTxObj.commitCalled {
+			t.Error("expected transaction NOT to be committed on error")
 		}
 	})
 
@@ -668,7 +801,7 @@ func TestCampaignService(t *testing.T) {
 		}
 	})
 
-	t.Run("Send updates status to sending then processes contacts", func(t *testing.T) {
+	t.Run("Send updates status to sending then processes recipients", func(t *testing.T) {
 		var updateStatusCalls []string
 		mockTxObj := &mockTx{}
 
@@ -685,10 +818,10 @@ func TestCampaignService(t *testing.T) {
 				updateStatusCalls = append(updateStatusCalls, campaign.Status)
 				return nil
 			},
-			getPendingFunc: func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignContact, error) {
+			getPendingRecipientsFunc: func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error) {
 				return nil, nil
 			},
-			countPendingFunc: func(ctx context.Context, q DBTX, campaignID int) (int, error) {
+			countPendingRecipientsFunc: func(ctx context.Context, q DBTX, campaignID int) (int, error) {
 				return 0, nil
 			},
 		}
@@ -747,4 +880,217 @@ func TestCampaignService(t *testing.T) {
 			t.Fatal("expected error for non-existent campaign")
 		}
 	})
+
+	t.Run("ListTemplates returns templates", func(t *testing.T) {
+		repo := &mockCampaignRepository{
+			listTemplatesFunc: func(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error) {
+				if tenantID != 1 {
+					t.Errorf("expected tenantID 1, got %d", tenantID)
+				}
+				return []CampaignTemplate{
+					{ID: 1, Name: "Welcome", Content: json.RawMessage(`{"text":"Hello"}`)},
+					{ID: 2, Name: "Promo", Content: json.RawMessage(`{"text":"Sale"}`)},
+				}, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		templates, err := svc.ListTemplates(context.Background(), 1)
+		if err != nil {
+			t.Fatalf("ListTemplates returned error: %v", err)
+		}
+		if len(templates) != 2 {
+			t.Fatalf("expected 2 templates, got %d", len(templates))
+		}
+		if templates[0].Name != "Welcome" {
+			t.Errorf("expected Name 'Welcome', got %s", templates[0].Name)
+		}
+		if templates[1].Name != "Promo" {
+			t.Errorf("expected Name 'Promo', got %s", templates[1].Name)
+		}
+	})
+
+	t.Run("CreateTemplate creates with content and variables", func(t *testing.T) {
+		var capturedTemplate *CampaignTemplate
+		repo := &mockCampaignRepository{
+			createTemplateFunc: func(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error) {
+				capturedTemplate = template
+				return 3, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		content := json.RawMessage(`{"text":"Hello {{name}}"}`)
+		variables := json.RawMessage(`[{"name":"name","type":"text"}]`)
+		result, err := svc.CreateTemplate(context.Background(), CreateTemplateRequest{
+			Name:         "Test Template",
+			Content:      content,
+			Variables:    variables,
+			TemplateType: strPtr("text"),
+			Language:     strPtr("en"),
+			Category:     strPtr("utility"),
+		}, testTenant())
+		if err != nil {
+			t.Fatalf("CreateTemplate returned error: %v", err)
+		}
+		if capturedTemplate.TenantID != 1 {
+			t.Errorf("expected TenantID 1, got %d", capturedTemplate.TenantID)
+		}
+		if capturedTemplate.Name != "Test Template" {
+			t.Errorf("expected Name 'Test Template', got %s", capturedTemplate.Name)
+		}
+		if string(capturedTemplate.Content) != string(content) {
+			t.Errorf("expected Content %s, got %s", content, capturedTemplate.Content)
+		}
+		if string(capturedTemplate.Variables) != string(variables) {
+			t.Errorf("expected Variables %s, got %s", variables, capturedTemplate.Variables)
+		}
+		if result.ID != 3 {
+			t.Errorf("expected template ID 3, got %d", result.ID)
+		}
+	})
+
+	t.Run("CreateTemplate defaults variables to empty array", func(t *testing.T) {
+		var capturedTemplate *CampaignTemplate
+		repo := &mockCampaignRepository{
+			createTemplateFunc: func(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error) {
+				capturedTemplate = template
+				return 1, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		content := json.RawMessage(`{"text":"Hi"}`)
+		_, err := svc.CreateTemplate(context.Background(), CreateTemplateRequest{
+			Name:    "Simple",
+			Content: content,
+		}, testTenant())
+		if err != nil {
+			t.Fatalf("CreateTemplate returned error: %v", err)
+		}
+		if string(capturedTemplate.Variables) != "[]" {
+			t.Errorf("expected Variables default '[]', got %s", string(capturedTemplate.Variables))
+		}
+	})
+
+	t.Run("ListRecipientLists returns lists", func(t *testing.T) {
+		repo := &mockCampaignRepository{
+			listRecipientListsFunc: func(ctx context.Context, q DBTX, tenantID int) ([]CampaignRecipientList, error) {
+				if tenantID != 1 {
+					t.Errorf("expected tenantID 1, got %d", tenantID)
+				}
+				return []CampaignRecipientList{
+					{ID: 1, Name: "Newsletter", Source: "manual"},
+					{ID: 2, Name: "VIP Customers", Source: "import"},
+				}, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		lists, err := svc.ListRecipientLists(context.Background(), 1)
+		if err != nil {
+			t.Fatalf("ListRecipientLists returned error: %v", err)
+		}
+		if len(lists) != 2 {
+			t.Fatalf("expected 2 lists, got %d", len(lists))
+		}
+		if lists[0].Name != "Newsletter" {
+			t.Errorf("expected Name 'Newsletter', got %s", lists[0].Name)
+		}
+		if lists[1].Name != "VIP Customers" {
+			t.Errorf("expected Name 'VIP Customers', got %s", lists[1].Name)
+		}
+	})
+
+	t.Run("CreateRecipientList creates with source defaulting to manual", func(t *testing.T) {
+		var capturedList *CampaignRecipientList
+		repo := &mockCampaignRepository{
+			createRecipientListFunc: func(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error) {
+				capturedList = list
+				return 5, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		result, err := svc.CreateRecipientList(context.Background(), CreateRecipientListRequest{
+			Name: "My List",
+		}, testTenant())
+		if err != nil {
+			t.Fatalf("CreateRecipientList returned error: %v", err)
+		}
+		if capturedList.TenantID != 1 {
+			t.Errorf("expected TenantID 1, got %d", capturedList.TenantID)
+		}
+		if capturedList.Name != "My List" {
+			t.Errorf("expected Name 'My List', got %s", capturedList.Name)
+		}
+		if capturedList.Source != "manual" {
+			t.Errorf("expected Source default 'manual', got %s", capturedList.Source)
+		}
+		if result.ID != 5 {
+			t.Errorf("expected list ID 5, got %d", result.ID)
+		}
+	})
+
+	t.Run("CreateRecipientList preserves provided source", func(t *testing.T) {
+		var capturedList *CampaignRecipientList
+		repo := &mockCampaignRepository{
+			createRecipientListFunc: func(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error) {
+				capturedList = list
+				return 6, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		_, err := svc.CreateRecipientList(context.Background(), CreateRecipientListRequest{
+			Name:   "Imported",
+			Source: "import",
+		}, testTenant())
+		if err != nil {
+			t.Fatalf("CreateRecipientList returned error: %v", err)
+		}
+		if capturedList.Source != "import" {
+			t.Errorf("expected Source 'import', got %s", capturedList.Source)
+		}
+	})
+
+	t.Run("AddRecipientContact adds contact to list", func(t *testing.T) {
+		var capturedContact *CampaignRecipientContact
+		repo := &mockCampaignRepository{
+			createRecipientContactFunc: func(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (int, error) {
+				capturedContact = contact
+				return 20, nil
+			},
+		}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+
+		result, err := svc.AddRecipientContact(context.Background(), 5, AddContactToListRequest{
+			FirstName: "John",
+			LastName:  strPtr("Doe"),
+			Email:     strPtr("john@example.com"),
+			Phone:     strPtr("+123456789"),
+		})
+		if err != nil {
+			t.Fatalf("AddRecipientContact returned error: %v", err)
+		}
+		if capturedContact.CampaignRecipientListID != 5 {
+			t.Errorf("expected CampaignRecipientListID 5, got %d", capturedContact.CampaignRecipientListID)
+		}
+		if capturedContact.FirstName != "John" {
+			t.Errorf("expected FirstName 'John', got %s", capturedContact.FirstName)
+		}
+		if capturedContact.LastName == nil || *capturedContact.LastName != "Doe" {
+			t.Errorf("expected LastName 'Doe', got %v", *capturedContact.LastName)
+		}
+		if capturedContact.Email == nil || *capturedContact.Email != "john@example.com" {
+			t.Errorf("expected Email 'john@example.com', got %v", *capturedContact.Email)
+		}
+		if result.ID != 20 {
+			t.Errorf("expected contact ID 20, got %d", result.ID)
+		}
+	})
+}
+
+func strPtr(s string) *string {
+	return &s
 }

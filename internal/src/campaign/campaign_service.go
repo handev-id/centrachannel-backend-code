@@ -19,26 +19,19 @@ type CampaignService interface {
 	Update(ctx context.Context, tenantID int, id int, req UpdateCampaignRequest) (*Campaign, error)
 	Delete(ctx context.Context, tenantID int, id int) error
 	Send(ctx context.Context, tenantID int, id int) error
-}
-
-type PaginationMeta struct {
-	Total       int `json:"total"`
-	PerPage     int `json:"per_page"`
-	CurrentPage int `json:"current_page"`
-	LastPage    int `json:"last_page"`
-	From        int `json:"from"`
-	To          int `json:"to"`
-}
-
-type PaginatedResponse struct {
-	Meta PaginationMeta `json:"meta"`
-	Data interface{}    `json:"data"`
-}
-
-type ListCampaignQuery struct {
-	Page   int    `json:"page"`
-	Limit  int    `json:"limit"`
-	Search string `json:"search"`
+	ListTemplates(ctx context.Context, tenantID int) ([]CampaignTemplate, error)
+	GetTemplateByID(ctx context.Context, tenantID int, id int) (*CampaignTemplate, error)
+	CreateTemplate(ctx context.Context, req CreateTemplateRequest, t *tenant.Tenant) (*CampaignTemplate, error)
+	UpdateTemplate(ctx context.Context, tenantID int, id int, req UpdateTemplateRequest) (*CampaignTemplate, error)
+	DeleteTemplate(ctx context.Context, tenantID int, id int) error
+	ListRecipientLists(ctx context.Context, tenantID int) ([]CampaignRecipientList, error)
+	GetRecipientListByID(ctx context.Context, tenantID int, id int) (*CampaignRecipientList, error)
+	CreateRecipientList(ctx context.Context, req CreateRecipientListRequest, t *tenant.Tenant) (*CampaignRecipientList, error)
+	UpdateRecipientList(ctx context.Context, tenantID int, id int, req UpdateRecipientListRequest) (*CampaignRecipientList, error)
+	DeleteRecipientList(ctx context.Context, tenantID int, id int) error
+	ListRecipientContacts(ctx context.Context, listID int) ([]CampaignRecipientContact, error)
+	AddRecipientContact(ctx context.Context, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error)
+	RemoveRecipientContact(ctx context.Context, id int) error
 }
 
 type campaignService struct {
@@ -53,199 +46,157 @@ func NewCampaignService(repo CampaignRepository, db *sql.DB, cfg *config.Config,
 }
 
 func (s *campaignService) List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
-	if q.Page < 1 {
-		q.Page = 1
-	}
-	if q.Limit < 1 || q.Limit > 100 {
-		q.Limit = 20
-	}
-
+	if q.Page < 1 { q.Page = 1 }
+	if q.Limit < 1 || q.Limit > 100 { q.Limit = 20 }
 	offset := (q.Page - 1) * q.Limit
 
 	campaigns, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q.Search)
 	if err != nil {
-		s.logger.Error("Failed to list campaigns: %v", err)
 		return nil, fmt.Errorf("failed to list campaigns: %w", err)
 	}
 
 	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
-	if lastPage < 1 {
-		lastPage = 1
-	}
-
+	if lastPage < 1 { lastPage = 1 }
 	from := offset + 1
 	to := offset + len(campaigns)
-	if total == 0 {
-		from = 0
-		to = 0
-	}
+	if total == 0 { from = 0; to = 0 }
 
 	return &PaginatedResponse{
-		Meta: PaginationMeta{
-			Total:       total,
-			PerPage:     q.Limit,
-			CurrentPage: q.Page,
-			LastPage:    lastPage,
-			From:        from,
-			To:          to,
-		},
+		Meta: PaginationMeta{Total: total, PerPage: q.Limit, CurrentPage: q.Page, LastPage: lastPage, From: from, To: to},
 		Data: campaigns,
 	}, nil
 }
 
 func (s *campaignService) GetByID(ctx context.Context, tenantID int, id int) (*Campaign, error) {
 	campaign, err := s.repo.GetByID(ctx, s.db, tenantID, id)
-	if err != nil {
-		return nil, err
-	}
-	if campaign == nil {
-		return nil, fmt.Errorf("campaign not found")
-	}
+	if err != nil { return nil, err }
+	if campaign == nil { return nil, fmt.Errorf("campaign not found") }
 	return campaign, nil
 }
 
 func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest, t *tenant.Tenant, userID int) (*Campaign, error) {
+	campaignType := req.Type
+	if campaignType == "" { campaignType = "broadcast" }
+
 	var scheduledAt *time.Time
 	if req.ScheduledAt != nil && *req.ScheduledAt != "" {
-		t, err := time.Parse(time.RFC3339, *req.ScheduledAt)
-		if err != nil {
-			return nil, fmt.Errorf("invalid scheduled_at format, use RFC3339")
-		}
-		scheduledAt = &t
+		parsed, err := time.Parse(time.RFC3339, *req.ScheduledAt)
+		if err != nil { return nil, fmt.Errorf("invalid scheduled_at format, use RFC3339") }
+		scheduledAt = &parsed
 	}
 
 	campaign := &Campaign{
 		TenantID:        t.ID,
 		Name:            req.Name,
+		Type:            campaignType,
 		Description:     req.Description,
 		MessageTemplate: req.MessageTemplate,
 		ChannelID:       req.ChannelID,
 		Status:          "draft",
+		SendingOption:   req.SendingOption,
 		ScheduledAt:     scheduledAt,
-		TotalCount:      len(req.ContactIDs),
+		RecipientListID: req.RecipientListID,
+		TemplateID:      req.TemplateID,
 		CreatedBy:       userID,
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
+	if err != nil { return nil, fmt.Errorf("failed to begin transaction: %w", err) }
 	defer tx.Rollback()
 
 	campaignID, err := s.repo.Create(ctx, tx, campaign)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create campaign: %w", err)
-	}
+	if err != nil { return nil, fmt.Errorf("failed to create campaign: %w", err) }
 
-	for _, contactID := range req.ContactIDs {
-		if err := s.repo.CreateContact(ctx, tx, campaignID, contactID); err != nil {
-			return nil, fmt.Errorf("failed to attach contact %d: %w", contactID, err)
+	if req.RecipientListID != nil {
+		contacts, err := s.repo.ListRecipientContacts(ctx, s.db, *req.RecipientListID)
+		if err != nil { return nil, fmt.Errorf("failed to fetch recipient contacts: %w", err) }
+
+		for _, c := range contacts {
+			recipient := &CampaignRecipient{
+				CampaignID:        campaignID,
+				RecipientContactID: c.ID,
+				Status:            "pending",
+			}
+			if _, err := s.repo.CreateRecipient(ctx, tx, recipient); err != nil {
+				return nil, fmt.Errorf("failed to add recipient: %w", err)
+			}
+			campaign.TotalCount++
 		}
 	}
 
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
-	}
+	if err := tx.Commit(); err != nil { return nil, fmt.Errorf("failed to commit: %w", err) }
 
 	campaign.ID = campaignID
+	campaign.CreatedAt = time.Now()
+	campaign.UpdatedAt = time.Now()
 	return campaign, nil
 }
 
 func (s *campaignService) Update(ctx context.Context, tenantID int, id int, req UpdateCampaignRequest) (*Campaign, error) {
 	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
-	if err != nil {
-		return nil, err
-	}
-	if existing == nil {
-		return nil, fmt.Errorf("campaign not found")
-	}
-
-	if existing.Status != "draft" {
-		return nil, fmt.Errorf("can only update campaigns in draft status")
-	}
+	if err != nil { return nil, err }
+	if existing == nil { return nil, fmt.Errorf("campaign not found") }
+	if existing.Status != "draft" { return nil, fmt.Errorf("can only update campaigns in draft status") }
 
 	updated := &Campaign{
-		Name:            existing.Name,
-		Description:     existing.Description,
-		MessageTemplate: existing.MessageTemplate,
-		Status:          existing.Status,
-		ScheduledAt:     existing.ScheduledAt,
+		Name: existing.Name, Type: existing.Type, Description: existing.Description,
+		MessageTemplate: existing.MessageTemplate, Status: existing.Status,
+		SendingOption: existing.SendingOption, ScheduledAt: existing.ScheduledAt,
+		RecipientListID: existing.RecipientListID, TemplateID: existing.TemplateID,
+		AgentID: existing.AgentID, SenderID: existing.SenderID,
 	}
 
-	if req.Name != nil {
-		updated.Name = *req.Name
-	}
-	if req.Description != nil {
-		updated.Description = req.Description
-	}
-	if req.MessageTemplate != nil {
-		updated.MessageTemplate = *req.MessageTemplate
-	}
-	if req.Status != nil {
-		updated.Status = *req.Status
-	}
+	if req.Name != nil { updated.Name = *req.Name }
+	if req.Type != nil { updated.Type = *req.Type }
+	if req.Description != nil { updated.Description = req.Description }
+	if req.MessageTemplate != nil { updated.MessageTemplate = *req.MessageTemplate }
+	if req.Status != nil { updated.Status = *req.Status }
+	if len(req.SendingOption) > 0 { updated.SendingOption = req.SendingOption }
 	if req.ScheduledAt != nil && *req.ScheduledAt != "" {
-		t, err := time.Parse(time.RFC3339, *req.ScheduledAt)
-		if err != nil {
-			return nil, fmt.Errorf("invalid scheduled_at format, use RFC3339")
-		}
-		updated.ScheduledAt = &t
+		parsed, err := time.Parse(time.RFC3339, *req.ScheduledAt)
+		if err != nil { return nil, fmt.Errorf("invalid scheduled_at format, use RFC3339") }
+		updated.ScheduledAt = &parsed
 	}
+	if req.RecipientListID != nil { updated.RecipientListID = req.RecipientListID }
+	if req.TemplateID != nil { updated.TemplateID = req.TemplateID }
+	if req.AgentID != nil { updated.AgentID = req.AgentID }
+	if req.SenderID != nil { updated.SenderID = req.SenderID }
 
 	if err := s.repo.Update(ctx, s.db, tenantID, id, updated); err != nil {
 		return nil, fmt.Errorf("failed to update campaign: %w", err)
 	}
-
 	return s.repo.GetByID(ctx, s.db, tenantID, id)
 }
 
 func (s *campaignService) Delete(ctx context.Context, tenantID int, id int) error {
 	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
-	if err != nil {
-		return err
-	}
-	if existing == nil {
-		return fmt.Errorf("campaign not found")
-	}
-
+	if err != nil { return err }
+	if existing == nil { return fmt.Errorf("campaign not found") }
 	if existing.Status == "sending" || existing.Status == "sent" {
 		return fmt.Errorf("cannot delete campaign with status '%s'", existing.Status)
 	}
-
 	return s.repo.Delete(ctx, s.db, tenantID, id)
 }
 
 func (s *campaignService) Send(ctx context.Context, tenantID int, id int) error {
 	campaign, err := s.repo.GetByID(ctx, s.db, tenantID, id)
-	if err != nil {
-		return err
-	}
-	if campaign == nil {
-		return fmt.Errorf("campaign not found")
-	}
-
+	if err != nil { return err }
+	if campaign == nil { return fmt.Errorf("campaign not found") }
 	if campaign.Status != "draft" && campaign.Status != "failed" {
 		return fmt.Errorf("campaign must be in draft or failed status to send")
 	}
 
 	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
+	if err != nil { return fmt.Errorf("failed to begin transaction: %w", err) }
 	defer tx.Rollback()
 
-	updateCampaign := &Campaign{Status: "sending"}
-	if err := s.repo.Update(ctx, tx, tenantID, id, updateCampaign); err != nil {
+	if err := s.repo.Update(ctx, tx, tenantID, id, &Campaign{Status: "sending"}); err != nil {
 		return fmt.Errorf("failed to update campaign status: %w", err)
 	}
-
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit transaction: %w", err)
-	}
+	if err := tx.Commit(); err != nil { return fmt.Errorf("failed to commit: %w", err) }
 
 	go func() {
-		processCtx := context.Background()
-		s.processSend(processCtx, tenantID, id)
+		s.processSend(context.Background(), tenantID, id)
 	}()
 
 	return nil
@@ -256,23 +207,21 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 	sentCount := 0
 
 	for {
-		contacts, err := s.repo.GetPendingContacts(ctx, s.db, campaignID, batchSize)
+		recipients, err := s.repo.GetPendingRecipients(ctx, s.db, campaignID, batchSize)
 		if err != nil {
-			s.logger.Error("Failed to get pending contacts for campaign %d: %v", campaignID, err)
+			s.logger.Error("Failed to get pending recipients for campaign %d: %v", campaignID, err)
 			s.repo.Update(ctx, s.db, tenantID, campaignID, &Campaign{Status: "failed"})
 			return
 		}
+		if len(recipients) == 0 { break }
 
-		if len(contacts) == 0 {
-			break
-		}
+		for _, r := range recipients {
+			now := time.Now()
 
-		for _, cc := range contacts {
-			err := s.repo.UpdateContactStatus(ctx, s.db, campaignID, cc.ContactID, "sent", nil)
-			if err != nil {
-				s.logger.Error("Failed to update contact %d status: %v", cc.ContactID, err)
+			if err := s.repo.UpdateRecipientStatus(ctx, s.db, r.ID, "delivered", nil, &sql.NullTime{Time: now, Valid: true}); err != nil {
+				s.logger.Error("Failed to update recipient %d: %v", r.ID, err)
 				errMsg := err.Error()
-				s.repo.UpdateContactStatus(ctx, s.db, campaignID, cc.ContactID, "failed", &errMsg)
+				s.repo.UpdateRecipientStatus(ctx, s.db, r.ID, "failed", &errMsg, nil)
 				continue
 			}
 			sentCount++
@@ -280,14 +229,164 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 	}
 
 	finalStatus := "sent"
-	remaining, err := s.repo.CountPendingContacts(ctx, s.db, campaignID)
-	if err == nil && remaining > 0 {
-		finalStatus = "partial"
-	}
+	remaining, err := s.repo.CountPendingRecipients(ctx, s.db, campaignID)
+	if err == nil && remaining > 0 { finalStatus = "partial" }
 
 	s.repo.Update(ctx, s.db, tenantID, campaignID, &Campaign{
 		Status:    finalStatus,
 		SentCount: sentCount,
 	})
 	s.logger.Info("Campaign %d processed: %d sent, status: %s", campaignID, sentCount, finalStatus)
+}
+
+func (s *campaignService) ListTemplates(ctx context.Context, tenantID int) ([]CampaignTemplate, error) {
+	return s.repo.ListTemplates(ctx, s.db, tenantID)
+}
+
+func (s *campaignService) GetTemplateByID(ctx context.Context, tenantID int, id int) (*CampaignTemplate, error) {
+	t, err := s.repo.GetTemplateByID(ctx, s.db, tenantID, id)
+	if err != nil { return nil, err }
+	if t == nil { return nil, fmt.Errorf("template not found") }
+	return t, nil
+}
+
+func (s *campaignService) CreateTemplate(ctx context.Context, req CreateTemplateRequest, t *tenant.Tenant) (*CampaignTemplate, error) {
+	variables := req.Variables
+	if len(variables) == 0 { variables = []byte("[]") }
+
+	template := &CampaignTemplate{
+		TenantID:     t.ID,
+		Name:         req.Name,
+		Type:         req.Type,
+		TemplateType: req.TemplateType,
+		Category:     req.Category,
+		Language:     req.Language,
+		Content:      req.Content,
+		Variables:    variables,
+		Quality:      req.Quality,
+		AccountID:    req.AccountID,
+	}
+
+	id, err := s.repo.CreateTemplate(ctx, s.db, template)
+	if err != nil { return nil, fmt.Errorf("failed to create template: %w", err) }
+
+	template.ID = id
+	template.CreatedAt = time.Now()
+	template.UpdatedAt = time.Now()
+	return template, nil
+}
+
+func (s *campaignService) UpdateTemplate(ctx context.Context, tenantID int, id int, req UpdateTemplateRequest) (*CampaignTemplate, error) {
+	existing, err := s.repo.GetTemplateByID(ctx, s.db, tenantID, id)
+	if err != nil { return nil, err }
+	if existing == nil { return nil, fmt.Errorf("template not found") }
+
+	updated := &CampaignTemplate{
+		Name: existing.Name, Type: existing.Type, TemplateType: existing.TemplateType,
+		Category: existing.Category, Language: existing.Language, Content: existing.Content,
+		Variables: existing.Variables, Quality: existing.Quality, AccountID: existing.AccountID,
+	}
+
+	if req.Name != nil { updated.Name = *req.Name }
+	if req.Type != nil { updated.Type = req.Type }
+	if req.TemplateType != nil { updated.TemplateType = req.TemplateType }
+	if req.Category != nil { updated.Category = req.Category }
+	if req.Language != nil { updated.Language = req.Language }
+	if len(req.Content) > 0 { updated.Content = req.Content }
+	if len(req.Variables) > 0 { updated.Variables = req.Variables }
+	if req.Quality != nil { updated.Quality = req.Quality }
+	if req.AccountID != nil { updated.AccountID = req.AccountID }
+
+	if err := s.repo.UpdateTemplate(ctx, s.db, tenantID, id, updated); err != nil {
+		return nil, fmt.Errorf("failed to update template: %w", err)
+	}
+	return s.repo.GetTemplateByID(ctx, s.db, tenantID, id)
+}
+
+func (s *campaignService) DeleteTemplate(ctx context.Context, tenantID int, id int) error {
+	return s.repo.DeleteTemplate(ctx, s.db, tenantID, id)
+}
+
+func (s *campaignService) ListRecipientLists(ctx context.Context, tenantID int) ([]CampaignRecipientList, error) {
+	return s.repo.ListRecipientLists(ctx, s.db, tenantID)
+}
+
+func (s *campaignService) GetRecipientListByID(ctx context.Context, tenantID int, id int) (*CampaignRecipientList, error) {
+	l, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, id)
+	if err != nil { return nil, err }
+	if l == nil { return nil, fmt.Errorf("recipient list not found") }
+	return l, nil
+}
+
+func (s *campaignService) CreateRecipientList(ctx context.Context, req CreateRecipientListRequest, t *tenant.Tenant) (*CampaignRecipientList, error) {
+	source := req.Source
+	if source == "" { source = "manual" }
+
+	list := &CampaignRecipientList{
+		TenantID:  t.ID,
+		Name:      req.Name,
+		Source:    source,
+		ChannelID: req.ChannelID,
+	}
+
+	id, err := s.repo.CreateRecipientList(ctx, s.db, list)
+	if err != nil { return nil, fmt.Errorf("failed to create recipient list: %w", err) }
+
+	list.ID = id
+	list.CreatedAt = time.Now()
+	list.UpdatedAt = time.Now()
+	return list, nil
+}
+
+func (s *campaignService) UpdateRecipientList(ctx context.Context, tenantID int, id int, req UpdateRecipientListRequest) (*CampaignRecipientList, error) {
+	existing, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, id)
+	if err != nil { return nil, err }
+	if existing == nil { return nil, fmt.Errorf("recipient list not found") }
+
+	updated := &CampaignRecipientList{
+		Name: existing.Name, Source: existing.Source, Status: existing.Status, ChannelID: existing.ChannelID,
+	}
+
+	if req.Name != nil { updated.Name = *req.Name }
+	if req.Source != nil { updated.Source = *req.Source }
+	if req.Status != nil { updated.Status = req.Status }
+	if req.ChannelID != nil { updated.ChannelID = req.ChannelID }
+
+	if err := s.repo.UpdateRecipientList(ctx, s.db, tenantID, id, updated); err != nil {
+		return nil, fmt.Errorf("failed to update recipient list: %w", err)
+	}
+	return s.repo.GetRecipientListByID(ctx, s.db, tenantID, id)
+}
+
+func (s *campaignService) DeleteRecipientList(ctx context.Context, tenantID int, id int) error {
+	return s.repo.DeleteRecipientList(ctx, s.db, tenantID, id)
+}
+
+func (s *campaignService) ListRecipientContacts(ctx context.Context, listID int) ([]CampaignRecipientContact, error) {
+	return s.repo.ListRecipientContacts(ctx, s.db, listID)
+}
+
+func (s *campaignService) AddRecipientContact(ctx context.Context, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error) {
+	contact := &CampaignRecipientContact{
+		FirstName:             req.FirstName,
+		LastName:              req.LastName,
+		Username:              req.Username,
+		Institution:           req.Institution,
+		Email:                 req.Email,
+		Phone:                 req.Phone,
+		CampaignRecipientListID: listID,
+		MasterContactID:       req.MasterContactID,
+	}
+
+	id, err := s.repo.CreateRecipientContact(ctx, s.db, contact)
+	if err != nil { return nil, fmt.Errorf("failed to add contact: %w", err) }
+
+	contact.ID = id
+	contact.CreatedAt = time.Now()
+	contact.UpdatedAt = time.Now()
+	return contact, nil
+}
+
+func (s *campaignService) RemoveRecipientContact(ctx context.Context, id int) error {
+	return s.repo.DeleteRecipientContact(ctx, s.db, id)
 }
