@@ -107,9 +107,9 @@ func main() {
 	dashHandler := dashboard.NewDashboardHandler(c)
 	dashboard.RegisterRoutes(dashGroup, dashHandler)
 
-	c.Logger.Info("Starting server on port", cfg.Port)
+	c.Logger.Info("Starting server on port %d", cfg.Port)
 
 	if err := app.Listen(":" + fmt.Sprintf("%d", cfg.Port)); err != nil {
-		c.Logger.Fatal("Server error", err)
+		c.Logger.Fatal("Server error: %v", err)
 	}
 }
