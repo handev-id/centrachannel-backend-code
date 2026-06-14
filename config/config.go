@@ -19,6 +19,9 @@ type Config struct {
 	// Database
 	Database DatabaseConfig
 
+	// Redis
+	Redis RedisConfig
+
 	// JWT
 	JWTSecret string
 	JWTExpiry time.Duration
@@ -48,6 +51,13 @@ type DatabaseConfig struct {
 	ConnMaxLifetime time.Duration
 }
 
+type RedisConfig struct {
+	Host     string
+	Port     int
+	Password string
+	DB       int
+}
+
 type EmailConfig struct {
 	Host     string
 	Port     int
@@ -72,6 +82,12 @@ func Load() (*Config, error) {
 			MaxOpenConns:    getEnvInt("DB_MAX_OPEN_CONNS", 25),
 			MaxIdleConns:    getEnvInt("DB_MAX_IDLE_CONNS", 5),
 			ConnMaxLifetime: getDurationEnv("DB_CONN_MAX_LIFETIME", 5*time.Minute),
+		},
+		Redis: RedisConfig{
+			Host:     getEnv("REDIS_HOST", "localhost"),
+			Port:     getEnvInt("REDIS_PORT", 6379),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvInt("REDIS_DB", 0),
 		},
 		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key-change-this-in-production"),
 		JWTExpiry:          getDurationEnv("JWT_EXPIRY", 24*time.Hour),

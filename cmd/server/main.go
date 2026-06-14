@@ -6,14 +6,14 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"centrachannel/internal/middleware"
-
 	"centrachannel/internal/di"
+	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/auth"
+	"centrachannel/internal/src/user"
 	"centrachannel/internal/utils/response"
 )
 
 func main() {
-	// Initialize DI container (loads config, DB, logger)
 	c, err := di.New()
 	if err != nil {
 		log.Fatalf("Failed to initialize application: %v", err)
@@ -25,20 +25,15 @@ func main() {
 	}()
 
 	cfg := c.Config
-	logger := c.Logger
-    // db := c.DB // retained for future use
 
-
-	// Create Fiber app
 	app := fiber.New(fiber.Config{
 		AppName: "CentraChannel API v1.0.0",
 	})
 
-	// Middleware
+	app.Use(middleware.TenantMiddleware(c.Redis, c.DB))
 	app.Use(middleware.LoggerMiddleware())
 	app.Use(middleware.CORSMiddleware(cfg.CORSAllowedOrigins))
 
-	// Health check route
 	app.Get("/", func(c fiber.Ctx) error {
 		return response.OK(c, "Welcome to CentraChannel API", fiber.Map{
 			"version": "1.0.0",
@@ -46,17 +41,16 @@ func main() {
 		})
 	})
 
-	// Health check endpoint
-	app.Get("/health", func(c fiber.Ctx) error {
-		return response.OK(c, "Server is healthy", fiber.Map{
-			"status": "ok",
-		})
-	})
+	authHandler := auth.NewAuthHandler(c)
+	auth.RegisterRoutes(app, authHandler)
 
-	logger.Info("Starting server on port", cfg.Port)
+	userGroup := app.Group("/api/user", middleware.AuthMiddleware(cfg))
+	userHandler := user.NewUserHandler(c)
+	user.RegisterRoutesByGroup(userGroup, userHandler)
 
-	// Start server
+	c.Logger.Info("Starting server on port", cfg.Port)
+
 	if err := app.Listen(":" + fmt.Sprintf("%d", cfg.Port)); err != nil {
-		logger.Fatal("Server error", err)
+		c.Logger.Fatal("Server error", err)
 	}
 }
