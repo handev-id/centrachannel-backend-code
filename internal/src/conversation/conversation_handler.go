@@ -34,7 +34,9 @@ func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	agentID, _ := strconv.Atoi(c.Query("agent_id"))
 
 	if middleware.IsAgentOnly(c) {
-		agentID = middleware.GetUserID(c)
+		uid, err := middleware.GetUserID(c)
+		if err != nil { return response.Unauthorized(c, err.Error()) }
+		agentID = uid
 	}
 
 	q := ListConversationQuery{
@@ -70,6 +72,9 @@ func (h *ConversationHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
 
 	conv, err := h.service.Create(c.Context(), req, t)
 	if err != nil {
@@ -79,8 +84,8 @@ func (h *ConversationHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *ConversationHandler) Assign(c fiber.Ctx, t *tenant.Tenant) error {
-	userID := middleware.GetUserID(c)
-	if userID == 0 { return nil }
+	userID, err := middleware.GetUserID(c)
+	if err != nil { return response.Unauthorized(c, err.Error()) }
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

@@ -40,8 +40,8 @@ func (h *NoteHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
-	userID := middleware.GetUserID(c)
-	if userID == 0 { return nil }
+	userID, err := middleware.GetUserID(c)
+	if err != nil { return response.Unauthorized(c, err.Error()) }
 
 	conversationID, err := strconv.Atoi(c.Params("conversationId"))
 	if err != nil {
@@ -51,6 +51,9 @@ func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	var req CreateNoteRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	note, err := h.service.Create(c.Context(), req, t.ID, conversationID, userID)
@@ -70,6 +73,9 @@ func (h *NoteHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	var req UpdateNoteRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	note, err := h.service.Update(c.Context(), t.ID, id, req)

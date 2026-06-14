@@ -8,7 +8,7 @@ type CreateUserRequest struct {
 	Username  string          `json:"username" validate:"required,min=3,max=50"`
 	Email     string          `json:"email" validate:"required,email"`
 	Phone     *string         `json:"phone,omitempty" validate:"omitempty,max=20"`
-	Password  *string         `json:"password,omitempty" validate:"omitempty,min=8"`
+	Password  string          `json:"password" validate:"required,min=8"`
 	Avatar    json.RawMessage `json:"avatar,omitempty"`
 	Roles     []int           `json:"roles" validate:"required,min=1"`
 }

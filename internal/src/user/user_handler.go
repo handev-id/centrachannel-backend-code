@@ -71,6 +71,9 @@ func (h *UserHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
 
 	user, err := h.service.Create(c.Context(), req, t)
 	if err != nil {
@@ -89,6 +92,9 @@ func (h *UserHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	var req UpdateUserRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	user, err := h.service.Update(c.Context(), t.ID, id, req)

@@ -69,6 +69,9 @@ func (h *ContactHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
 
 	contact, err := h.service.Create(c.Context(), req, t)
 	if err != nil {
@@ -87,6 +90,9 @@ func (h *ContactHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	var req UpdateContactRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	contact, err := h.service.Update(c.Context(), t.ID, id, req)
@@ -119,6 +125,9 @@ func (h *ContactHandler) Merge(c fiber.Ctx, t *tenant.Tenant) error {
 	var req MergeContactRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	if err := h.service.Merge(c.Context(), t.ID, sourceID, req.TargetContactID); err != nil {

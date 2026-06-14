@@ -50,11 +50,12 @@ func (h *CampaignHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *CampaignHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
-	userID := middleware.GetUserID(c)
-	if userID == 0 { return nil }
+	userID, err := middleware.GetUserID(c)
+	if err != nil { return response.Unauthorized(c, err.Error()) }
 
 	var req CreateCampaignRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	campaign, err := h.service.Create(c.Context(), req, t, userID)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
@@ -68,6 +69,7 @@ func (h *CampaignHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req UpdateCampaignRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	campaign, err := h.service.Update(c.Context(), t.ID, id, req)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
@@ -113,6 +115,7 @@ func (h *CampaignHandler) CreateTemplate(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req CreateTemplateRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	template, err := h.service.CreateTemplate(c.Context(), req, t)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
@@ -126,6 +129,7 @@ func (h *CampaignHandler) UpdateTemplate(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req UpdateTemplateRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	template, err := h.service.UpdateTemplate(c.Context(), t.ID, id, req)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
@@ -162,6 +166,7 @@ func (h *CampaignHandler) CreateRecipientList(c fiber.Ctx, t *tenant.Tenant) err
 
 	var req CreateRecipientListRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	list, err := h.service.CreateRecipientList(c.Context(), req, t)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
@@ -175,6 +180,7 @@ func (h *CampaignHandler) UpdateRecipientList(c fiber.Ctx, t *tenant.Tenant) err
 
 	var req UpdateRecipientListRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	list, err := h.service.UpdateRecipientList(c.Context(), t.ID, id, req)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
@@ -205,6 +211,7 @@ func (h *CampaignHandler) AddRecipientContact(c fiber.Ctx) error {
 
 	var req AddContactToListRequest
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
+	if err := response.Validate(c, &req); err != nil { return err }
 
 	contact, err := h.service.AddRecipientContact(c.Context(), listID, req)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }

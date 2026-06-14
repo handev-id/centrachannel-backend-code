@@ -93,12 +93,7 @@ func (s *userService) GetByID(ctx context.Context, tenantID int, id int) (*User,
 }
 
 func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tenant.Tenant) (*User, error) {
-	password := req.Username
-	if req.Password != nil {
-		password = *req.Password
-	}
-
-	hashed, err := hash.HashPassword(password)
+	hashed, err := hash.HashPassword(req.Password)
 	if err != nil {
 		return nil, err
 	}

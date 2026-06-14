@@ -9,7 +9,7 @@ type RegisterRequest struct {
 	Email     string          `json:"email" validate:"required,email"`
 	Phone     *string         `json:"phone,omitempty" validate:"omitempty,max=20"`
 	Avatar    json.RawMessage `json:"avatar,omitempty"`
-	Password  *string         `json:"password,omitempty" validate:"omitempty,min=8"`
+	Password  string          `json:"password" validate:"required,min=8"`
 }
 
 type LoginRequest struct {

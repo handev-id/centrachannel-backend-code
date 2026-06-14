@@ -119,7 +119,14 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	msg.UpdatedAt = time.Now()
 
 	// Send to external platform via messenger (non-blocking)
-	go s.deliverToExternal(tenantID, conversationID, msg)
+	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				s.logger.Error("panic in deliverToExternal: %v", r)
+			}
+		}()
+		s.deliverToExternal(tenantID, conversationID, msg)
+	}()
 
 	if s.notifier != nil {
 		s.notifier.Notify(tenantID, "message:new", msg)

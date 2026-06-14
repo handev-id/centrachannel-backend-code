@@ -1,6 +1,8 @@
 package auth
 
 import (
+	"strings"
+
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
@@ -14,7 +16,7 @@ type AuthHandler struct {
 
 func NewAuthHandler(container *di.Container) *AuthHandler {
 	repo := NewAuthRepository()
-	service := NewAuthService(repo, container.DB, container.Config, container.Logger)
+	service := NewAuthService(repo, container.DB, container.Config, container.Logger, container.Redis)
 	return &AuthHandler{service: service}
 }
 
@@ -26,6 +28,9 @@ func (h *AuthHandler) Register(c fiber.Ctx, t *tenant.Tenant) error {
 	var req RegisterRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	user, err := h.service.Register(c.Context(), req, t)
@@ -39,6 +44,9 @@ func (h *AuthHandler) Login(c fiber.Ctx, t *tenant.Tenant) error {
 	var req LoginRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 	token, err := h.service.Login(c.Context(), req, t)
 	if err != nil {
@@ -64,5 +72,17 @@ func (h *AuthHandler) CheckToken(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
-	return response.OK(c, "success", nil)
+	authHeader := c.Get("Authorization")
+	if authHeader == "" {
+		return response.Unauthorized(c, "Missing token")
+	}
+	tokenStr := authHeader
+	if len(authHeader) > 7 && strings.HasPrefix(authHeader, "Bearer ") {
+		tokenStr = authHeader[7:]
+	}
+
+	if err := h.service.Logout(c.Context(), tokenStr); err != nil {
+		return response.Unauthorized(c, err.Error())
+	}
+	return response.OK(c, "Logged out successfully", nil)
 }

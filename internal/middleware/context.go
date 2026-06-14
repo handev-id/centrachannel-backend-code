@@ -1,6 +1,8 @@
 package middleware
 
 import (
+	"fmt"
+
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/src/tenant"
@@ -17,11 +19,10 @@ func Tenant(h func(fiber.Ctx, *tenant.Tenant) error) fiber.Handler {
 	}
 }
 
-func GetUserID(c fiber.Ctx) int {
+func GetUserID(c fiber.Ctx) (int, error) {
 	uid, ok := c.Locals("user_id").(int)
 	if !ok {
-		response.InternalServerError(c, "user context not found")
-		return 0
+		return 0, fmt.Errorf("user context not found")
 	}
-	return uid
+	return uid, nil
 }

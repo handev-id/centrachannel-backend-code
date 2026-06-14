@@ -20,6 +20,10 @@ type mockAuthService struct {
 	checkTokenFn func(ctx context.Context, token string, t *tenant.Tenant) (*auth.User, error)
 }
 
+func (m *mockAuthService) Logout(ctx context.Context, tokenStr string) error {
+	return nil
+}
+
 func (m *mockAuthService) Register(ctx context.Context, req auth.RegisterRequest, t *tenant.Tenant) (*auth.User, error) {
 	return m.registerFn(ctx, req, t)
 }
@@ -77,6 +81,7 @@ func TestAuthRegister_Success(t *testing.T) {
 		FirstName: "John",
 		Username:  "john_doe",
 		Email:     "john@test.com",
+		Password:  "password123",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", body)
 	req.Header.Set("Content-Type", "application/json")
@@ -133,6 +138,7 @@ func TestAuthRegister_DuplicateEmail(t *testing.T) {
 		FirstName: "Jane",
 		Username:  "jane_doe",
 		Email:     "existing@test.com",
+		Password:  "password123",
 	})
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/register", body)
 	req.Header.Set("Content-Type", "application/json")

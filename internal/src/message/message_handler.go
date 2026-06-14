@@ -61,6 +61,9 @@ func (h *MessageHandler) Send(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
 
 	msg, err := h.service.Send(c.Context(), req, t.ID, conversationID)
 	if err != nil {
@@ -78,6 +81,9 @@ func (h *MessageHandler) UpdateStatus(c fiber.Ctx) error {
 	var req UpdateMessageStatusRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
 	}
 
 	if err := h.service.UpdateStatus(c.Context(), id, req.Status); err != nil {

@@ -223,6 +223,7 @@ func TestCreate(t *testing.T) {
 			LastName:  ptr("Doe"),
 			Username:  "johndoe",
 			Email:     "john@example.com",
+			Password:  "password123",
 			Roles:     []int{1, 2},
 		}
 
@@ -292,6 +293,7 @@ func TestCreate(t *testing.T) {
 			FirstName: "Jane",
 			Username:  "jane",
 			Email:     "jane@example.com",
+			Password:  "password456",
 			Avatar:    providedAvatar,
 			Roles:     []int{1},
 		}

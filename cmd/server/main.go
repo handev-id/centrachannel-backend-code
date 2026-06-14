@@ -71,7 +71,7 @@ func main() {
 	authHandler := auth.NewAuthHandler(c)
 	auth.RegisterRoutes(app, authHandler)
 
-	authMw := middleware.AuthMiddleware(cfg)
+	authMw := middleware.AuthMiddleware(cfg, c.Redis)
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
 	

@@ -1,8 +1,28 @@
 package response
 
 import (
+    "github.com/go-playground/validator/v10"
     "github.com/gofiber/fiber/v3"
 )
+
+var validate = validator.New()
+
+func Validate(c fiber.Ctx, req interface{}) error {
+    if err := validate.Struct(req); err != nil {
+        return BadRequest(c, "Validation failed", formatValidationErrors(err))
+    }
+    return nil
+}
+
+func formatValidationErrors(err error) map[string]string {
+    errors := make(map[string]string)
+    if verrs, ok := err.(validator.ValidationErrors); ok {
+        for _, fe := range verrs {
+            errors[fe.Field()] = fe.Tag()
+        }
+    }
+    return errors
+}
 
 type ResponseMeta struct {
     Code    int    `json:"code"`

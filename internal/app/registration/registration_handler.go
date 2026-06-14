@@ -23,6 +23,9 @@ func (h *RegistrationHandler) Onboard(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
 
 	result, err := h.service.Onboard(c.Context(), req)
 	if err != nil {

@@ -230,7 +230,7 @@ func TestRegister(t *testing.T) {
 				return &User{ID: 1, Email: email}, nil
 			},
 		}
-		svc := NewAuthService(repo, openMockDB(&mockConn{}), cfg, log)
+		svc := NewAuthService(repo, openMockDB(&mockConn{}), cfg, log, nil)
 
 		_, err := svc.Register(context.Background(), RegisterRequest{Email: "dup@test.com", Username: "u"}, ten)
 		if err == nil || err.Error() != "email already registered" {
@@ -247,7 +247,7 @@ func TestRegister(t *testing.T) {
 				return &User{ID: 2, Username: username}, nil
 			},
 		}
-		svc := NewAuthService(repo, openMockDB(&mockConn{}), cfg, log)
+		svc := NewAuthService(repo, openMockDB(&mockConn{}), cfg, log, nil)
 
 		_, err := svc.Register(context.Background(), RegisterRequest{Email: "ok@test.com", Username: "taken"}, ten)
 		if err == nil || err.Error() != "username already taken" {
@@ -278,14 +278,13 @@ func TestRegister(t *testing.T) {
 		db := openMockDB(conn)
 		t.Cleanup(func() { db.Close() })
 
-		svc := NewAuthService(repo, db, cfg, log)
+		svc := NewAuthService(repo, db, cfg, log, nil)
 
-		password := "myp@ssword1"
 		req := RegisterRequest{
 			FirstName: "John",
 			Username:  "john",
 			Email:     "john@test.com",
-			Password:  &password,
+			Password:  "myp@ssword1",
 		}
 
 		user, err := svc.Register(context.Background(), req, ten)
@@ -371,7 +370,7 @@ func TestLogin(t *testing.T) {
 			db := openMockDB(&mockConn{})
 			t.Cleanup(func() { db.Close() })
 
-			svc := NewAuthService(tt.mockFn(), db, cfg, log)
+			svc := NewAuthService(tt.mockFn(), db, cfg, log, nil)
 			token, err := svc.Login(context.Background(), tt.req, ten)
 
 			if tt.wantErr {
@@ -455,7 +454,7 @@ func TestCheckToken(t *testing.T) {
 		db := openMockDB(&mockConn{})
 		t.Cleanup(func() { db.Close() })
 
-		svc := NewAuthService(repo, db, cfg, log)
+		svc := NewAuthService(repo, db, cfg, log, nil)
 
 		user, err := svc.CheckToken(context.Background(), tokenStr, ten)
 		if err != nil {
@@ -485,7 +484,7 @@ func TestCheckToken(t *testing.T) {
 		db := openMockDB(&mockConn{})
 		t.Cleanup(func() { db.Close() })
 
-		svc := NewAuthService(&mockAuthRepository{}, db, cfg, log)
+		svc := NewAuthService(&mockAuthRepository{}, db, cfg, log, nil)
 
 		_, err = svc.CheckToken(context.Background(), tokenStr, ten)
 		if err == nil || err.Error() != "invalid token" {
@@ -513,7 +512,7 @@ func TestCheckToken(t *testing.T) {
 		db := openMockDB(&mockConn{})
 		t.Cleanup(func() { db.Close() })
 
-		svc := NewAuthService(&mockAuthRepository{}, db, cfg, log)
+		svc := NewAuthService(&mockAuthRepository{}, db, cfg, log, nil)
 
 		_, err = svc.CheckToken(context.Background(), tokenStr, ten)
 		if err == nil || err.Error() != "invalid token" {

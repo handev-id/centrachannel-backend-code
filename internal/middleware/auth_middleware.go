@@ -6,12 +6,13 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/redis/go-redis/v9"
 
 	"centrachannel/config"
 	"centrachannel/internal/utils/response"
 )
 
-func AuthMiddleware(cfg *config.Config) fiber.Handler {
+func AuthMiddleware(cfg *config.Config, rdb *redis.Client) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
 		if authHeader == "" {
@@ -36,6 +37,13 @@ func AuthMiddleware(cfg *config.Config) fiber.Handler {
 		claims, ok := token.Claims.(jwt.MapClaims)
 		if !ok {
 			return response.Unauthorized(c, "Invalid token claims")
+		}
+
+		if jti, _ := claims["jti"].(string); jti != "" && rdb != nil {
+			blacklisted, err := rdb.Exists(c.Context(), "token_blacklist:"+jti).Result()
+			if err == nil && blacklisted > 0 {
+				return response.Unauthorized(c, "Token has been revoked")
+			}
 		}
 
 		subFloat, _ := claims["sub"].(float64)
