@@ -188,20 +188,7 @@ Attachment JSONB structure:
 }
 ```
 
-### 1.11 message_raws
-
-| Column | Type | Constraints |
-|--------|------|-------------|
-| id | SERIAL | PK |
-| tenant_id | INTEGER | NOT NULL, FK → tenants.id |
-| webhook_message_id_by_external_id | VARCHAR(255) | NOT NULL, UNIQUE |
-| data | JSONB | |
-| created_at | TIMESTAMPTZ | |
-| updated_at | TIMESTAMPTZ | |
-
-Stores raw webhook payload for deduplication and debugging.
-
-### 1.12 tags
+### 1.11 tags
 
 | Column | Type | Constraints |
 |--------|------|-------------|
@@ -446,11 +433,11 @@ Paginated:
 | 4 | Profiles | contacts, channels | 08 |
 | 5 | Conversations | profiles, channels, users | 09 |
 | 6 | Messages | conversations | 10 |
-| 7 | MessageRaws | — | 11 |
-| 8 | Tags | tenants | 12 |
-| 9 | ConversationTag | conversations, tags | 13 |
-| 10 | Notes | conversations, users | 14 |
-| 11 | WhatsApp Devices | tenants | 15 |
+| 7 | Tags | tenants | 12 |
+| 8 | ConversationTag | conversations, tags | 13 |
+| 9 | Notes | conversations, users | 14 |
+| 10 | WhatsApp Devices | tenants | 15 |
+| 11 | Campaigns | tenants | 16–17 |
 | 12 | Dashboard | contacts, conversations | — (query-only) |
 | 13 | Upload | — | — (external service) |
 | 14 | WebSocket | — | — (infrastructure) |
