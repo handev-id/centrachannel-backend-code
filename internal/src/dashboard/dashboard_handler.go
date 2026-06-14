@@ -20,6 +20,10 @@ func NewDashboardHandler(c *di.Container) *DashboardHandler {
 	return &DashboardHandler{service: service}
 }
 
+func NewDashboardHandlerWithService(service DashboardService) *DashboardHandler {
+	return &DashboardHandler{service: service}
+}
+
 func (h *DashboardHandler) Stats(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

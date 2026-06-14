@@ -21,6 +21,10 @@ func NewConversationHandler(c *di.Container, notifier ...ws.Notifier) *Conversat
 	return &ConversationHandler{service: service}
 }
 
+func NewConversationHandlerWithService(service ConversationService) *ConversationHandler {
+	return &ConversationHandler{service: service}
+}
+
 func (h *ConversationHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

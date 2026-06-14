@@ -20,6 +20,10 @@ func NewTagHandler(c *di.Container) *TagHandler {
 	return &TagHandler{service: service}
 }
 
+func NewTagHandlerWithService(service TagService) *TagHandler {
+	return &TagHandler{service: service}
+}
+
 func (h *TagHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

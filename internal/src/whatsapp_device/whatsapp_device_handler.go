@@ -20,6 +20,10 @@ func NewWhatsAppDeviceHandler(c *di.Container) *WhatsAppDeviceHandler {
 	return &WhatsAppDeviceHandler{service: service}
 }
 
+func NewWhatsAppDeviceHandlerWithService(service WhatsAppDeviceService) *WhatsAppDeviceHandler {
+	return &WhatsAppDeviceHandler{service: service}
+}
+
 func (h *WhatsAppDeviceHandler) Show(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

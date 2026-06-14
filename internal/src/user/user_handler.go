@@ -20,6 +20,10 @@ func NewUserHandler(container *di.Container) *UserHandler {
 	return &UserHandler{service: service}
 }
 
+func NewUserHandlerWithService(service UserService) *UserHandler {
+	return &UserHandler{service: service}
+}
+
 func (h *UserHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

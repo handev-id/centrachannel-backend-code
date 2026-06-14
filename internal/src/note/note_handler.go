@@ -20,6 +20,10 @@ func NewNoteHandler(c *di.Container) *NoteHandler {
 	return &NoteHandler{service: service}
 }
 
+func NewNoteHandlerWithService(service NoteService) *NoteHandler {
+	return &NoteHandler{service: service}
+}
+
 func (h *NoteHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

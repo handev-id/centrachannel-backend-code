@@ -19,6 +19,10 @@ func NewTenantHandler(c *di.Container) *TenantHandler {
 	return &TenantHandler{service: service}
 }
 
+func NewTenantHandlerWithService(service TenantService) *TenantHandler {
+	return &TenantHandler{service: service}
+}
+
 func (h *TenantHandler) Onboard(c fiber.Ctx) error {
 	var req OnboardRequest
 	if err := c.Bind().Body(&req); err != nil {

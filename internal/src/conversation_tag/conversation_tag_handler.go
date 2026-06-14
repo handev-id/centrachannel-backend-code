@@ -20,6 +20,10 @@ func NewConversationTagHandler(c *di.Container) *ConversationTagHandler {
 	return &ConversationTagHandler{service: service}
 }
 
+func NewConversationTagHandlerWithService(service ConversationTagService) *ConversationTagHandler {
+	return &ConversationTagHandler{service: service}
+}
+
 func (h *ConversationTagHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

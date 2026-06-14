@@ -19,6 +19,10 @@ func NewProfileHandler(c *di.Container) *ProfileHandler {
 	return &ProfileHandler{service: service}
 }
 
+func NewProfileHandlerWithService(service ProfileService) *ProfileHandler {
+	return &ProfileHandler{service: service}
+}
+
 func (h *ProfileHandler) List(c fiber.Ctx) error {
 	contactID, _ := strconv.Atoi(c.Query("contact_id"))
 	channelID, _ := strconv.Atoi(c.Query("channel_id"))

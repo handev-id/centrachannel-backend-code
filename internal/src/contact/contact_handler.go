@@ -20,6 +20,10 @@ func NewContactHandler(c *di.Container) *ContactHandler {
 	return &ContactHandler{service: service}
 }
 
+func NewContactHandlerWithService(service ContactService) *ContactHandler {
+	return &ContactHandler{service: service}
+}
+
 func (h *ContactHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

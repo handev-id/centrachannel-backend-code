@@ -17,6 +17,10 @@ func NewChannelHandler(c *di.Container) *ChannelHandler {
 	return &ChannelHandler{service: service}
 }
 
+func NewChannelHandlerWithService(service ChannelService) *ChannelHandler {
+	return &ChannelHandler{service: service}
+}
+
 func (h *ChannelHandler) List(c fiber.Ctx) error {
 	channels, err := h.service.List(c.Context())
 	if err != nil {

@@ -16,6 +16,10 @@ func NewUploadHandler(c *di.Container) *UploadHandler {
 	return &UploadHandler{service: service}
 }
 
+func NewUploadHandlerWithService(service UploadService) *UploadHandler {
+	return &UploadHandler{service: service}
+}
+
 func (h *UploadHandler) Upload(c fiber.Ctx) error {
 	file, err := c.FormFile("file")
 	if err != nil {

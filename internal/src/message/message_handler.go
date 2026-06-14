@@ -23,6 +23,10 @@ func NewMessageHandler(c *di.Container, notifier ...ws.Notifier) *MessageHandler
 	return &MessageHandler{service: service}
 }
 
+func NewMessageHandlerWithService(service MessageService) *MessageHandler {
+	return &MessageHandler{service: service}
+}
+
 func (h *MessageHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

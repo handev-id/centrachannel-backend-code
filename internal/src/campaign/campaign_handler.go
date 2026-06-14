@@ -20,6 +20,10 @@ func NewCampaignHandler(c *di.Container) *CampaignHandler {
 	return &CampaignHandler{service: service}
 }
 
+func NewCampaignHandlerWithService(service CampaignService) *CampaignHandler {
+	return &CampaignHandler{service: service}
+}
+
 func (h *CampaignHandler) List(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {

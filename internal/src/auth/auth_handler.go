@@ -18,6 +18,10 @@ func NewAuthHandler(container *di.Container) *AuthHandler {
 	return &AuthHandler{service: service}
 }
 
+func NewAuthHandlerWithService(service AuthService) *AuthHandler {
+	return &AuthHandler{service: service}
+}
+
 func (h *AuthHandler) Register(c fiber.Ctx) error {
 	t, err := middleware.GetTenant(c)
 	if err != nil {
