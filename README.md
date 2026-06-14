@@ -17,12 +17,33 @@ Multi-tenant REST API built with Go, Fiber, PostgreSQL, and Redis.
 - PostgreSQL
 - Redis
 
-## Architecture Overview
+## Architecture
+
+Two access layers based on domain:
+
+| Domain | Tenant Context | Auth |
+|--------|----------------|------|
+| `centrachannel.com/api` | No (resolved from payload) | Optional (API key) |
+| `{tenant}.centrachannel.com/api` | Yes (from Host header) | JWT + Role |
+
+### Main Domain (`internal/app`)
 
 ```
-FB / IG ─────────► Meta Graph API (direct)
-WA Business ─────► Evolution API ──► Meta Cloud API
-WA (unofficial) ──► Evolution API ──► Baileys (WhatsApp Web)
+centrachannel.com/api/*
+  ├── Observability:  /health, /ping, /version
+  ├── Documentation:  /docs (Redoc), /swagger (Swagger UI)
+  ├── Webhook:        /webhook/evolution, /webhook/meta
+  └── Registration:   POST /api/tenants/onboard
+```
+
+### Subdomain (`internal/src`)
+
+```
+{tenant}.centrachannel.com/api/*
+  ├── TenantMiddleware  → resolve tenant from domain
+  ├── AuthMiddleware    → JWT verification
+  ├── RoleMiddleware    → super-admin / admin / agent
+  └── Business features → auth, campaign, contact, conversation, etc.
 ```
 
 ## Quick Start
@@ -49,62 +70,45 @@ go run ./cmd/server/main.go
 
 ```text
 internal/
-├── src/
-│   ├── tenant/          # Tenant resolution (domain → Redis → DB)
-│   ├── auth/            # Register, login, check-token, logout
-│   └── user/            # CRUD users within tenant
-├── messenger/
-│   ├── messenger.go     # Messenger interface
-│   ├── meta.go          # MetaSender — FB/IG direct
-│   ├── evolution.go     # EvolutionSender — WA via Evolution API
-│   ├── mock.go          # MockSender — fallback
-│   └── dispatcher.go    # NewSender factory
-├── middleware/
-│   ├── tenant_middleware.go  # Domain → Tenant resolution
-│   └── auth_middleware.go    # JWT verification
-├── di/container.go      # Config, DB, Redis, Logger
-└── utils/
-    ├── hash/            # bcrypt
-    ├── logger/          # Centralized logger
-    └── response/        # Standardized JSON responses
-```
-
-## Database Schema
-
-```sql
--- tenants: multi-tenant isolation
-tenants (id, name, domain UNIQUE, logo, address, phone, email, is_active, settings, timestamps)
-
--- roles: per-tenant roles (super-admin, admin, agent)
-roles (id, tenant_id → tenants, name, UNIQUE(tenant_id, name), timestamps)
-
--- users: per-tenant users
-users (id, tenant_id → tenants, first_name, last_name, username, email, phone,
-       password, avatar, last_login, deleted_at, created_at, updated_at,
-       UNIQUE(tenant_id, username), UNIQUE(tenant_id, email))
-
--- role_user: many-to-many pivot
-role_user (user_id → users, role_id → roles, UNIQUE(user_id, role_id))
-
--- auth_access_tokens: token tracking
-auth_access_tokens (id, tokenable_id → users, type, name, hash, abilities, ...)
-```
-
-## Migration Order
-
-```
-01. tenants          ← MUST be first
-02. roles            ← REFERENCES tenants(tenant_id)
-03. users            ← REFERENCES tenants(tenant_id)
-04. role_user        ← pivot
-05. auth_access_tokens
+├── app/                     # Main domain (before TenantMiddleware)
+│   ├── docs/                #   Redoc + Swagger UI
+│   ├── observability/       #   /health, /ping, /version
+│   ├── registration/        #   POST /api/tenants/onboard
+│   └── webhook/             #   /webhook/evolution, /webhook/meta
+├── src/                     # Subdomain (after TenantMiddleware + auth)
+│   ├── tenant/              #   Tenant CRUD (admin only)
+│   ├── auth/                #   Register, login, check-token, logout
+│   ├── user/                #   CRUD users within tenant
+│   ├── campaign/            #   Campaigns, templates, recipient lists
+│   ├── channel/             #   Channel listing
+│   ├── contact/             #   Contact CRUD, merge, import/export
+│   ├── conversation/        #   Conversations, assign, resolve
+│   ├── message/             #   Send/receive messages
+│   ├── tag/                 #   Tag CRUD
+│   ├── note/                #   Notes on conversations
+│   ├── dashboard/           #   Stats & charts
+│   ├── upload/              #   File upload
+│   └── whatsapp_device/     #   WhatsApp device management
+├── messenger/               # Outbound message senders
+├── middleware/               # Tenant, Auth, CORS, Logger
+├── ws/                      # WebSocket hub & handler
+├── di/                      # Dependency injection container
+└── utils/                   # hash, logger, response helpers
 ```
 
 ## API
 
-All endpoints prefixed with `/api`. Tenant resolved from `Host` header automatically. For local dev, use `X-Tenant-Slug` header or add entry in `/etc/hosts`.
+### Main Domain (`centrachannel.com/api`)
 
-### Auth
+| Method | Path | Description |
+|--------|------|-------------|
+| POST | `/api/tenants/onboard` | Register new tenant + admin user |
+
+### Subdomain (`{tenant}.centrachannel.com/api`)
+
+Tenant resolved from `Host` header automatically. For local dev, use `X-Tenant-Domain` header.
+
+#### Auth
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|
@@ -113,7 +117,7 @@ All endpoints prefixed with `/api`. Tenant resolved from `Host` header automatic
 | GET | `/api/auth/check-token` | JWT | Validate token |
 | DELETE | `/api/auth/logout` | JWT | Logout |
 
-### Users
+#### Users
 
 | Method | Path | Auth | Description |
 |--------|------|------|-------------|

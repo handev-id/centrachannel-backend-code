@@ -260,127 +260,131 @@ UNIQUE(tenant_id, whatsapp_id).
 
 ## 2. API Endpoints
 
-Base URL: `https://{tenant-domain}/api/v1`
+Two access layers based on domain:
 
-### 2.1 Tenant Onboarding (no tenant middleware)
+| Layer | Base URL | Tenant Context | Auth |
+|-------|----------|----------------|------|
+| Main domain | `https://centrachannel.com/api` | No (resolved from payload) | API key (webhook) |
+| Subdomain | `https://{tenant}.centrachannel.com/api` | Yes (from Host header) | JWT + Role |
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | /api/v1/tenants | Create tenant |
-| GET | /api/v1/tenants | List tenants |
-| GET | /api/v1/tenants/:id | Get tenant |
-| PUT | /api/v1/tenants/:id | Update tenant |
-| DELETE | /api/v1/tenants/:id | Delete tenant |
-
-### 2.2 Auth
+### 2.1 Tenant Registration (main domain, no tenant middleware)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | /api/v1/auth/register | Register user (first user→super-admin) |
-| POST | /api/v1/auth/login | Login, returns token |
-| GET | /api/v1/auth/check-token | Validate current token |
-| POST | /api/v1/auth/logout | Revoke token |
+| POST | /api/tenants/onboard | Register new tenant + admin user |
 
-### 2.3 Users
+### 2.2 Tenant Management (subdomain, admin-only)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/users | List users |
-| GET | /api/v1/users/:id | Get user with roles |
-| POST | /api/v1/users | Create user |
-| PUT | /api/v1/users/:id | Update user |
-| DELETE | /api/v1/users/:id | Soft delete (403 if super admin) |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/tenants | JWT, admin | List tenants |
+| GET | /api/tenants/:id | JWT, admin | Get tenant detail |
 
-### 2.4 Dashboard
+### 2.3 Auth (subdomain)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | /api/v1/dashboard/stats | Get dashboard stats (total contacts, active conversations, resolved today, unassigned count) |
-| GET | /api/v1/dashboard/chart | Get chart data (conversations per day for N days) |
+| POST | /api/auth/register | Register user (default role=agent) |
+| POST | /api/auth/login | Login, returns JWT |
+| GET | /api/auth/check-token | Validate current token |
+| DELETE | /api/auth/logout | Revoke token |
 
-### 2.5 Channels (read-only, seeded)
+### 2.4 Users (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/channels | List channels |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/user | JWT, admin | List users |
+| GET | /api/user/:id | JWT, admin | Get user with roles |
+| POST | /api/user | JWT, admin | Create user |
+| PUT | /api/user/:id | JWT, admin | Update user |
+| DELETE | /api/user/:id | JWT, admin | Soft delete (403 if super admin) |
 
-### 2.6 Contacts
+### 2.5 Dashboard (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/contacts | List contacts (paginated, searchable, filterable) |
-| GET | /api/v1/contacts/:id | Get contact with profiles |
-| POST | /api/v1/contacts | Create contact |
-| PUT | /api/v1/contacts/:id | Update contact |
-| DELETE | /api/v1/contacts/:id | Soft delete |
-| POST | /api/v1/contacts/:id/merge | Merge into target contact |
-| POST | /api/v1/contacts/:id/unmerge | Unmerge from parent |
-| GET | /api/v1/contacts/:id/conversations | List contact's conversations |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/dashboard/stats | JWT, agent+ | Get dashboard stats |
+| GET | /api/dashboard/chart | JWT, agent+ | Get chart data |
 
-### 2.7 Profiles
+### 2.6 Channels (subdomain, read-only, seeded)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/profiles | List profiles (filterable by contact_id, channel_id) |
-| GET | /api/v1/profiles/:id | Get profile |
-| PUT | /api/v1/profiles/:id | Update profile (set is_main, linked_device_whatsapp_id) |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/channels | JWT, agent+ | List channels |
 
-### 2.8 Conversations
+### 2.7 Contacts (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/conversations | List conversations (paginated, filterable by status, channel_id, agent_id, assigned/unassigned) |
-| GET | /api/v1/conversations/:id | Get conversation with profile, contact, last messages |
-| POST | /api/v1/conversations/:id/assign | Assign to current user |
-| POST | /api/v1/conversations/:id/unassign | Unassign (set agent_id to null) |
-| POST | /api/v1/conversations/:id/resolve | Mark resolved |
-| POST | /api/v1/conversations/:id/reopen | Reopen (set to unassigned) |
-| POST | /api/v1/conversations | Create conversation (triggered by incoming message or manually) |
-| PUT | /api/v1/conversations/:id/read | Mark read (reset unread_count) |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/contacts | JWT, agent+ | List contacts (paginated, searchable) |
+| GET | /api/contacts/:id | JWT, agent+ | Get contact with profiles |
+| POST | /api/contacts | JWT, agent+ | Create contact |
+| PUT | /api/contacts/:id | JWT, agent+ | Update contact |
+| DELETE | /api/contacts/:id | JWT, agent+ | Soft delete |
+| POST | /api/contacts/:id/merge | JWT, agent+ | Merge into target contact |
+| POST | /api/contacts/:id/unmerge | JWT, agent+ | Unmerge from parent |
+| GET | /api/contacts/:id/conversations | JWT, agent+ | List contact's conversations |
+| GET | /api/contacts/export | JWT, agent+ | Export contacts |
+| POST | /api/contacts/import | JWT, agent+ | Import contacts |
 
-### 2.9 Messages
+### 2.8 Conversations (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/conversations/:id/messages | List messages (paginated, chronological) |
-| POST | /api/v1/conversations/:id/messages | Send message (text or file) |
-| PUT | /api/v1/messages/:id | Update message status (delivered, read) |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/conversations | JWT, agent+ | List conversations (paginated, filterable) |
+| GET | /api/conversations/:id | JWT, agent+ | Get conversation detail |
+| POST | /api/conversations | JWT, agent+ | Create conversation |
+| POST | /api/conversations/:id/assign | JWT, agent+ | Assign to current user |
+| POST | /api/conversations/:id/unassign | JWT, agent+ | Unassign |
+| POST | /api/conversations/:id/resolve | JWT, agent+ | Mark resolved |
+| POST | /api/conversations/:id/reopen | JWT, agent+ | Reopen |
+| PUT | /api/conversations/:id/read | JWT, agent+ | Mark read |
+| GET | /api/conversations/unread | JWT, agent+ | Get unread count |
 
-### 2.10 Upload
+### 2.9 Messages (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | /api/v1/upload | Upload file → storage.solodevs.my.id, returns public_url + metadata |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/conversations/:id/messages | JWT, agent+ | List messages (paginated) |
+| POST | /api/conversations/:id/messages | JWT, agent+ | Send message (text or file) |
+| PUT | /api/messages/:id | JWT, agent+ | Update message status |
 
-### 2.11 Tags
+### 2.10 Tags (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/tags | List tags |
-| POST | /api/v1/tags | Create tag |
-| PUT | /api/v1/tags/:id | Update tag |
-| DELETE | /api/v1/tags/:id | Delete tag |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/tags | JWT, agent+ | List tags |
+| POST | /api/tags | JWT, agent+ | Create tag |
+| PUT | /api/tags/:id | JWT, agent+ | Update tag |
+| DELETE | /api/tags/:id | JWT, agent+ | Delete tag |
 
-### 2.12 Notes
+### 2.11 Notes (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/conversations/:id/notes | List notes for conversation |
-| POST | /api/v1/conversations/:id/notes | Create note |
-| PUT | /api/v1/notes/:id | Update note |
-| DELETE | /api/v1/notes/:id | Delete note |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/conversations/:id/notes | JWT, agent+ | List notes for conversation |
+| POST | /api/conversations/:id/notes | JWT, agent+ | Create note |
+| PUT | /api/notes/:id | JWT, agent+ | Update note |
+| DELETE | /api/notes/:id | JWT, agent+ | Delete note |
 
-### 2.13 WhatsApp Devices
+### 2.12 WhatsApp Devices (subdomain)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | /api/v1/whatsapp-devices | List devices |
-| POST | /api/v1/whatsapp-devices | Create device config |
-| PUT | /api/v1/whatsapp-devices/:id | Update device |
-| DELETE | /api/v1/whatsapp-devices/:id | Delete device |
-| POST | /api/v1/whatsapp-devices/:id/connect | Mock: update status to CONNECTED |
-| POST | /api/v1/whatsapp-devices/:id/disconnect | Mock: update status to DISCONNECTED |
-| POST | /api/v1/whatsapp-devices/:id/scan | Mock: return mock QR code |
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| GET | /api/whatsapp-devices | JWT, agent+ | List devices |
+| POST | /api/whatsapp-devices | JWT, agent+ | Create device |
+| GET | /api/whatsapp-devices/:id | JWT, agent+ | Get device |
+| PUT | /api/whatsapp-devices/:id | JWT, agent+ | Update device |
+| DELETE | /api/whatsapp-devices/:id | JWT, agent+ | Delete device |
+| POST | /api/whatsapp-devices/:id/connect | JWT, agent+ | Connect (via Evolution API) |
+| POST | /api/whatsapp-devices/:id/disconnect | JWT, agent+ | Disconnect |
+| POST | /api/whatsapp-devices/:id/scan | JWT, agent+ | Get QR code |
+
+### 2.13 Upload (subdomain)
+
+| Method | Path | Auth | Description |
+|--------|------|------|-------------|
+| POST | /api/upload | JWT, agent+ | Upload file |
 
 ### 2.14 WebSocket
 

@@ -54,7 +54,8 @@ When contacts are merged:
 ### Phase 1 — Foundation (Done)
 
 - Tenant resolution (domain → Redis → DB)
-- Tenant CRUD API (no tenant middleware — for onboarding)
+- Tenant registration via main domain (`internal/app/registration`)
+- Tenant CRUD via subdomain (`internal/src/tenant`, admin-only)
 - Auth: register, login, check-token, logout
 - User CRUD: list, show, create, update, soft delete (super admin id=1 protected)
 - Channel seed: facebook, instagram, whatsapp_business, whatsapp

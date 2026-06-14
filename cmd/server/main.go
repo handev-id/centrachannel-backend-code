@@ -5,8 +5,11 @@ import (
 	"log"
 
 	"github.com/gofiber/fiber/v3"
-	"github.com/gofiber/fiber/v3/middleware/static"
 
+	"centrachannel/internal/app/docs"
+	"centrachannel/internal/app/observability"
+	"centrachannel/internal/app/registration"
+	"centrachannel/internal/app/webhook"
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/auth"
@@ -22,9 +25,7 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
-	"centrachannel/internal/src/webhook"
 	"centrachannel/internal/src/whatsapp_device"
-	"centrachannel/internal/utils/response"
 	"centrachannel/internal/ws"
 )
 
@@ -45,68 +46,13 @@ func main() {
 		AppName: "CentraChannel API v1.0.0",
 	})
 
-	app.Use(middleware.TenantMiddleware(c.Redis, c.DB))
-	app.Use(middleware.LoggerMiddleware())
 	app.Use(middleware.CORSMiddleware(cfg.CORSAllowedOrigins))
+	app.Use(middleware.LoggerMiddleware())
 
-	app.Get("/", func(c fiber.Ctx) error {
-		return response.OK(c, "Welcome to CentraChannel API", fiber.Map{
-			"version": "1.0.0",
-			"status":  "running",
-		})
-	})
+	obsHandler := observability.NewObservabilityHandler()
+	observability.RegisterRoutes(app, obsHandler)
 
-	app.Get("/health", func(c fiber.Ctx) error {
-		return response.OK(c, "healthy", fiber.Map{"status": "ok"})
-	})
-	app.Get("/ping", func(c fiber.Ctx) error {
-		return c.SendString("pong")
-	})
-	app.Get("/version", func(c fiber.Ctx) error {
-		return response.OK(c, "ok", fiber.Map{"version": "1.0.0", "app": "CentraChannel API"})
-	})
-
-	// API Documentation
-	app.Get("/docs/*", static.New("./docs"))
-
-	app.Get("/docs", func(c fiber.Ctx) error {
-		c.Type("html", "utf-8")
-		return c.SendString(`<!DOCTYPE html>
-<html>
-<head>
-  <title>CentraChannel API - Redoc</title>
-  <meta charset="utf-8"/>
-  <script src="https://cdn.redoc.ly/redoc/latest/bundles/redoc.standalone.js"></script>
-</head>
-<body>
-  <div id="redoc-container"></div>
-  <script>
-    Redoc.init('/docs/api/openapi.json', {}, document.getElementById('redoc-container'))
-  </script>
-</body>
-</html>`)
-	})
-
-	app.Get("/swagger", func(c fiber.Ctx) error {
-		c.Type("html", "utf-8")
-		return c.SendString(`<!DOCTYPE html>
-<html>
-<head>
-  <title>CentraChannel API - Swagger UI</title>
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui.css">
-</head>
-<body>
-  <div id="swagger-ui"></div>
-  <script src="https://cdn.jsdelivr.net/npm/swagger-ui-dist/swagger-ui-bundle.js"></script>
-  <script>
-    SwaggerUIBundle({
-      url: '/docs/api/openapi.json',
-      dom_id: '#swagger-ui'
-    })
-  </script>
-</body>
-</html>`)
-	})
+	docs.RegisterRoutes(app)
 
 	hub := ws.NewHub()
 	go hub.Run()
@@ -114,17 +60,21 @@ func main() {
 	webhookHandler := webhook.NewWebhookHandler(c, cfg, hub)
 	webhook.RegisterRoutes(app, webhookHandler)
 
+	regHandler := registration.NewRegistrationHandler(c)
+	registration.RegisterRoutes(app, regHandler)
+
+	tenantHandler := tenant.NewTenantHandler(c)
+
+	// Tenant Source
+	app.Use(middleware.TenantMiddleware(c.Redis, c.DB))
+	
 	authHandler := auth.NewAuthHandler(c)
 	auth.RegisterRoutes(app, authHandler)
 
-	tenantHandler := tenant.NewTenantHandler(c)
-	tenant.RegisterPublicRoutes(app, tenantHandler)
-
-	// Protected routes
 	authMw := middleware.AuthMiddleware(cfg)
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
-
+	
 	wsHandler := ws.NewHandler(hub, cfg)
 	app.Get("/ws", authMw, middleware.Tenant(wsHandler.Handle))
 

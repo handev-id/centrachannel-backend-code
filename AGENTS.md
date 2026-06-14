@@ -10,9 +10,18 @@ Agents MUST follow all rules in this document.
 
 # Architecture
 
-This project follows a Feature-Based Modular Architecture.
+This project follows a Dual-Layer Feature-Based Modular Architecture.
 
-Business features are located in `internal/src`.
+Two layers exist under `internal/`:
+
+- **`internal/app`** — HTTP handlers registered on the **main domain** (`centrachannel.com/api`).
+  Routes here are registered **before** `TenantMiddleware`. No tenant context is resolved from the request.
+  Examples: documentation, health checks, webhooks (tenant resolved from payload), tenant registration.
+
+- **`internal/src`** — Business features accessed via **subdomain** (`{tenant}.centrachannel.com/api`).
+  Routes here are registered **after** `TenantMiddleware` + `AuthMiddleware`.
+  Tenant context is resolved from the domain via `TenantMiddleware`.
+  Examples: auth, campaign, contact, conversation, message.
 
 Shared components are in `internal/middleware`, `internal/utils`, `config`, `database`.
 
@@ -36,10 +45,26 @@ centrachannel/
 │   ├── scripts/
 │   └── migrations/
 ├── internal/
+│   ├── app/
+│   │   ├── docs/
+│   │   ├── observability/
+│   │   ├── registration/
+│   │   └── webhook/
 │   ├── src/
 │   │   ├── auth/
+│   │   ├── campaign/
+│   │   ├── channel/
+│   │   ├── contact/
+│   │   ├── conversation/
+│   │   ├── conversation_tag/
+│   │   ├── dashboard/
+│   │   ├── message/
+│   │   ├── note/
+│   │   ├── tag/
+│   │   ├── tenant/
+│   │   ├── upload/
 │   │   ├── user/
-│   │   └── ... (feature dirs)
+│   │   └── whatsapp_device/
 │   ├── messenger/
 │   │   ├── messenger.go
 │   │   ├── meta.go
@@ -65,9 +90,17 @@ centrachannel/
 
 ## Rule 1 — Feature Location
 
-Never create business features outside `internal/src`.
+Features are split into two layers:
 
-Allowed: `internal/src/auth`, `internal/src/user`, `internal/src/product`
+- **`internal/app`** — Main domain routes (no tenant context from request).
+  Examples: `internal/app/docs`, `internal/app/observability`, `internal/app/webhook`, `internal/app/registration`.
+
+- **`internal/src`** — Tenant-scoped routes (accessed via subdomain with TenantMiddleware).
+  Examples: `internal/src/auth`, `internal/src/campaign`, `internal/src/contact`.
+
+Never create business features outside these directories.
+
+Allowed: `internal/app/docs`, `internal/app/webhook`, `internal/src/auth`, `internal/src/user`
 
 Forbidden: `internal/auth`, `internal/user`, `pkg/auth`, `pkg/user`
 
@@ -532,7 +565,7 @@ The message service calls `deliverToExternal()` in a goroutine after saving the 
 
 Before submitting code, verify:
 
-- Feature is inside `internal/src`
+- Feature is in the correct layer (`internal/app` for main domain, `internal/src` for subdomain)
 - Naming conventions are correct (`<feature>_<type>.go`)
 - DTO exists for every request body
 - Entity exists with correct fields (including `TenantID` where applicable)

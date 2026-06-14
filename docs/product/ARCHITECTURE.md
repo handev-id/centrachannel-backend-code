@@ -5,7 +5,7 @@
 | Layer | Technology |
 |-------|-----------|
 | Language | Go 1.24 |
-| HTTP Framework | Fiber v2 |
+| HTTP Framework | Fiber v3 |
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | Migrations | golang-migrate |
@@ -13,27 +13,46 @@
 | Auth | JWT (golang-jwt) |
 | DI | Manual (container pattern) |
 
+## Dual-Layer Architecture
+
+Two access layers based on domain:
+
+| Layer | Domain | Tenant Context | Auth |
+|-------|--------|----------------|------|
+| **`internal/app`** | `centrachannel.com/api` | No (resolved from payload if needed) | Optional (API key for webhooks) |
+| **`internal/src`** | `{tenant}.centrachannel.com/api` | Yes (from domain via TenantMiddleware) | JWT + Role |
+
 ## Request Lifecycle
 
+### Main Domain (`internal/app`)
+
 ```
-Client → Domain DNS → Load Balancer → Fiber App
-                                           │
-                                    Tenant Middleware
-                                      (domain → tenant_id)
-                                           │
-                                    Auth Middleware
-                                    (JWT → user_id, role)
-                                           │
-                                     Handler
-                                   (validate DTO)
-                                           │
-                                     Service
-                                   (business logic)
-                                           │
-                                    Repository
-                                     (SQL query)
-                                           │
-                                       DB/Redis
+centrachannel.com/api/*
+       │
+  CORS + Logger
+       │
+  ┌────┴──────────────────────────────┐
+  │  Observability: /health, /ping    │
+  │  Docs:          /docs, /swagger   │
+  │  Webhook:       /webhook/*        │
+  │  Registration:  /api/tenants/onboard
+  └───────────────────────────────────┘
+```
+
+### Subdomain (`internal/src`)
+
+```
+{tenant}.centrachannel.com/api/*
+       │
+  CORS + Logger
+       │
+  TenantMiddleware (domain → tenant_id from Redis/DB)
+       │
+  AuthMiddleware (JWT → user_id, role)
+       │
+  RoleMiddleware (super-admin / admin / agent)
+       │
+  Handler → Service → Repository → DB/Redis
 ```
 
 ### Tenant Middleware
@@ -41,8 +60,8 @@ Client → Domain DNS → Load Balancer → Fiber App
 1. Extract domain from `Host` header
 2. Check Redis: `tenant:{domain}` → `tenant_id`
 3. Cache miss → query `tenants` table → set Redis (TTL: 1 hour)
-4. Set `tenant_id` in Fiber context (`c.Locals("tenant_id")`)
-5. Skip for `/api/v1/tenants` routes (onboarding)
+4. Set `tenant` in Fiber context (`c.Locals("tenant")`)
+5. Applied only to routes after `app.Use(TenantMiddleware)` (subdomain routes)
 
 ### Auth Middleware
 
@@ -80,6 +99,26 @@ centrachannel/
 │       ├── 000005_create_auth_access_tokens_table.down.sql
 │       └── ...
 ├── internal/
+│   ├── app/
+│   │   ├── docs/
+│   │   │   └── docs.go
+│   │   ├── observability/
+│   │   │   ├── observability_handler.go
+│   │   │   └── observability_routes.go
+│   │   ├── registration/
+│   │   │   ├── registration_handler.go
+│   │   │   ├── registration_service.go
+│   │   │   ├── registration_dto.go
+│   │   │   ├── registration_routes.go
+│   │   │   └── registration_service_test.go
+│   │   └── webhook/
+│   │       ├── webhook_handler.go
+│   │       ├── webhook_service.go
+│   │       ├── webhook_entity.go
+│   │       ├── webhook_dto.go
+│   │       ├── webhook_routes.go
+│   │       ├── webhook_handler_test.go
+│   │       └── webhook_service_test.go
 │   ├── src/
 │   │   ├── auth/
 │   │   │   ├── auth_handler.go
@@ -144,7 +183,7 @@ centrachannel/
 
 ## Feature Pattern
 
-Each feature in `internal/src/` follows:
+Features in both `internal/app/` and `internal/src/` follow:
 
 ```
 feature_handler.go      # HTTP layer: parse request, validate DTO, call service, send response
@@ -155,6 +194,8 @@ feature_routes.go       # Route registration
 feature_repository.go   # Interface + DBTX type
 feature_repository_impl.go  # SQL implementation
 ```
+
+**Difference:** `internal/app/` features register routes **before** TenantMiddleware (main domain). `internal/src/` features register routes **after** TenantMiddleware + AuthMiddleware (subdomain). `internal/app/` features may import entities and repositories from `internal/src/` when they need tenant data resolved from payload (e.g., webhook resolves tenant from Meta page ID).
 
 ## Key Architecture Decisions
 

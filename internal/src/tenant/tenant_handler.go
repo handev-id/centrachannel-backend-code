@@ -19,24 +19,6 @@ func NewTenantHandler(c *di.Container) *TenantHandler {
 	return &TenantHandler{service: service}
 }
 
-func NewTenantHandlerWithService(service TenantService) *TenantHandler {
-	return &TenantHandler{service: service}
-}
-
-func (h *TenantHandler) Onboard(c fiber.Ctx) error {
-	var req OnboardRequest
-	if err := c.Bind().Body(&req); err != nil {
-		return response.BadRequest(c, "Invalid payload", nil)
-	}
-
-	result, err := h.service.Onboard(c.Context(), req)
-	if err != nil {
-		return response.BadRequest(c, err.Error(), nil)
-	}
-
-	return response.Created(c, "Tenant onboarded successfully", result)
-}
-
 func (h *TenantHandler) List(c fiber.Ctx) error {
 	tenants, err := h.service.List(c.Context())
 	if err != nil {

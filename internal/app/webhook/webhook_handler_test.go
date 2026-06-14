@@ -3,67 +3,36 @@ package webhook
 import (
 	"bytes"
 	"context"
-	"database/sql"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
 	"testing"
 
 	"github.com/gofiber/fiber/v3"
-
-	"centrachannel/internal/src/channel"
-	"centrachannel/internal/src/contact"
-	"centrachannel/internal/src/conversation"
-	"centrachannel/internal/src/message"
-	"centrachannel/internal/src/profile"
-	"centrachannel/internal/utils/logger"
 )
+
+type mockWebhookService struct {
+	processEvolutionFunc func(ctx context.Context, payload *EvolutionWebhookPayload) error
+	processMetaFunc      func(ctx context.Context, payload *MetaWebhookPayload) error
+}
+
+func (m *mockWebhookService) ProcessEvolutionEvent(ctx context.Context, payload *EvolutionWebhookPayload) error {
+	if m.processEvolutionFunc != nil {
+		return m.processEvolutionFunc(ctx, payload)
+	}
+	return nil
+}
+
+func (m *mockWebhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebhookPayload) error {
+	if m.processMetaFunc != nil {
+		return m.processMetaFunc(ctx, payload)
+	}
+	return nil
+}
 
 func setupApp(apiKey, metaSecret string) *fiber.App {
 	app := fiber.New()
-
-	deviceRepo := &mockDeviceRepo{}
-	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
-			return nil, sql.ErrNoRows
-		},
-		createFunc: func(ctx context.Context, q contact.DBTX, c *contact.Contact) (int, error) {
-			return 100, nil
-		},
-	}
-	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
-			return nil, sql.ErrNoRows
-		},
-		createFunc: func(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) {
-			return 200, nil
-		},
-	}
-	channelRepo := &mockChannelRepo{
-		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: channelType}, nil
-		},
-	}
-	convRepo := &mockConvRepo{
-		listFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
-			return nil, 0, nil
-		},
-		createFunc: func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error) {
-			return 300, nil
-		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
-			return nil
-		},
-	}
-	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) {
-			return 400, nil
-		},
-	}
-	tenantRepo := &mockMetaTenantRepo{}
-
-	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, nil, logger.NewLogger("debug", "text"))
-	handler := &WebhookHandler{service: service, apiKey: apiKey, metaSecret: metaSecret}
+	handler := &WebhookHandler{service: &mockWebhookService{}, apiKey: apiKey, metaSecret: metaSecret}
 
 	app.Post("/webhook/evolution", handler.HandleEvolution)
 	app.Get("/webhook/meta", handler.HandleMetaVerify)
@@ -81,7 +50,9 @@ func TestHandleEvolution_InvalidAPIKey(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", resp.StatusCode)
 	}
@@ -95,7 +66,9 @@ func TestHandleEvolution_MissingAPIKey(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusUnauthorized {
 		t.Errorf("expected 401, got %d", resp.StatusCode)
 	}
@@ -107,7 +80,9 @@ func TestHandleMetaVerify_Success(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/webhook/meta?hub.mode=subscribe&hub.verify_token=meta_secret_456&hub.challenge=challenge_abc", nil)
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -124,7 +99,9 @@ func TestHandleMetaVerify_WrongToken(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/webhook/meta?hub.mode=subscribe&hub.verify_token=wrong&hub.challenge=challenge_abc", nil)
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403, got %d", resp.StatusCode)
 	}
@@ -136,7 +113,9 @@ func TestHandleMetaVerify_WrongMode(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/webhook/meta?hub.mode=unsubscribe&hub.verify_token=meta_secret_456&hub.challenge=challenge_abc", nil)
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusForbidden {
 		t.Errorf("expected 403, got %d", resp.StatusCode)
 	}
@@ -161,7 +140,9 @@ func TestHandleMetaWebhook_Success(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
@@ -186,7 +167,9 @@ func TestHandleMetaWebhook_Instagram(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}

@@ -49,7 +49,6 @@ dist/
 build/
 bin/
 server
-main
 
 # Database
 *.db

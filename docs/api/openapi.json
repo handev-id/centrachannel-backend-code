@@ -56,9 +56,6 @@
     "/api/campaigns/recipient-lists/{id}/contacts": {
       "$ref": "/docs/api/paths/campaign/recipient-list-contacts.json"
     },
-    "/api/campaigns/recipient-lists/{id}/contacts/add": {
-      "$ref": "/docs/api/paths/campaign/recipient-list-add-contact.json"
-    },
     "/api/campaigns/recipient-lists/{id}/contacts/{contactId}": {
       "$ref": "/docs/api/paths/campaign/recipient-list-remove-contact.json"
     },

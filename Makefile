@@ -1,4 +1,15 @@
-DB_URL ?= postgres://postgres:postgres@localhost:5432/centrachannel_db?sslmode=disable
+ifneq (,$(wildcard .env))
+    include .env
+endif
+
+DB_HOST ?= localhost
+DB_PORT ?= 5432
+DB_USER ?= postgres
+DB_PASSWORD ?= postgres
+DB_NAME ?= centrachannel
+DB_SSL_MODE ?= disable
+
+DB_URL ?= postgres://$(DB_USER):$(DB_PASSWORD)@$(DB_HOST):$(DB_PORT)/$(DB_NAME)?sslmode=$(DB_SSL_MODE)
 MIGRATIONS_PATH ?= database/migrations
 SEED_FILE ?= database/seed.sql
 MIGRATE_BIN = $(shell go env GOPATH)/bin/migrate
