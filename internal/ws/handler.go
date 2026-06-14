@@ -7,7 +7,7 @@ import (
 
 	"centrachannel/config"
 	"centrachannel/internal/middleware"
-	"centrachannel/internal/utils/response"
+	"centrachannel/internal/src/tenant"
 )
 
 type Handler struct {
@@ -19,16 +19,9 @@ func NewHandler(hub *Hub, cfg *config.Config) *Handler {
 	return &Handler{hub: hub, cfg: cfg}
 }
 
-func (h *Handler) Handle(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
-	uid, err := middleware.GetUserID(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
+	uid := middleware.GetUserID(c)
+	if uid == 0 { return nil }
 
 	upgrader := websocket.FastHTTPUpgrader{
 		CheckOrigin: func(ctx *fasthttp.RequestCtx) bool { return true },

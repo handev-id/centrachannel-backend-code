@@ -121,6 +121,11 @@ func (r *contactRepository) GetByID(ctx context.Context, q DBTX, tenantID int, i
 	return scanContact(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
+func (r *contactRepository) GetByPhone(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error) {
+	query := `SELECT c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at FROM contacts c WHERE c.tenant_id = $1 AND c.phone = $2 AND c.deleted_at IS NULL`
+	return scanContact(q.QueryRowContext(ctx, query, tenantID, phone))
+}
+
 func (r *contactRepository) Create(ctx context.Context, q DBTX, contact *Contact) (int, error) {
 	query := `INSERT INTO contacts (tenant_id, first_name, last_name, username, email, phone, avatar, country, bio, occupation, category, category_description, gender, date_of_birth, province_of_origin, facebook, instagram, whatsapp, x, tiktok, status, institution_name, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`
 	var id int

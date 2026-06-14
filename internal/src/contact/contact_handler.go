@@ -1,12 +1,15 @@
 package contact
 
 import (
+	"encoding/csv"
+	"fmt"
+	"io"
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -24,11 +27,7 @@ func NewContactHandlerWithService(service ContactService) *ContactHandler {
 	return &ContactHandler{service: service}
 }
 
-func (h *ContactHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -50,11 +49,7 @@ func (h *ContactHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", result)
 }
 
-func (h *ContactHandler) Show(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -68,11 +63,7 @@ func (h *ContactHandler) Show(c fiber.Ctx) error {
 	return response.OK(c, "success", contact)
 }
 
-func (h *ContactHandler) Store(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req CreateContactRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -86,11 +77,7 @@ func (h *ContactHandler) Store(c fiber.Ctx) error {
 	return response.Created(c, "Contact created", contact)
 }
 
-func (h *ContactHandler) Update(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -109,11 +96,7 @@ func (h *ContactHandler) Update(c fiber.Ctx) error {
 	return response.OK(c, "Contact updated", contact)
 }
 
-func (h *ContactHandler) Delete(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -126,11 +109,7 @@ func (h *ContactHandler) Delete(c fiber.Ctx) error {
 	return response.OK(c, "Contact deleted", nil)
 }
 
-func (h *ContactHandler) Merge(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Merge(c fiber.Ctx, t *tenant.Tenant) error {
 
 	sourceID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -148,11 +127,7 @@ func (h *ContactHandler) Merge(c fiber.Ctx) error {
 	return response.OK(c, "Contacts merged", nil)
 }
 
-func (h *ContactHandler) Unmerge(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Unmerge(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -165,11 +140,7 @@ func (h *ContactHandler) Unmerge(c fiber.Ctx) error {
 	return response.OK(c, "Contact unmerged", nil)
 }
 
-func (h *ContactHandler) Conversations(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ContactHandler) Conversations(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -181,4 +152,56 @@ func (h *ContactHandler) Conversations(c fiber.Ctx) error {
 		return response.InternalServerError(c, err.Error())
 	}
 	return response.OK(c, "success", convs)
+}
+
+func (h *ContactHandler) ExportCSV(c fiber.Ctx, t *tenant.Tenant) error {
+	csvData, err := h.service.ExportCSV(c.Context(), t.ID)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
+
+	c.Set("Content-Type", "text/csv")
+	c.Set("Content-Disposition", "attachment; filename=contacts.csv")
+	return c.SendString(csvData)
+}
+
+func (h *ContactHandler) ImportCSV(c fiber.Ctx, t *tenant.Tenant) error {
+
+	file, err := c.FormFile("file")
+	if err != nil {
+		return response.BadRequest(c, "file field is required", nil)
+	}
+
+	f, err := file.Open()
+	if err != nil {
+		return response.InternalServerError(c, "failed to open file")
+	}
+	defer f.Close()
+
+	reader := csv.NewReader(f)
+	reader.LazyQuotes = true
+	reader.TrimLeadingSpace = true
+
+	var records [][]string
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return response.BadRequest(c, fmt.Sprintf("CSV parse error at row %d: %v", len(records)+1, err), nil)
+		}
+		records = append(records, record)
+	}
+
+	if len(records) < 2 {
+		return response.BadRequest(c, "CSV must have at least a header row and one data row", nil)
+	}
+
+	result, err := h.service.ImportCSV(c.Context(), t.ID, records)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
+
+	return response.Created(c, "CSV import completed", result)
 }

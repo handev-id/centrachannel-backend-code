@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -24,11 +24,7 @@ func NewUserHandlerWithService(service UserService) *UserHandler {
 	return &UserHandler{service: service}
 }
 
-func (h *UserHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *UserHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -55,11 +51,7 @@ func (h *UserHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", result)
 }
 
-func (h *UserHandler) Show(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *UserHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -73,11 +65,7 @@ func (h *UserHandler) Show(c fiber.Ctx) error {
 	return response.OK(c, "success", user)
 }
 
-func (h *UserHandler) Store(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *UserHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req CreateUserRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -91,11 +79,7 @@ func (h *UserHandler) Store(c fiber.Ctx) error {
 	return response.Created(c, "User created", user)
 }
 
-func (h *UserHandler) Update(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *UserHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -114,11 +98,7 @@ func (h *UserHandler) Update(c fiber.Ctx) error {
 	return response.OK(c, "User updated", user)
 }
 
-func (h *UserHandler) Delete(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *UserHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

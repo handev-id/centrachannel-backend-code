@@ -69,6 +69,13 @@ type CampaignRecipientContact struct {
 	UpdatedAt             time.Time  `json:"updated_at"`
 }
 
+type CampaignRecipientWithPhone struct {
+	CampaignRecipient
+	Phone     string  `json:"phone"`
+	Message   string  `json:"message,omitempty"`
+	FirstName string  `json:"first_name,omitempty"`
+}
+
 type CampaignRecipient struct {
 	ID                int        `json:"id"`
 	CampaignID        int        `json:"campaign_id"`

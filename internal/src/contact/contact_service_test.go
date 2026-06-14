@@ -152,11 +152,12 @@ var _ driver.Result = (*mockResult)(nil)
 // ---- Repository Mock ----
 
 type mockContactRepository struct {
-	listFunc       func(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error)
-	getByIDFunc    func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error)
-	createFunc     func(ctx context.Context, q DBTX, contact *Contact) (int, error)
-	updateFunc     func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error
-	softDeleteFunc func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listFunc        func(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error)
+	getByIDFunc     func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error)
+	createFunc      func(ctx context.Context, q DBTX, contact *Contact) (int, error)
+	updateFunc      func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error
+	softDeleteFunc  func(ctx context.Context, q DBTX, tenantID int, id int) error
+	getByPhoneFunc  func(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error)
 }
 
 func (m *mockContactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error) {
@@ -177,6 +178,10 @@ func (m *mockContactRepository) Update(ctx context.Context, q DBTX, tenantID int
 
 func (m *mockContactRepository) SoftDelete(ctx context.Context, q DBTX, tenantID int, id int) error {
 	return m.softDeleteFunc(ctx, q, tenantID, id)
+}
+
+func (m *mockContactRepository) GetByPhone(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error) {
+	return m.getByPhoneFunc(ctx, q, tenantID, phone)
 }
 
 // ---- Test Helpers ----

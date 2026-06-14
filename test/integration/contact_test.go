@@ -23,6 +23,8 @@ type mockContactService struct {
 	getConversationsFunc func(ctx context.Context, tenantID int, contactID int) (interface{}, error)
 	mergeFunc            func(ctx context.Context, tenantID int, sourceID int, targetID int) error
 	unmergeFunc          func(ctx context.Context, tenantID int, id int) error
+	importCSVFunc        func(ctx context.Context, tenantID int, records [][]string) (*contact.CSVImportResult, error)
+	exportCSVFunc        func(ctx context.Context, tenantID int) (string, error)
 }
 
 func (m *mockContactService) List(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) (*contact.PaginatedResponse, error) {
@@ -61,6 +63,19 @@ func (m *mockContactService) Unmerge(ctx context.Context, tenantID int, id int) 
 		return m.unmergeFunc(ctx, tenantID, id)
 	}
 	return nil
+}
+func (m *mockContactService) ExportCSV(ctx context.Context, tenantID int) (string, error) {
+	if m.exportCSVFunc != nil {
+		return m.exportCSVFunc(ctx, tenantID)
+	}
+	return "", nil
+}
+
+func (m *mockContactService) ImportCSV(ctx context.Context, tenantID int, records [][]string) (*contact.CSVImportResult, error) {
+	if m.importCSVFunc != nil {
+		return m.importCSVFunc(ctx, tenantID, records)
+	}
+	return &contact.CSVImportResult{}, nil
 }
 
 func strPtr(s string) *string { return &s }

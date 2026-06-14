@@ -17,11 +17,11 @@ import (
 	"centrachannel/internal/src/dashboard"
 	"centrachannel/internal/src/message"
 	"centrachannel/internal/src/note"
-	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tag"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
+	"centrachannel/internal/src/webhook"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/response"
 	"centrachannel/internal/ws"
@@ -55,8 +55,21 @@ func main() {
 		})
 	})
 
+	app.Get("/health", func(c fiber.Ctx) error {
+		return response.OK(c, "healthy", fiber.Map{"status": "ok"})
+	})
+	app.Get("/ping", func(c fiber.Ctx) error {
+		return c.SendString("pong")
+	})
+	app.Get("/version", func(c fiber.Ctx) error {
+		return response.OK(c, "ok", fiber.Map{"version": "1.0.0", "app": "CentraChannel API"})
+	})
+
 	hub := ws.NewHub()
 	go hub.Run()
+
+	webhookHandler := webhook.NewWebhookHandler(c, cfg, hub)
+	webhook.RegisterRoutes(app, webhookHandler)
 
 	authHandler := auth.NewAuthHandler(c)
 	auth.RegisterRoutes(app, authHandler)
@@ -66,64 +79,62 @@ func main() {
 
 	// Protected routes
 	authMw := middleware.AuthMiddleware(cfg)
+	adminOrAbove := middleware.RequireRole("super-admin", "admin")
+	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
 
 	wsHandler := ws.NewHandler(hub, cfg)
-	app.Get("/ws", authMw, wsHandler.Handle)
+	app.Get("/ws", authMw, middleware.Tenant(wsHandler.Handle))
 
-	userGroup := app.Group("/api/user", authMw)
+	userGroup := app.Group("/api/user", authMw, adminOrAbove)
 	userHandler := user.NewUserHandler(c)
 	user.RegisterRoutesByGroup(userGroup, userHandler)
 
-	campaignGroup := app.Group("/api/campaigns", authMw)
+	campaignGroup := app.Group("/api/campaigns", authMw, agentOrAbove)
 	campaignHandler := campaign.NewCampaignHandler(c)
 	campaign.RegisterRoutes(campaignGroup, campaignHandler)
 
-	channelGroup := app.Group("/api/channels", authMw)
+	channelGroup := app.Group("/api/channels", authMw, agentOrAbove)
 	channelHandler := channel.NewChannelHandler(c)
 	channel.RegisterRoutes(channelGroup, channelHandler)
 
-	contactGroup := app.Group("/api/contacts", authMw)
+	contactGroup := app.Group("/api/contacts", authMw, agentOrAbove)
 	contactHandler := contact.NewContactHandler(c)
 	contact.RegisterRoutes(contactGroup, contactHandler)
 
-	profileGroup := app.Group("/api/profiles", authMw)
-	profileHandler := profile.NewProfileHandler(c)
-	profile.RegisterRoutes(profileGroup, profileHandler)
-
-	convGroup := app.Group("/api/conversations", authMw)
+	convGroup := app.Group("/api/conversations", authMw, agentOrAbove)
 	conversationHandler := conversation.NewConversationHandler(c, hub)
 	conversation.RegisterRoutes(convGroup, conversationHandler)
 
 	messageHandler := message.NewMessageHandler(c, hub)
 	message.RegisterConversationRoutes(convGroup, messageHandler)
-	msgGroup := app.Group("/api/messages", authMw)
+	msgGroup := app.Group("/api/messages", authMw, agentOrAbove)
 	message.RegisterRoutes(msgGroup, messageHandler)
 
 	ctHandler := conversation_tag.NewConversationTagHandler(c)
 	conversation_tag.RegisterRoutes(convGroup, ctHandler)
 
-	tagGroup := app.Group("/api/tags", authMw)
+	tagGroup := app.Group("/api/tags", authMw, agentOrAbove)
 	tagHandler := tag.NewTagHandler(c)
 	tag.RegisterRoutes(tagGroup, tagHandler)
 
 	noteHandler := note.NewNoteHandler(c)
 	note.RegisterConversationRoutes(convGroup, noteHandler)
-	notesGroup := app.Group("/api/notes", authMw)
+	notesGroup := app.Group("/api/notes", authMw, agentOrAbove)
 	note.RegisterRoutes(notesGroup, noteHandler)
 
-	wdGroup := app.Group("/api/whatsapp-devices", authMw)
+	wdGroup := app.Group("/api/whatsapp-devices", authMw, agentOrAbove)
 	wdHandler := whatsapp_device.NewWhatsAppDeviceHandler(c)
 	whatsapp_device.RegisterRoutes(wdGroup, wdHandler)
 
-	uploadGroup := app.Group("/api/upload", authMw)
+	uploadGroup := app.Group("/api/upload", authMw, agentOrAbove)
 	uploadHandler := upload.NewUploadHandler(c)
 	upload.RegisterRoutes(uploadGroup, uploadHandler)
 
-	dashGroup := app.Group("/api/dashboard", authMw)
+	dashGroup := app.Group("/api/dashboard", authMw, agentOrAbove)
 	dashHandler := dashboard.NewDashboardHandler(c)
 	dashboard.RegisterRoutes(dashGroup, dashHandler)
 
-	tenantGroup := app.Group("/api/tenants", authMw)
+	tenantGroup := app.Group("/api/tenants", authMw, adminOrAbove)
 	tenant.RegisterProtectedRoutes(tenantGroup, tenantHandler)
 
 	c.Logger.Info("Starting server on port %d", cfg.Port)

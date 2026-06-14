@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -24,11 +24,7 @@ func NewConversationTagHandlerWithService(service ConversationTagService) *Conve
 	return &ConversationTagHandler{service: service}
 }
 
-func (h *ConversationTagHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationTagHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	conversationID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -42,11 +38,7 @@ func (h *ConversationTagHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", tags)
 }
 
-func (h *ConversationTagHandler) Attach(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationTagHandler) Attach(c fiber.Ctx, t *tenant.Tenant) error {
 
 	conversationID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -64,11 +56,7 @@ func (h *ConversationTagHandler) Attach(c fiber.Ctx) error {
 	return response.Created(c, "Tag attached", nil)
 }
 
-func (h *ConversationTagHandler) Detach(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationTagHandler) Detach(c fiber.Ctx, t *tenant.Tenant) error {
 
 	conversationID, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

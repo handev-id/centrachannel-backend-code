@@ -1,14 +1,18 @@
 package whatsapp_device
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"github.com/gofiber/fiber/v3"
+
+	"centrachannel/internal/middleware"
+)
 
 func RegisterRoutes(group fiber.Router, handler *WhatsAppDeviceHandler) {
-	group.Get("/", handler.List)
-	group.Post("/", handler.Store)
-	group.Get("/:id", handler.Show)
-	group.Put("/:id", handler.Update)
-	group.Delete("/:id", handler.Delete)
-	group.Post("/:id/connect", handler.Connect)
-	group.Post("/:id/disconnect", handler.Disconnect)
-	group.Post("/:id/scan", handler.Scan)
+	group.Get("/", middleware.Tenant(handler.List))
+	group.Post("/", middleware.Tenant(handler.Store))
+	group.Get("/:id", middleware.Tenant(handler.Show))
+	group.Put("/:id", middleware.Tenant(handler.Update))
+	group.Delete("/:id", middleware.Tenant(handler.Delete))
+	group.Post("/:id/connect", middleware.Tenant(handler.Connect))
+	group.Post("/:id/disconnect", middleware.Tenant(handler.Disconnect))
+	group.Post("/:id/scan", middleware.Tenant(handler.Scan))
 }

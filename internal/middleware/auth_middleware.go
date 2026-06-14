@@ -41,9 +41,16 @@ func AuthMiddleware(cfg *config.Config) fiber.Handler {
 		subFloat, _ := claims["sub"].(float64)
 		tenantFloat, _ := claims["tenant"].(float64)
 
+		rawRoles, _ := claims["roles"].([]interface{})
+		roles := make([]string, len(rawRoles))
+		for i, r := range rawRoles {
+			roles[i], _ = r.(string)
+		}
+
 		c.Locals("user", claims)
 		c.Locals("user_id", int(subFloat))
 		c.Locals("tenant_id", int(tenantFloat))
+		c.Locals("roles", roles)
 		return c.Next()
 	}
 }

@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -22,12 +22,7 @@ func NewAuthHandlerWithService(service AuthService) *AuthHandler {
 	return &AuthHandler{service: service}
 }
 
-func (h *AuthHandler) Register(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
+func (h *AuthHandler) Register(c fiber.Ctx, t *tenant.Tenant) error {
 	var req RegisterRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
@@ -40,12 +35,7 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 	return response.Created(c, "User registered", user)
 }
 
-func (h *AuthHandler) Login(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
+func (h *AuthHandler) Login(c fiber.Ctx, t *tenant.Tenant) error {
 	var req LoginRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
@@ -57,12 +47,7 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 	return response.OK(c, "Login successful", fiber.Map{"type": "bearer", "token": token})
 }
 
-func (h *AuthHandler) CheckToken(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
+func (h *AuthHandler) CheckToken(c fiber.Ctx, t *tenant.Tenant) error {
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
 		return response.Unauthorized(c, "Missing token")

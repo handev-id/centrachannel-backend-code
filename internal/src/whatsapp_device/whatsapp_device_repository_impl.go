@@ -53,6 +53,11 @@ func (r *whatsAppDeviceRepository) GetByID(ctx context.Context, q DBTX, tenantID
 	return scanDevice(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
+func (r *whatsAppDeviceRepository) GetByWhatsappID(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error) {
+	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, deleted_at, created_at, updated_at FROM whatsapp_devices WHERE whatsapp_id = $1 AND deleted_at IS NULL`
+	return scanDevice(q.QueryRowContext(ctx, query, whatsappID))
+}
+
 func (r *whatsAppDeviceRepository) Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error) {
 	query := `INSERT INTO whatsapp_devices (tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`
 	var id int

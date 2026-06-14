@@ -10,6 +10,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
+	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/user"
 )
@@ -54,11 +55,11 @@ type testResp struct {
 func newUserApp(svc user.UserService) *fiber.App {
 	app := NewTestApp()
 	h := user.NewUserHandlerWithService(svc)
-	app.Get("/api/users", TestAuthMiddleware(), h.List)
-	app.Post("/api/users", TestAuthMiddleware(), h.Store)
-	app.Get("/api/users/:id", TestAuthMiddleware(), h.Show)
-	app.Put("/api/users/:id", TestAuthMiddleware(), h.Update)
-	app.Delete("/api/users/:id", TestAuthMiddleware(), h.Delete)
+	app.Get("/api/users", TestAuthMiddleware(), middleware.Tenant(h.List))
+	app.Post("/api/users", TestAuthMiddleware(), middleware.Tenant(h.Store))
+	app.Get("/api/users/:id", TestAuthMiddleware(), middleware.Tenant(h.Show))
+	app.Put("/api/users/:id", TestAuthMiddleware(), middleware.Tenant(h.Update))
+	app.Delete("/api/users/:id", TestAuthMiddleware(), middleware.Tenant(h.Delete))
 	return app
 }
 

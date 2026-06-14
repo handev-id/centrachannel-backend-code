@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -16,7 +16,8 @@ type WhatsAppDeviceHandler struct {
 
 func NewWhatsAppDeviceHandler(c *di.Container) *WhatsAppDeviceHandler {
 	repo := NewWhatsAppDeviceRepository()
-	service := NewWhatsAppDeviceService(repo, c.DB, c.Config, c.Logger)
+	client := NewEvolutionClient(c.Config.EvolutionAPIURL, c.Config.EvolutionAPIKey, c.Logger)
+	service := NewWhatsAppDeviceService(repo, c.DB, c.Config, c.Logger, client)
 	return &WhatsAppDeviceHandler{service: service}
 }
 
@@ -24,11 +25,7 @@ func NewWhatsAppDeviceHandlerWithService(service WhatsAppDeviceService) *WhatsAp
 	return &WhatsAppDeviceHandler{service: service}
 }
 
-func (h *WhatsAppDeviceHandler) Show(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -42,11 +39,7 @@ func (h *WhatsAppDeviceHandler) Show(c fiber.Ctx) error {
 	return response.OK(c, "success", device)
 }
 
-func (h *WhatsAppDeviceHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	devices, err := h.service.List(c.Context(), t.ID)
 	if err != nil {
@@ -55,11 +48,7 @@ func (h *WhatsAppDeviceHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", devices)
 }
 
-func (h *WhatsAppDeviceHandler) Store(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req CreateDeviceRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -73,11 +62,7 @@ func (h *WhatsAppDeviceHandler) Store(c fiber.Ctx) error {
 	return response.Created(c, "Device created", device)
 }
 
-func (h *WhatsAppDeviceHandler) Update(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -96,11 +81,7 @@ func (h *WhatsAppDeviceHandler) Update(c fiber.Ctx) error {
 	return response.OK(c, "Device updated", device)
 }
 
-func (h *WhatsAppDeviceHandler) Delete(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -113,11 +94,7 @@ func (h *WhatsAppDeviceHandler) Delete(c fiber.Ctx) error {
 	return response.OK(c, "Device deleted", nil)
 }
 
-func (h *WhatsAppDeviceHandler) Connect(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Connect(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -131,11 +108,7 @@ func (h *WhatsAppDeviceHandler) Connect(c fiber.Ctx) error {
 	return response.OK(c, "Device connected", device)
 }
 
-func (h *WhatsAppDeviceHandler) Disconnect(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Disconnect(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -149,11 +122,7 @@ func (h *WhatsAppDeviceHandler) Disconnect(c fiber.Ctx) error {
 	return response.OK(c, "Device disconnected", device)
 }
 
-func (h *WhatsAppDeviceHandler) Scan(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *WhatsAppDeviceHandler) Scan(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

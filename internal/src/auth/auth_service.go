@@ -83,7 +83,7 @@ func (s *authService) Register(ctx context.Context, req RegisterRequest, t *tena
 		return nil, fmt.Errorf("failed to find agent role: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, `INSERT INTO role_user (user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4)`, userID, agentRoleID, time.Now(), time.Now()); err != nil {
+	if _, err := tx.ExecContext(ctx, `INSERT INTO role_user (tenant_id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`, t.ID, userID, agentRoleID, time.Now(), time.Now()); err != nil {
 		return nil, fmt.Errorf("failed to attach role: %w", err)
 	}
 
@@ -111,12 +111,23 @@ func (s *authService) Login(ctx context.Context, req LoginRequest, t *tenant.Ten
 
 	_, _ = s.db.ExecContext(ctx, `UPDATE users SET last_login = $1 WHERE id = $2 AND tenant_id = $3`, time.Now(), user.ID, t.ID)
 
+	roles, err := s.repo.GetRolesByUserID(ctx, s.db, t.ID, user.ID)
+	if err != nil {
+		return "", fmt.Errorf("failed to load user roles: %w", err)
+	}
+
+	roleNames := make([]string, len(roles))
+	for i, r := range roles {
+		roleNames[i] = r.Name
+	}
+
 	claims := jwt.MapClaims{
 		"sub":    user.ID,
 		"tenant": t.ID,
 		"domain": t.Domain,
 		"exp":    time.Now().Add(s.cfg.JWTExpiry).Unix(),
 		"user":   user.Username,
+		"roles":  roleNames,
 	}
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
 	signed, err := token.SignedString([]byte(s.cfg.JWTSecret))

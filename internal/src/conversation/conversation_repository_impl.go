@@ -169,6 +169,12 @@ func (r *conversationRepository) MarkRead(ctx context.Context, q DBTX, tenantID 
 	return nil
 }
 
+func (r *conversationRepository) GetTotalUnread(ctx context.Context, q DBTX, tenantID int) (int, error) {
+	var total int
+	err := q.QueryRowContext(ctx, `SELECT COALESCE(SUM(unread_count), 0) FROM conversations WHERE tenant_id = $1`, tenantID).Scan(&total)
+	return total, err
+}
+
 func (r *conversationRepository) UpdateLastMessage(ctx context.Context, q DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
 	result, err := q.ExecContext(ctx, `UPDATE conversations SET last_message=$1, last_activity=$2, unread_count=unread_count+1, last_agent_id=$3, updated_at=$4 WHERE id=$5 AND tenant_id=$6`, lastMessageJSON, time.Now(), lastAgentID, time.Now(), id, tenantID)
 	if err != nil {

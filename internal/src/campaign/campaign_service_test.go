@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"centrachannel/config"
+	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
 )
@@ -104,6 +105,29 @@ func (r *mockRows) Next(dest []driver.Value) error {
 
 // ---- mock repository ----
 
+type mockChannelRepository struct {
+	getByIDFunc  func(ctx context.Context, q channel.DBTX, id int) (*channel.Channel, error)
+	getByTypeFunc func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error)
+}
+
+func (m *mockChannelRepository) GetByID(ctx context.Context, q channel.DBTX, id int) (*channel.Channel, error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, q, id)
+	}
+	return &channel.Channel{}, nil
+}
+
+func (m *mockChannelRepository) GetByType(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
+	if m.getByTypeFunc != nil {
+		return m.getByTypeFunc(ctx, q, channelType)
+	}
+	return &channel.Channel{}, nil
+}
+
+func (m *mockChannelRepository) List(ctx context.Context, q channel.DBTX) ([]channel.Channel, error) {
+	return nil, nil
+}
+
 type mockCampaignRepository struct {
 	listFunc                   func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error)
 	getByIDFunc                func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
@@ -113,7 +137,8 @@ type mockCampaignRepository struct {
 	createRecipientFunc        func(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error)
 	updateRecipientStatusFunc  func(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error
 	countPendingRecipientsFunc func(ctx context.Context, q DBTX, campaignID int) (int, error)
-	getPendingRecipientsFunc   func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error)
+	getPendingRecipientsFunc          func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error)
+	getPendingRecipientsWithPhoneFunc func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipientWithPhone, error)
 	listTemplatesFunc          func(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error)
 	getTemplateByIDFunc        func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignTemplate, error)
 	createTemplateFunc         func(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error)
@@ -188,6 +213,13 @@ func (m *mockCampaignRepository) CountPendingRecipients(ctx context.Context, q D
 func (m *mockCampaignRepository) GetPendingRecipients(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error) {
 	if m.getPendingRecipientsFunc != nil {
 		return m.getPendingRecipientsFunc(ctx, q, campaignID, limit)
+	}
+	return nil, nil
+}
+
+func (m *mockCampaignRepository) GetPendingRecipientsWithPhone(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipientWithPhone, error) {
+	if m.getPendingRecipientsWithPhoneFunc != nil {
+		return m.getPendingRecipientsWithPhoneFunc(ctx, q, campaignID, limit)
 	}
 	return nil, nil
 }
@@ -825,7 +857,12 @@ func TestCampaignService(t *testing.T) {
 				return 0, nil
 			},
 		}
-		svc := &campaignService{repo: repo, db: db, cfg: testConfig(), logger: testLogger()}
+		mockChannelRepo := &mockChannelRepository{
+			getByIDFunc: func(ctx context.Context, q channel.DBTX, id int) (*channel.Channel, error) {
+				return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+			},
+		}
+		svc := &campaignService{repo: repo, channelRepo: mockChannelRepo, db: db, cfg: testConfig(), logger: testLogger()}
 
 		err := svc.Send(context.Background(), 1, 1)
 		if err != nil {
@@ -857,7 +894,7 @@ func TestCampaignService(t *testing.T) {
 						return &Campaign{ID: 1, Status: tt.status}, nil
 					},
 				}
-				svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+				svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger(), deviceRepo: nil, channelRepo: nil}
 
 				err := svc.Send(context.Background(), 1, 1)
 				if err == nil {
@@ -873,7 +910,7 @@ func TestCampaignService(t *testing.T) {
 				return nil, nil
 			},
 		}
-		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
+		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger(), deviceRepo: nil, channelRepo: nil}
 
 		err := svc.Send(context.Background(), 1, 999)
 		if err == nil {

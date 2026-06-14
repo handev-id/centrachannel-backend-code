@@ -76,6 +76,23 @@ func (r *messageRepository) Create(ctx context.Context, q DBTX, msg *Message) (i
 	return id, nil
 }
 
+func (r *messageRepository) UpdateStatusByWebhookID(ctx context.Context, q DBTX, webhookMessageID string, status string) error {
+	result, err := q.ExecContext(ctx, `UPDATE messages SET status=$1, updated_at=$2 WHERE webhook_message_id=$3`, status, time.Now(), webhookMessageID)
+	if err != nil {
+		return err
+	}
+	rows, _ := result.RowsAffected()
+	if rows == 0 {
+		return fmt.Errorf("message not found")
+	}
+	return nil
+}
+
+func (r *messageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id int, webhookMessageID string) error {
+	_, err := q.ExecContext(ctx, `UPDATE messages SET webhook_message_id=$1, updated_at=$2 WHERE id=$3`, webhookMessageID, time.Now(), id)
+	return err
+}
+
 func (r *messageRepository) UpdateStatus(ctx context.Context, q DBTX, id int, status string) error {
 	result, err := q.ExecContext(ctx, `UPDATE messages SET status=$1, updated_at=$2 WHERE id=$3`, status, time.Now(), id)
 	if err != nil {

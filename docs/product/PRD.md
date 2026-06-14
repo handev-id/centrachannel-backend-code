@@ -19,8 +19,8 @@ Channels are global records shared across all tenants (no `tenant_id`):
 |------|-------------|
 | facebook | Facebook Page integration |
 | instagram | Instagram Professional integration |
-| whatsapp_business | Official WhatsApp Business API (Meta) |
-| whatsapp | Unofficial/third-party WhatsApp (mock API for MVP) |
+| whatsapp_business | Official WhatsApp Business API via Evolution API (Meta Cloud API) |
+| whatsapp | Unofficial WhatsApp Web via Evolution API (Baileys) |
 
 ## Roles
 
@@ -70,7 +70,7 @@ When contacts are merged:
 - File upload to `https://storage.solodevs.my.id` (multipart → public_url)
 - Tags CRUD (per-tenant, name + color)
 - Notes on conversations (text + date)
-- WhatsApp device config (mock API: connect/disconnect/scan return mock responses)
+- WhatsApp device management (connect/disconnect/scan via Evolution API, real QR codes)
 - WebSocket notifications (data change events only — FE refetches data)
 
 ### Phase 3 — Campaigns (future)

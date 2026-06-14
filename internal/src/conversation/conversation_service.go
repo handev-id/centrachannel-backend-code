@@ -22,6 +22,7 @@ type ConversationService interface {
 	Resolve(ctx context.Context, tenantID int, id int) error
 	Reopen(ctx context.Context, tenantID int, id int) error
 	MarkRead(ctx context.Context, tenantID int, id int) error
+	GetTotalUnread(ctx context.Context, tenantID int) (int, error)
 }
 
 type conversationService struct {
@@ -134,4 +135,8 @@ func (s *conversationService) Reopen(ctx context.Context, tenantID int, id int) 
 
 func (s *conversationService) MarkRead(ctx context.Context, tenantID int, id int) error {
 	return s.repo.MarkRead(ctx, s.db, tenantID, id)
+}
+
+func (s *conversationService) GetTotalUnread(ctx context.Context, tenantID int) (int, error) {
+	return s.repo.GetTotalUnread(ctx, s.db, tenantID)
 }

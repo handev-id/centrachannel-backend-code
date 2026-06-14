@@ -131,6 +131,10 @@ func (m *mockConversationRepository) Unassign(_ context.Context, _ DBTX, tenantI
 	return m.unassignErr
 }
 
+func (m *mockConversationRepository) GetTotalUnread(_ context.Context, _ DBTX, tenantID int) (int, error) {
+	return 0, nil
+}
+
 func (m *mockConversationRepository) MarkRead(_ context.Context, _ DBTX, tenantID, id int) error {
 	m.markReadCalled = true
 	m.markReadTenantID = tenantID

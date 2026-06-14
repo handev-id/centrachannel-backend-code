@@ -232,6 +232,22 @@ func (r *campaignRepository) GetPendingRecipients(ctx context.Context, q DBTX, c
 	return recipients, rows.Err()
 }
 
+func (r *campaignRepository) GetPendingRecipientsWithPhone(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipientWithPhone, error) {
+	query := `SELECT r.id, r.campaign_id, r.recipient_contact_id, r.status, r.failed_reason, r.delivery_time, r.open_time, r.click_time, r.created_at, r.updated_at, COALESCE(c.phone, ''), '', COALESCE(c.first_name, '') FROM campaign_recipients r INNER JOIN campaign_recipient_contacts c ON c.id = r.recipient_contact_id WHERE r.campaign_id=$1 AND r.status='pending' LIMIT $2`
+	rows, err := q.QueryContext(ctx, query, campaignID, limit)
+	if err != nil { return nil, err }
+	defer rows.Close()
+
+	var recipients []CampaignRecipientWithPhone
+	for rows.Next() {
+		var r CampaignRecipientWithPhone
+		err := rows.Scan(&r.ID, &r.CampaignID, &r.RecipientContactID, &r.Status, &r.FailedReason, &r.DeliveryTime, &r.OpenTime, &r.ClickTime, &r.CreatedAt, &r.UpdatedAt, &r.Phone, &r.Message, &r.FirstName)
+		if err != nil { return nil, err }
+		recipients = append(recipients, r)
+	}
+	return recipients, rows.Err()
+}
+
 func (r *campaignRepository) ListTemplates(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, type, template_type, category, language, content, variables, quality, account_id, created_at, updated_at FROM campaign_templates WHERE tenant_id=$1 ORDER BY name`, tenantID)
 	if err != nil { return nil, err }

@@ -88,8 +88,8 @@ type mockUserRepository struct {
 	softDeleteFunc        func(context.Context, DBTX, int, int) error
 	getRolesByUserIDFunc  func(context.Context, DBTX, int, int) ([]Role, error)
 	getRolesByUserIDsFunc func(context.Context, DBTX, int, []int) (map[int][]Role, error)
-	attachRolesFunc       func(context.Context, DBTX, int, []int) error
-	syncRolesFunc         func(context.Context, DBTX, int, []int) error
+	attachRolesFunc       func(context.Context, DBTX, int, int, []int) error
+	syncRolesFunc         func(context.Context, DBTX, int, int, []int) error
 
 	createCalled         bool
 	createUser           *User
@@ -172,22 +172,22 @@ func (m *mockUserRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tena
 	return map[int][]Role{}, nil
 }
 
-func (m *mockUserRepository) AttachRoles(ctx context.Context, q DBTX, userID int, roleIDs []int) error {
+func (m *mockUserRepository) AttachRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
 	m.attachRolesCalled = true
 	m.attachRolesUserID = userID
 	m.attachRolesIDs = roleIDs
 	if m.attachRolesFunc != nil {
-		return m.attachRolesFunc(ctx, q, userID, roleIDs)
+		return m.attachRolesFunc(ctx, q, tenantID, userID, roleIDs)
 	}
 	return nil
 }
 
-func (m *mockUserRepository) SyncRoles(ctx context.Context, q DBTX, userID int, roleIDs []int) error {
+func (m *mockUserRepository) SyncRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
 	m.syncRolesCalled = true
 	m.syncRolesUserID = userID
 	m.syncRolesIDs = roleIDs
 	if m.syncRolesFunc != nil {
-		return m.syncRolesFunc(ctx, q, userID, roleIDs)
+		return m.syncRolesFunc(ctx, q, tenantID, userID, roleIDs)
 	}
 	return nil
 }

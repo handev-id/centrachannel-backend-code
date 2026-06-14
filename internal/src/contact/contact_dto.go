@@ -59,6 +59,19 @@ type UpdateContactRequest struct {
 	InstitutionName     *string         `json:"institution_name,omitempty"`
 }
 
+type CSVImportResult struct {
+	Total   int              `json:"total"`
+	Success int              `json:"success"`
+	Failed  int              `json:"failed"`
+	Errors  []CSVImportError `json:"errors,omitempty"`
+}
+
+type CSVImportError struct {
+	Row   int    `json:"row"`
+	Field string `json:"field"`
+	Error string `json:"error"`
+}
+
 type MergeContactRequest struct {
 	TargetContactID int `json:"target_contact_id" validate:"required"`
 }

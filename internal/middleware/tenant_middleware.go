@@ -11,22 +11,9 @@ import (
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
-
-type Tenant struct {
-	ID        int             `json:"id"`
-	Name      string          `json:"name"`
-	Domain    string          `json:"domain"`
-	Logo      json.RawMessage `json:"logo,omitempty"`
-	Address   *string         `json:"address,omitempty"`
-	Phone     *string         `json:"phone,omitempty"`
-	Email     *string         `json:"email,omitempty"`
-	IsActive  bool            `json:"is_active"`
-	Settings  json.RawMessage `json:"settings,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-}
 
 func TenantMiddleware(rdb *redis.Client, db *sql.DB) fiber.Handler {
 	return func(c fiber.Ctx) error {
@@ -38,12 +25,12 @@ func TenantMiddleware(rdb *redis.Client, db *sql.DB) fiber.Handler {
 			return response.BadRequest(c, "Tenant domain is required", nil)
 		}
 
-		tenant, err := getTenant(c.Context(), rdb, db, domain)
+		t, err := getTenant(c.Context(), rdb, db, domain)
 		if err != nil {
 			return response.NotFound(c, "Tenant not found")
 		}
 
-		c.Locals("tenant", tenant)
+		c.Locals("tenant", t)
 		return c.Next()
 	}
 }
@@ -53,18 +40,18 @@ func extractDomain(host string) string {
 	return host
 }
 
-func getTenant(ctx context.Context, rdb *redis.Client, db *sql.DB, domain string) (*Tenant, error) {
+func getTenant(ctx context.Context, rdb *redis.Client, db *sql.DB, domain string) (*tenant.Tenant, error) {
 	cacheKey := fmt.Sprintf("tenant:%s", domain)
 
 	data, err := rdb.Get(ctx, cacheKey).Bytes()
 	if err == nil {
-		var t Tenant
+		var t tenant.Tenant
 		if json.Unmarshal(data, &t) == nil {
 			return &t, nil
 		}
 	}
 
-	var t Tenant
+	var t tenant.Tenant
 	var logo, settings sql.NullString
 	var address, phone, email sql.NullString
 

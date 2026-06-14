@@ -140,11 +140,12 @@ func (r *mockResult) RowsAffected() (int64, error) { return r.rowsAffected, nil 
 var _ driver.Result = (*mockResult)(nil)
 
 type mockWhatsAppDeviceRepository struct {
-	listFunc    func(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error)
-	getByIDFunc func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error)
-	createFunc  func(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error)
-	updateFunc  func(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error
-	deleteFunc  func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listFunc          func(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error)
+	getByIDFunc       func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error)
+	createFunc        func(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error)
+	updateFunc        func(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error
+	deleteFunc        func(ctx context.Context, q DBTX, tenantID int, id int) error
+	getByWhatsappIDFunc func(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error)
 }
 
 func (m *mockWhatsAppDeviceRepository) List(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error) {
@@ -165,6 +166,10 @@ func (m *mockWhatsAppDeviceRepository) Update(ctx context.Context, q DBTX, tenan
 
 func (m *mockWhatsAppDeviceRepository) Delete(ctx context.Context, q DBTX, tenantID int, id int) error {
 	return m.deleteFunc(ctx, q, tenantID, id)
+}
+
+func (m *mockWhatsAppDeviceRepository) GetByWhatsappID(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error) {
+	return m.getByWhatsappIDFunc(ctx, q, whatsappID)
 }
 
 func newMockDB(conn *mockConn) *sql.DB {
@@ -321,6 +326,9 @@ func TestWhatsAppDeviceService_Delete(t *testing.T) {
 	t.Run("deletes device", func(t *testing.T) {
 		var capturedTenantID, capturedID int
 		repo := &mockWhatsAppDeviceRepository{
+			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
+				return &WhatsAppDevice{ID: id, TenantID: tenantID, WhatsappID: "test-instance"}, nil
+			},
 			deleteFunc: func(ctx context.Context, q DBTX, tenantID int, id int) error {
 				capturedTenantID = tenantID
 				capturedID = id

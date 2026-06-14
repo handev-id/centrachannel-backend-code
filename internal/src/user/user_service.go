@@ -130,7 +130,7 @@ func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tena
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	if err := s.repo.AttachRoles(ctx, tx, userID, req.Roles); err != nil {
+	if err := s.repo.AttachRoles(ctx, tx, t.ID, userID, req.Roles); err != nil {
 		return nil, fmt.Errorf("failed to attach roles: %w", err)
 	}
 
@@ -180,7 +180,7 @@ func (s *userService) Update(ctx context.Context, tenantID int, id int, req Upda
 		return nil, fmt.Errorf("failed to update user: %w", err)
 	}
 
-	if err := s.repo.SyncRoles(ctx, tx, id, req.Roles); err != nil {
+	if err := s.repo.SyncRoles(ctx, tx, tenantID, id, req.Roles); err != nil {
 		return nil, fmt.Errorf("failed to sync roles: %w", err)
 	}
 

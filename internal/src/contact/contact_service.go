@@ -8,6 +8,9 @@ import (
 	"math"
 	"time"
 
+	"encoding/csv"
+	"strings"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/avatar"
@@ -23,6 +26,8 @@ type ContactService interface {
 	Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error
 	Unmerge(ctx context.Context, tenantID int, id int) error
 	GetConversations(ctx context.Context, tenantID int, contactID int) (interface{}, error)
+	ImportCSV(ctx context.Context, tenantID int, records [][]string) (*CSVImportResult, error)
+	ExportCSV(ctx context.Context, tenantID int) (string, error)
 }
 
 type contactService struct {
@@ -258,4 +263,126 @@ func (s *contactService) Unmerge(ctx context.Context, tenantID int, id int) erro
 	}
 
 	return tx.Commit()
+}
+
+func (s *contactService) ImportCSV(ctx context.Context, tenantID int, records [][]string) (*CSVImportResult, error) {
+	if len(records) < 2 {
+		return &CSVImportResult{Total: 0, Success: 0, Failed: 0}, nil
+	}
+
+	headers := records[0]
+	colMap := make(map[string]int)
+	for i, h := range headers {
+		colMap[h] = i
+	}
+
+	result := &CSVImportResult{Total: len(records) - 1}
+
+	for rowIdx, row := range records[1:] {
+		firstName := getCol(row, colMap, "first_name")
+		if firstName == "" {
+			result.Failed++
+			result.Errors = append(result.Errors, CSVImportError{Row: rowIdx + 2, Field: "first_name", Error: "required"})
+			continue
+		}
+
+		contact := &Contact{
+			TenantID:        tenantID,
+			FirstName:       firstName,
+			LastName:        optionalStr(getCol(row, colMap, "last_name")),
+			Username:        optionalStr(getCol(row, colMap, "username")),
+			Email:           optionalStr(getCol(row, colMap, "email")),
+			Phone:           optionalStr(getCol(row, colMap, "phone")),
+			Facebook:        optionalStr(getCol(row, colMap, "facebook")),
+			Instagram:       optionalStr(getCol(row, colMap, "instagram")),
+			Whatsapp:        optionalStr(getCol(row, colMap, "whatsapp")),
+			X:               optionalStr(getCol(row, colMap, "x")),
+			Tiktok:          optionalStr(getCol(row, colMap, "tiktok")),
+			InstitutionName: optionalStr(getCol(row, colMap, "institution_name")),
+			Status:          "active",
+		}
+
+		if _, err := s.repo.Create(ctx, s.db, contact); err != nil {
+			result.Failed++
+			result.Errors = append(result.Errors, CSVImportError{Row: rowIdx + 2, Field: "general", Error: err.Error()})
+			continue
+		}
+		result.Success++
+	}
+
+	return result, nil
+}
+
+func (s *contactService) ExportCSV(ctx context.Context, tenantID int) (string, error) {
+	contacts, _, err := s.repo.List(ctx, s.db, tenantID, 0, 0, "", "", 0)
+	if err != nil {
+		return "", err
+	}
+
+	var buf strings.Builder
+	writer := csv.NewWriter(&buf)
+	writer.Write([]string{"first_name", "last_name", "username", "email", "phone", "country", "status", "institution_name", "facebook", "instagram", "whatsapp", "x", "tiktok"})
+
+	for _, c := range contacts {
+		lastName := ""
+		if c.LastName != nil {
+			lastName = *c.LastName
+		}
+		username := ""
+		if c.Username != nil {
+			username = *c.Username
+		}
+		email := ""
+		if c.Email != nil {
+			email = *c.Email
+		}
+		phone := ""
+		if c.Phone != nil {
+			phone = *c.Phone
+		}
+		country := ""
+		if c.Country != nil {
+			country = *c.Country
+		}
+		institution := ""
+		if c.InstitutionName != nil {
+			institution = *c.InstitutionName
+		}
+		fb := ""
+		if c.Facebook != nil {
+			fb = *c.Facebook
+		}
+		ig := ""
+		if c.Instagram != nil {
+			ig = *c.Instagram
+		}
+		wa := ""
+		if c.Whatsapp != nil {
+			wa = *c.Whatsapp
+		}
+		x := ""
+		if c.X != nil {
+			x = *c.X
+		}
+		tiktok := ""
+		if c.Tiktok != nil {
+			tiktok = *c.Tiktok
+		}
+
+		writer.Write([]string{c.FirstName, lastName, username, email, phone, country, c.Status, institution, fb, ig, wa, x, tiktok})
+	}
+	writer.Flush()
+	return buf.String(), nil
+}
+
+func getCol(row []string, colMap map[string]int, name string) string {
+	if idx, ok := colMap[name]; ok && idx < len(row) {
+		return row[idx]
+	}
+	return ""
+}
+
+func optionalStr(v string) *string {
+	if v == "" { return nil }
+	return &v
 }

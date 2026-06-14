@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/auth"
 	"centrachannel/internal/src/tenant"
 )
@@ -70,7 +71,7 @@ func TestAuthRegister_Success(t *testing.T) {
 
 	app := NewTestApp()
 	handler := auth.NewAuthHandlerWithService(mockSvc)
-	app.Post("/api/auth/register", TestAuthMiddleware(), handler.Register)
+	app.Post("/api/auth/register", TestAuthMiddleware(), middleware.Tenant(handler.Register))
 
 	body := JSONBody(auth.RegisterRequest{
 		FirstName: "John",
@@ -126,7 +127,7 @@ func TestAuthRegister_DuplicateEmail(t *testing.T) {
 
 	app := NewTestApp()
 	handler := auth.NewAuthHandlerWithService(mockSvc)
-	app.Post("/api/auth/register", TestAuthMiddleware(), handler.Register)
+	app.Post("/api/auth/register", TestAuthMiddleware(), middleware.Tenant(handler.Register))
 
 	body := JSONBody(auth.RegisterRequest{
 		FirstName: "Jane",
@@ -162,7 +163,7 @@ func TestAuthLogin_Success(t *testing.T) {
 
 	app := NewTestApp()
 	handler := auth.NewAuthHandlerWithService(mockSvc)
-	app.Post("/api/auth/login", TestAuthMiddleware(), handler.Login)
+	app.Post("/api/auth/login", TestAuthMiddleware(), middleware.Tenant(handler.Login))
 
 	body := JSONBody(auth.LoginRequest{
 		Username: "john_doe",
@@ -211,7 +212,7 @@ func TestAuthLogin_InvalidCredentials(t *testing.T) {
 
 	app := NewTestApp()
 	handler := auth.NewAuthHandlerWithService(mockSvc)
-	app.Post("/api/auth/login", TestAuthMiddleware(), handler.Login)
+	app.Post("/api/auth/login", TestAuthMiddleware(), middleware.Tenant(handler.Login))
 
 	body := JSONBody(auth.LoginRequest{
 		Username: "wrong",
@@ -256,7 +257,7 @@ func TestAuthCheckToken_Valid(t *testing.T) {
 
 	app := NewTestApp()
 	handler := auth.NewAuthHandlerWithService(mockSvc)
-	app.Get("/api/auth/check-token", TestAuthMiddleware(), handler.CheckToken)
+	app.Get("/api/auth/check-token", TestAuthMiddleware(), middleware.Tenant(handler.CheckToken))
 
 	req := httptest.NewRequest(http.MethodGet, "/api/auth/check-token", nil)
 	req.Header.Set("Authorization", "Bearer valid_token")

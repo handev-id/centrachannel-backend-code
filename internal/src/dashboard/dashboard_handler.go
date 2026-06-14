@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -24,11 +24,7 @@ func NewDashboardHandlerWithService(service DashboardService) *DashboardHandler 
 	return &DashboardHandler{service: service}
 }
 
-func (h *DashboardHandler) Stats(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *DashboardHandler) Stats(c fiber.Ctx, t *tenant.Tenant) error {
 
 	stats, err := h.service.GetStats(c.Context(), t.ID)
 	if err != nil {
@@ -37,11 +33,7 @@ func (h *DashboardHandler) Stats(c fiber.Ctx) error {
 	return response.OK(c, "success", stats)
 }
 
-func (h *DashboardHandler) Chart(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *DashboardHandler) Chart(c fiber.Ctx, t *tenant.Tenant) error {
 
 	days, _ := strconv.Atoi(c.Query("days", "30"))
 

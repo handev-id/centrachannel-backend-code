@@ -7,6 +7,7 @@ import (
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 	"centrachannel/internal/ws"
 )
@@ -25,16 +26,16 @@ func NewConversationHandlerWithService(service ConversationService) *Conversatio
 	return &ConversationHandler{service: service}
 }
 
-func (h *ConversationHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	channelID, _ := strconv.Atoi(c.Query("channel_id"))
 	agentID, _ := strconv.Atoi(c.Query("agent_id"))
+
+	if middleware.IsAgentOnly(c) {
+		agentID = middleware.GetUserID(c)
+	}
 
 	q := ListConversationQuery{
 		Page: page, Limit: limit, Status: c.Query("status"),
@@ -49,11 +50,7 @@ func (h *ConversationHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", result)
 }
 
-func (h *ConversationHandler) Show(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -67,11 +64,7 @@ func (h *ConversationHandler) Show(c fiber.Ctx) error {
 	return response.OK(c, "success", conv)
 }
 
-func (h *ConversationHandler) Store(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req CreateConversationRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -85,16 +78,9 @@ func (h *ConversationHandler) Store(c fiber.Ctx) error {
 	return response.Created(c, "Conversation created", conv)
 }
 
-func (h *ConversationHandler) Assign(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
-	userID, err := middleware.GetUserID(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) Assign(c fiber.Ctx, t *tenant.Tenant) error {
+	userID := middleware.GetUserID(c)
+	if userID == 0 { return nil }
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -107,11 +93,7 @@ func (h *ConversationHandler) Assign(c fiber.Ctx) error {
 	return response.OK(c, "Conversation assigned", nil)
 }
 
-func (h *ConversationHandler) Unassign(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) Unassign(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -124,11 +106,7 @@ func (h *ConversationHandler) Unassign(c fiber.Ctx) error {
 	return response.OK(c, "Conversation unassigned", nil)
 }
 
-func (h *ConversationHandler) Resolve(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) Resolve(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -141,11 +119,7 @@ func (h *ConversationHandler) Resolve(c fiber.Ctx) error {
 	return response.OK(c, "Conversation resolved", nil)
 }
 
-func (h *ConversationHandler) Reopen(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *ConversationHandler) Reopen(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -158,11 +132,15 @@ func (h *ConversationHandler) Reopen(c fiber.Ctx) error {
 	return response.OK(c, "Conversation reopened", nil)
 }
 
-func (h *ConversationHandler) Read(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
+func (h *ConversationHandler) TotalUnread(c fiber.Ctx, t *tenant.Tenant) error {
+	count, err := h.service.GetTotalUnread(c.Context(), t.ID)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
+	return response.OK(c, "success", fiber.Map{"unread_count": count})
+}
+
+func (h *ConversationHandler) Read(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

@@ -87,7 +87,7 @@ func (s *tenantService) Onboard(ctx context.Context, req OnboardRequest) (*Onboa
 		return nil, fmt.Errorf("failed to create admin user: %w", err)
 	}
 
-	err = s.repo.AttachRole(ctx, tx, userID, roleIDs["super_admin"])
+	err = s.repo.AttachRole(ctx, tx, tenantID, userID, roleIDs["super_admin"])
 	if err != nil {
 		return nil, fmt.Errorf("failed to attach super admin role: %w", err)
 	}

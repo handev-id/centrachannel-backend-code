@@ -17,6 +17,14 @@ Multi-tenant REST API built with Go, Fiber, PostgreSQL, and Redis.
 - PostgreSQL
 - Redis
 
+## Architecture Overview
+
+```
+FB / IG ─────────► Meta Graph API (direct)
+WA Business ─────► Evolution API ──► Meta Cloud API
+WA (unofficial) ──► Evolution API ──► Baileys (WhatsApp Web)
+```
+
 ## Quick Start
 
 ```bash
@@ -45,6 +53,12 @@ internal/
 │   ├── tenant/          # Tenant resolution (domain → Redis → DB)
 │   ├── auth/            # Register, login, check-token, logout
 │   └── user/            # CRUD users within tenant
+├── messenger/
+│   ├── messenger.go     # Messenger interface
+│   ├── meta.go          # MetaSender — FB/IG direct
+│   ├── evolution.go     # EvolutionSender — WA via Evolution API
+│   ├── mock.go          # MockSender — fallback
+│   └── dispatcher.go    # NewSender factory
 ├── middleware/
 │   ├── tenant_middleware.go  # Domain → Tenant resolution
 │   └── auth_middleware.go    # JWT verification

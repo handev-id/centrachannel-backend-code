@@ -66,7 +66,7 @@ func (r *userRepository) List(ctx context.Context, q DBTX, tenantID int, limit, 
 	}
 
 	if roleID != nil {
-		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM role_user ru WHERE ru.user_id = u.id AND ru.role_id = $%d)", argIdx))
+		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM role_user ru WHERE ru.tenant_id = u.tenant_id AND ru.user_id = u.id AND ru.role_id = $%d)", argIdx))
 		args = append(args, *roleID)
 		argIdx++
 	}
@@ -202,23 +202,23 @@ func (r *userRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID
 	return result, rows.Err()
 }
 
-func (r *userRepository) AttachRoles(ctx context.Context, q DBTX, userID int, roleIDs []int) error {
+func (r *userRepository) AttachRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
 	if len(roleIDs) == 0 {
 		return nil
 	}
 
-	query := `INSERT INTO role_user (user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4) ON CONFLICT (user_id, role_id) DO NOTHING`
+	query := `INSERT INTO role_user (tenant_id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (tenant_id, user_id, role_id) DO NOTHING`
 	for _, roleID := range roleIDs {
-		if _, err := q.ExecContext(ctx, query, userID, roleID, time.Now(), time.Now()); err != nil {
+		if _, err := q.ExecContext(ctx, query, tenantID, userID, roleID, time.Now(), time.Now()); err != nil {
 			return err
 		}
 	}
 	return nil
 }
 
-func (r *userRepository) SyncRoles(ctx context.Context, q DBTX, userID int, roleIDs []int) error {
-	if _, err := q.ExecContext(ctx, `DELETE FROM role_user WHERE user_id = $1`, userID); err != nil {
+func (r *userRepository) SyncRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
+	if _, err := q.ExecContext(ctx, `DELETE FROM role_user WHERE tenant_id = $1 AND user_id = $2`, tenantID, userID); err != nil {
 		return err
 	}
-	return r.AttachRoles(ctx, q, userID, roleIDs)
+	return r.AttachRoles(ctx, q, tenantID, userID, roleIDs)
 }

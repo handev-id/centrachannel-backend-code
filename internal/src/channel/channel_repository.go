@@ -13,4 +13,6 @@ type DBTX interface {
 
 type ChannelRepository interface {
 	List(ctx context.Context, q DBTX) ([]Channel, error)
+	GetByID(ctx context.Context, q DBTX, id int) (*Channel, error)
+	GetByType(ctx context.Context, q DBTX, channelType string) (*Channel, error)
 }

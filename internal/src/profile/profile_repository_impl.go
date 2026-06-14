@@ -80,6 +80,21 @@ func (r *profileRepository) GetByID(ctx context.Context, q DBTX, id int) (*Profi
 	return scanProfile(q.QueryRowContext(ctx, query, id))
 }
 
+func (r *profileRepository) GetByExternalIDAndChannelID(ctx context.Context, q DBTX, externalID string, channelID int) (*Profile, error) {
+	query := `SELECT id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE external_id = $1 AND channel_id = $2 AND deleted_at IS NULL`
+	return scanProfile(q.QueryRowContext(ctx, query, externalID, channelID))
+}
+
+func (r *profileRepository) Create(ctx context.Context, q DBTX, profile *Profile) (int, error) {
+	query := `INSERT INTO profiles (external_id, username, display_name, is_main, linked_device_whatsapp_id, contact_id, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`
+	var id int
+	err := q.QueryRowContext(ctx, query, profile.ExternalID, profile.Username, profile.DisplayName, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.ContactID, profile.ChannelID, time.Now(), time.Now()).Scan(&id)
+	if err != nil {
+		return 0, err
+	}
+	return id, nil
+}
+
 func (r *profileRepository) Update(ctx context.Context, q DBTX, id int, profile *Profile) error {
 	query := `UPDATE profiles SET is_main=$1, linked_device_whatsapp_id=$2, display_name=$3, updated_at=$4 WHERE id=$5 AND deleted_at IS NULL`
 	result, err := q.ExecContext(ctx, query, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.DisplayName, time.Now(), id)

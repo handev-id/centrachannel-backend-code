@@ -3,12 +3,17 @@ package campaign
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	"centrachannel/config"
+	"centrachannel/internal/messenger"
+	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/tenant"
+	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/logger"
 )
 
@@ -35,14 +40,16 @@ type CampaignService interface {
 }
 
 type campaignService struct {
-	repo   CampaignRepository
-	db     *sql.DB
-	cfg    *config.Config
-	logger *logger.Logger
+	repo       CampaignRepository
+	deviceRepo whatsapp_device.WhatsAppDeviceRepository
+	channelRepo channel.ChannelRepository
+	db         *sql.DB
+	cfg        *config.Config
+	logger     *logger.Logger
 }
 
-func NewCampaignService(repo CampaignRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) CampaignService {
-	return &campaignService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewCampaignService(repo CampaignRepository, deviceRepo whatsapp_device.WhatsAppDeviceRepository, channelRepo channel.ChannelRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) CampaignService {
+	return &campaignService{repo: repo, deviceRepo: deviceRepo, channelRepo: channelRepo, db: db, cfg: cfg, logger: logger}
 }
 
 func (s *campaignService) List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
@@ -202,12 +209,61 @@ func (s *campaignService) Send(ctx context.Context, tenantID int, id int) error 
 	return nil
 }
 
+func (s *campaignService) loadTemplateText(campaign *Campaign) (string, error) {
+	if campaign.TemplateID == nil {
+		return campaign.MessageTemplate, nil
+	}
+
+	tmpl, err := s.repo.GetTemplateByID(context.Background(), s.db, campaign.TenantID, *campaign.TemplateID)
+	if err != nil || tmpl == nil {
+		s.logger.Warn("Template %d not found for campaign %d, falling back to message_template", *campaign.TemplateID, campaign.ID)
+		return campaign.MessageTemplate, nil
+	}
+
+	var content struct {
+		Text string `json:"text"`
+	}
+	if err := json.Unmarshal(tmpl.Content, &content); err != nil || content.Text == "" {
+		return campaign.MessageTemplate, nil
+	}
+
+	return content.Text, nil
+}
+
 func (s *campaignService) processSend(ctx context.Context, tenantID int, campaignID int) {
+	campaign, err := s.repo.GetByID(ctx, s.db, tenantID, campaignID)
+	if err != nil {
+		s.logger.Error("Failed to get campaign %d: %v", campaignID, err)
+		return
+	}
+
+	templateText, err := s.loadTemplateText(campaign)
+	if err != nil {
+		s.logger.Error("Failed to load template for campaign %d: %v", campaignID, err)
+		s.repo.Update(ctx, s.db, tenantID, campaignID, &Campaign{Status: "failed"})
+		return
+	}
+
+	ch, err := s.channelRepo.GetByID(ctx, s.db, campaign.ChannelID)
+	if err != nil {
+		s.logger.Error("Failed to get channel for campaign %d: %v", campaignID, err)
+		s.repo.Update(ctx, s.db, tenantID, campaignID, &Campaign{Status: "failed"})
+		return
+	}
+
+	var device *whatsapp_device.WhatsAppDevice
+	if campaign.SenderID != nil && s.cfg.EvolutionAPIURL != "" {
+		device, err = s.deviceRepo.GetByID(ctx, s.db, tenantID, *campaign.SenderID)
+		if err != nil {
+			s.logger.Error("Failed to get sender device for campaign %d: %v", campaignID, err)
+		}
+	}
+
 	batchSize := 50
 	sentCount := 0
 
 	for {
-		recipients, err := s.repo.GetPendingRecipients(ctx, s.db, campaignID, batchSize)
+		recipients, err := s.repo.GetPendingRecipientsWithPhone(ctx, s.db, campaignID, batchSize)
 		if err != nil {
 			s.logger.Error("Failed to get pending recipients for campaign %d: %v", campaignID, err)
 			s.repo.Update(ctx, s.db, tenantID, campaignID, &Campaign{Status: "failed"})
@@ -217,20 +273,63 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 
 		for _, r := range recipients {
 			now := time.Now()
+			status := "delivered"
+			var failedReason *string
 
-			if err := s.repo.UpdateRecipientStatus(ctx, s.db, r.ID, "delivered", nil, &sql.NullTime{Time: now, Valid: true}); err != nil {
-				s.logger.Error("Failed to update recipient %d: %v", r.ID, err)
-				errMsg := err.Error()
-				s.repo.UpdateRecipientStatus(ctx, s.db, r.ID, "failed", &errMsg, nil)
-				continue
+			if device != nil && (ch.Type == "whatsapp" || ch.Type == "whatsapp_business") && r.Phone != "" {
+				evoCfg := messenger.EvolutionConfig{
+					APIURL:   s.cfg.EvolutionAPIURL,
+					APIKey:   s.cfg.EvolutionAPIKey,
+					DeviceID: device.WhatsappID,
+				}
+				sender := messenger.NewEvolutionSender(evoCfg)
+				recipientID := r.Phone
+				if !strings.HasPrefix(recipientID, "+") && !strings.HasPrefix(recipientID, "55") {
+					recipientID = device.CountryCode + r.Phone
+				}
+
+				text := templateText
+				if r.Message != "" {
+					text = r.Message
+				}
+				firstName := r.FirstName
+				if firstName == "" {
+					firstName = r.Phone
+				}
+				text = strings.NewReplacer(
+					"{{first_name}}", firstName,
+					"{{phone}}", r.Phone,
+				).Replace(text)
+
+				outMsg := &messenger.OutgoingMessage{
+					ChannelType: ch.Type,
+					RecipientID: recipientID,
+					Text:        &text,
+				}
+
+				if _, err := sender.Send(outMsg); err != nil {
+					s.logger.Error("Failed to send campaign message to %s: %v", r.Phone, err)
+					status = "failed"
+					errStr := err.Error()
+					failedReason = &errStr
+				}
 			}
-			sentCount++
+
+			if err := s.repo.UpdateRecipientStatus(ctx, s.db, r.ID, status, failedReason, &sql.NullTime{Time: now, Valid: true}); err != nil {
+				s.logger.Error("Failed to update recipient %d: %v", r.ID, err)
+			}
+			if status == "delivered" {
+				sentCount++
+			}
+
+			time.Sleep(1200 * time.Millisecond)
 		}
 	}
 
 	finalStatus := "sent"
 	remaining, err := s.repo.CountPendingRecipients(ctx, s.db, campaignID)
 	if err == nil && remaining > 0 { finalStatus = "partial" }
+	if sentCount == 0 { finalStatus = "failed" }
 
 	s.repo.Update(ctx, s.db, tenantID, campaignID, &Campaign{
 		Status:    finalStatus,

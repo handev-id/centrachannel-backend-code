@@ -8,7 +8,6 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 
-	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/tenant"
 )
 
@@ -34,4 +33,4 @@ func ParseJSON(resp *httptest.ResponseRecorder, v interface{}) error {
 	return json.Unmarshal(body, v)
 }
 
-var _ = middleware.GetTenant
+

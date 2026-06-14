@@ -29,12 +29,24 @@ func (m *mockDB) QueryRowContext(ctx context.Context, query string, args ...inte
 }
 
 type mockChannelRepository struct {
-	listFunc func(ctx context.Context, q DBTX) ([]Channel, error)
+	listFunc    func(ctx context.Context, q DBTX) ([]Channel, error)
+	getByTypeFunc func(ctx context.Context, q DBTX, channelType string) (*Channel, error)
 }
 
 func (m *mockChannelRepository) List(ctx context.Context, q DBTX) ([]Channel, error) {
 	if m.listFunc != nil {
 		return m.listFunc(ctx, q)
+	}
+	return nil, nil
+}
+
+func (m *mockChannelRepository) GetByID(ctx context.Context, q DBTX, id int) (*Channel, error) {
+	return nil, nil
+}
+
+func (m *mockChannelRepository) GetByType(ctx context.Context, q DBTX, channelType string) (*Channel, error) {
+	if m.getByTypeFunc != nil {
+		return m.getByTypeFunc(ctx, q, channelType)
 	}
 	return nil, nil
 }

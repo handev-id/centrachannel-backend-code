@@ -9,7 +9,11 @@ import (
 	"time"
 
 	"centrachannel/config"
+	"centrachannel/internal/messenger"
+	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/conversation"
+	"centrachannel/internal/src/profile"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
 	"centrachannel/internal/ws"
 )
@@ -23,14 +27,17 @@ type MessageService interface {
 type messageService struct {
 	repo         MessageRepository
 	convRepo     conversation.ConversationRepository
+	profileRepo  profile.ProfileRepository
+	channelRepo  channel.ChannelRepository
+	tenantRepo   tenant.TenantRepository
 	db           *sql.DB
 	cfg          *config.Config
 	logger       *logger.Logger
 	notifier     ws.Notifier
 }
 
-func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) MessageService {
-	svc := &messageService{repo: repo, convRepo: convRepo, db: db, cfg: cfg, logger: logger}
+func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) MessageService {
+	svc := &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger}
 	if len(notifier) > 0 {
 		svc.notifier = notifier[0]
 	}
@@ -111,11 +118,120 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	msg.CreatedAt = time.Now()
 	msg.UpdatedAt = time.Now()
 
+	// Send to external platform via messenger (non-blocking)
+	go s.deliverToExternal(tenantID, conversationID, msg)
+
 	if s.notifier != nil {
 		s.notifier.Notify(tenantID, "message:new", msg)
 	}
 
 	return msg, nil
+}
+
+func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg *Message) {
+	ctx := context.Background()
+
+	conv, err := s.convRepo.GetByID(ctx, s.db, tenantID, conversationID)
+	if err != nil {
+		s.logger.Error("failed to get conversation for external delivery: %v", err)
+		return
+	}
+
+	prof, err := s.profileRepo.GetByID(ctx, s.db, conv.ProfileID)
+	if err != nil {
+		s.logger.Error("failed to get profile for external delivery: %v", err)
+		return
+	}
+
+	ch, err := s.channelRepo.GetByID(ctx, s.db, conv.ChannelID)
+	if err != nil {
+		s.logger.Error("failed to get channel for external delivery: %v", err)
+		return
+	}
+
+	// Look up tenant channel configuration (per-tenant credentials)
+	t, err := s.tenantRepo.GetByID(ctx, s.db, tenantID)
+	if err != nil {
+		s.logger.Error("failed to get tenant config for external delivery: %v", err)
+		return
+	}
+
+	settings, err := tenant.ParseSettings(t.Settings)
+	if err != nil {
+		s.logger.Error("failed to parse tenant settings: %v", err)
+		return
+	}
+
+	var sender messenger.Messenger
+	switch ch.Type {
+	case "facebook", "instagram":
+		cfg := messenger.MetaConfig{}
+		if settings.ChannelConfiguration != nil {
+			cfg = messenger.MetaConfig{
+				AccessToken:     settings.ChannelConfiguration.MetaAccessToken,
+				WhatsappPhoneID: settings.ChannelConfiguration.WhatsappPhoneID,
+			}
+		}
+		sender = messenger.NewMetaSender(cfg)
+	case "whatsapp_business":
+		instance := ""
+		if settings.ChannelConfiguration != nil {
+			instance = settings.ChannelConfiguration.EvolutionBusinessInstance
+		}
+		if instance != "" && s.cfg.EvolutionAPIURL != "" {
+			evoCfg := messenger.EvolutionConfig{
+				APIURL:   s.cfg.EvolutionAPIURL,
+				APIKey:   s.cfg.EvolutionAPIKey,
+				DeviceID: instance,
+			}
+			sender = messenger.NewEvolutionSender(evoCfg)
+		} else {
+			cfg := messenger.MetaConfig{}
+			if settings.ChannelConfiguration != nil {
+				cfg = messenger.MetaConfig{
+					AccessToken:     settings.ChannelConfiguration.MetaAccessToken,
+					WhatsappPhoneID: settings.ChannelConfiguration.WhatsappPhoneID,
+				}
+			}
+			sender = messenger.NewMetaSender(cfg)
+		}
+	case "whatsapp":
+		if prof.LinkedDeviceWhatsappID == nil || *prof.LinkedDeviceWhatsappID == "" {
+			s.logger.Error("profile %d has no linked device for whatsapp delivery", prof.ID)
+			return
+		}
+		evoCfg := messenger.EvolutionConfig{
+			APIURL:   s.cfg.EvolutionAPIURL,
+			APIKey:   s.cfg.EvolutionAPIKey,
+			DeviceID: *prof.LinkedDeviceWhatsappID,
+		}
+		if evoCfg.APIURL == "" {
+			s.logger.Warn("evolution api url not configured, falling back to mock sender")
+			sender = messenger.NewMockSender()
+		} else {
+			sender = messenger.NewEvolutionSender(evoCfg)
+		}
+	default:
+		sender = messenger.NewMockSender()
+	}
+
+	extMsg := &messenger.OutgoingMessage{
+		ChannelType: ch.Type,
+		RecipientID: prof.ExternalID,
+		Text:        msg.Text,
+		Attachment:  msg.Attachment,
+	}
+
+	extID, err := sender.Send(extMsg)
+	if err != nil {
+		s.logger.Error("failed to deliver message to %s (conv=%d): %v", ch.Type, conversationID, err)
+		_ = s.repo.UpdateStatus(ctx, s.db, msg.ID, "failed")
+		return
+	}
+
+	if extID != "sent" {
+		_ = s.repo.UpdateWebhookID(ctx, s.db, msg.ID, extID)
+	}
 }
 
 func (s *messageService) UpdateStatus(ctx context.Context, id int, status string) error {

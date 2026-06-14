@@ -19,6 +19,6 @@ type UserRepository interface {
 	SoftDelete(ctx context.Context, q DBTX, tenantID int, id int) error
 	GetRolesByUserID(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error)
 	GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID int, userIDs []int) (map[int][]Role, error)
-	AttachRoles(ctx context.Context, q DBTX, userID int, roleIDs []int) error
-	SyncRoles(ctx context.Context, q DBTX, userID int, roleIDs []int) error
+	AttachRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error
+	SyncRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error
 }

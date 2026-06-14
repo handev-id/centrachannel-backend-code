@@ -14,6 +14,7 @@ type DBTX interface {
 type WhatsAppDeviceRepository interface {
 	List(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error)
 	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error)
+	GetByWhatsappID(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error)
 	Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error)
 	Update(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error
 	Delete(ctx context.Context, q DBTX, tenantID int, id int) error

@@ -21,6 +21,7 @@ type CampaignRepository interface {
 	UpdateRecipientStatus(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error
 	CountPendingRecipients(ctx context.Context, q DBTX, campaignID int) (int, error)
 	GetPendingRecipients(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error)
+	GetPendingRecipientsWithPhone(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipientWithPhone, error)
 	ListTemplates(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error)
 	GetTemplateByID(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignTemplate, error)
 	CreateTemplate(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error)

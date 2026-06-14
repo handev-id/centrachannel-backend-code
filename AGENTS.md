@@ -38,7 +38,13 @@ centrachannel/
 ├── internal/
 │   ├── src/
 │   │   ├── auth/
-│   │   └── user/
+│   │   ├── user/
+│   │   └── ... (feature dirs)
+│   ├── messenger/
+│   │   ├── messenger.go
+│   │   ├── meta.go
+│   │   ├── mock.go
+│   │   └── dispatcher.go
 │   ├── middleware/
 │   ├── utils/
 │   │   ├── exception/
@@ -467,6 +473,47 @@ Priorities:
 4. Performance
 
 Never sacrifice readability for clever code.
+
+---
+
+---
+
+# Channel Credentials (Multi-Tenant)
+
+Every tenant has its own Meta API credentials stored in the `tenants.settings` JSONB column:
+
+```json
+{
+  "channel_configuration": {
+    "meta_access_token": "...",
+    "whatsapp_phone_id": "..."
+  }
+}
+```
+
+- These credentials are **per-tenant**, not global env vars
+- The message service loads them from the database via `tenantRepo.GetByID()` on every send
+- Meta credentials are used for `facebook`, `instagram`, and `whatsapp_business` channels
+- `whatsapp` (unofficial) uses `MockSender` — no credentials needed
+
+---
+
+# Messenger Package
+
+`internal/messenger/` handles sending messages to external platforms:
+
+- `Messenger` interface with `Send(msg) (string, error)`
+- `MetaSender` — sends to Facebook/Instagram/WhatsApp Business via Meta Graph API v22.0
+- `MockSender` — mock for WhatsApp unofficial channel
+- `NewSender(channelType, MetaConfig)` — factory that creates the right sender
+
+The message service calls `deliverToExternal()` in a goroutine after saving the message to DB:
+
+1. Lookup conversation → profile (external_id) → channel (type)
+2. Load tenant settings → parse `channel_configuration`
+3. Create sender and call `Send()`
+4. On success: save Meta `message_id` to `messages.webhook_message_id`
+5. On failure: update message status to `"failed"`
 
 ---
 

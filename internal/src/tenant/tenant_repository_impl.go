@@ -47,10 +47,44 @@ func (r *tenantRepository) CreateUser(ctx context.Context, q DBTX, user *User) (
 	return id, nil
 }
 
-func (r *tenantRepository) AttachRole(ctx context.Context, q DBTX, userID, roleID int) error {
-	query := `INSERT INTO role_user (user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4)`
-	_, err := q.ExecContext(ctx, query, userID, roleID, time.Now(), time.Now())
+func (r *tenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
+	query := `INSERT INTO role_user (tenant_id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`
+	_, err := q.ExecContext(ctx, query, tenantID, userID, roleID, time.Now(), time.Now())
 	return err
+}
+
+func (r *tenantRepository) GetByID(ctx context.Context, q DBTX, id int) (*Tenant, error) {
+	query := `SELECT id, name, domain, logo, address, phone, email, is_active, settings, created_at, updated_at FROM tenants WHERE id = $1`
+	return scanTenant(q.QueryRowContext(ctx, query, id))
+}
+
+func (r *tenantRepository) GetByMetaPageID(ctx context.Context, q DBTX, pageID string) (*Tenant, error) {
+	query := `SELECT id, name, domain, logo, address, phone, email, is_active, settings, created_at, updated_at FROM tenants WHERE settings->'channel_configuration'->>'meta_page_id' = $1`
+	return scanTenant(q.QueryRowContext(ctx, query, pageID))
+}
+
+func (r *tenantRepository) GetByMetaInstagramBusinessID(ctx context.Context, q DBTX, igID string) (*Tenant, error) {
+	query := `SELECT id, name, domain, logo, address, phone, email, is_active, settings, created_at, updated_at FROM tenants WHERE settings->'channel_configuration'->>'meta_instagram_business_id' = $1`
+	return scanTenant(q.QueryRowContext(ctx, query, igID))
+}
+
+func scanTenant(row interface{ Scan(dest ...interface{}) error }) (*Tenant, error) {
+	var t Tenant
+	var logo, settings sql.NullString
+	var address, phone, email sql.NullString
+
+	err := row.Scan(&t.ID, &t.Name, &t.Domain, &logo, &address, &phone, &email, &t.IsActive, &settings, &t.CreatedAt, &t.UpdatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	if logo.Valid { t.Logo = json.RawMessage(logo.String) }
+	if address.Valid { t.Address = &address.String }
+	if phone.Valid { t.Phone = &phone.String }
+	if email.Valid { t.Email = &email.String }
+	if settings.Valid { t.Settings = json.RawMessage(settings.String) }
+
+	return &t, nil
 }
 
 func (r *tenantRepository) List(ctx context.Context, q DBTX) ([]Tenant, error) {

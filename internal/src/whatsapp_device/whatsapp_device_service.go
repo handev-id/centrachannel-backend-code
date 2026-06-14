@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"centrachannel/config"
@@ -62,6 +63,13 @@ func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequ
 	device.ID = id
 	device.CreatedAt = time.Now()
 	device.UpdatedAt = time.Now()
+
+	if s.client != nil && s.cfg.EvolutionAPIURL != "" {
+		if err := s.client.CreateInstance(ctx, device); err != nil {
+			s.logger.Warn("failed to create evolution instance: %v", err)
+		}
+	}
+
 	return device, nil
 }
 
@@ -84,6 +92,17 @@ func (s *whatsAppDeviceService) Update(ctx context.Context, tenantID int, id int
 }
 
 func (s *whatsAppDeviceService) Delete(ctx context.Context, tenantID int, id int) error {
+	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
+	if err != nil {
+		return err
+	}
+
+	if s.client != nil && s.cfg.EvolutionAPIURL != "" {
+		if err := s.client.DeleteInstance(ctx, device); err != nil {
+			s.logger.Warn("failed to delete evolution instance: %v", err)
+		}
+	}
+
 	return s.repo.Delete(ctx, s.db, tenantID, id)
 }
 
@@ -95,6 +114,12 @@ func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id in
 	if s.client != nil {
 		if _, err := s.client.CheckConnection(ctx, device); err != nil {
 			return nil, err
+		}
+		if s.cfg.EvolutionAPIURL != "" && s.cfg.WebhookBaseURL != "" {
+			webhookURL := strings.TrimRight(s.cfg.WebhookBaseURL, "/") + "/webhook/evolution"
+			if err := s.client.SetWebhook(ctx, device, webhookURL); err != nil {
+				s.logger.Warn("failed to set webhook: %v", err)
+			}
 		}
 	}
 	device.Status = "CONNECTED"
@@ -122,7 +147,14 @@ func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id
 }
 
 func (s *whatsAppDeviceService) Scan(ctx context.Context, tenantID int, id int) (string, error) {
-	return "mock-qr-code-data-for-device-" + time.Now().Format("20060102150405"), nil
+	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
+	if err != nil {
+		return "", err
+	}
+	if s.client != nil && s.cfg.EvolutionAPIURL != "" {
+		return s.client.GetQR(ctx, device)
+	}
+	return fmt.Sprintf("mock_qr_%d", time.Now().UnixMilli()), nil
 }
 
 func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID int, deviceID int, to string, text string) (*MessageResult, error) {

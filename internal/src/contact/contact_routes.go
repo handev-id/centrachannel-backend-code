@@ -1,14 +1,20 @@
 package contact
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"github.com/gofiber/fiber/v3"
+
+	"centrachannel/internal/middleware"
+)
 
 func RegisterRoutes(group fiber.Router, handler *ContactHandler) {
-	group.Get("/", handler.List)
-	group.Post("/", handler.Store)
-	group.Get("/:id", handler.Show)
-	group.Put("/:id", handler.Update)
-	group.Delete("/:id", handler.Delete)
-	group.Post("/:id/merge", handler.Merge)
-	group.Post("/:id/unmerge", handler.Unmerge)
-	group.Get("/:id/conversations", handler.Conversations)
+	group.Get("/", middleware.Tenant(handler.List))
+	group.Post("/", middleware.Tenant(handler.Store))
+	group.Get("/export", middleware.Tenant(handler.ExportCSV))
+	group.Post("/import", middleware.Tenant(handler.ImportCSV))
+	group.Get("/:id", middleware.Tenant(handler.Show))
+	group.Put("/:id", middleware.Tenant(handler.Update))
+	group.Delete("/:id", middleware.Tenant(handler.Delete))
+	group.Post("/:id/merge", middleware.Tenant(handler.Merge))
+	group.Post("/:id/unmerge", middleware.Tenant(handler.Unmerge))
+	group.Get("/:id/conversations", middleware.Tenant(handler.Conversations))
 }

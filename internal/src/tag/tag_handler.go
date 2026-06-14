@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -24,11 +24,7 @@ func NewTagHandlerWithService(service TagService) *TagHandler {
 	return &TagHandler{service: service}
 }
 
-func (h *TagHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *TagHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	tags, err := h.service.List(c.Context(), t.ID)
 	if err != nil {
@@ -37,11 +33,7 @@ func (h *TagHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", tags)
 }
 
-func (h *TagHandler) Store(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *TagHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 	var req CreateTagRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -55,11 +47,7 @@ func (h *TagHandler) Store(c fiber.Ctx) error {
 	return response.Created(c, "Tag created", tag)
 }
 
-func (h *TagHandler) Update(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *TagHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -78,11 +66,7 @@ func (h *TagHandler) Update(c fiber.Ctx) error {
 	return response.OK(c, "Tag updated", tag)
 }
 
-func (h *TagHandler) Delete(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *TagHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

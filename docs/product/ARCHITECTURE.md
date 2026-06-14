@@ -104,9 +104,10 @@ centrachannel/
 │   │   ├── profile/
 │   │   ├── conversation/
 │   │   ├── message/
-│   │   ├── message_raw/
+│   │   ├── campaign/
 │   │   ├── tag/
 │   │   ├── note/
+│   │   ├── conversation_tag/
 │   │   └── whatsapp_device/
 │   ├── middleware/
 │   │   ├── tenant_middleware.go
@@ -115,7 +116,18 @@ centrachannel/
 │   │   ├── exception/
 │   │   ├── hash/
 │   │   ├── logger/
-│   │   └── response/
+│   │   ├── response/
+│   │   └── avatar/
+│   ├── messenger/
+│   │   ├── messenger.go         # OutgoingMessage + Messenger interface
+│   │   ├── meta.go              # MetaSender (fb/ig direct)
+│   │   ├── evolution.go         # EvolutionSender (wa/wa_business via Evolution API)
+│   │   ├── mock.go              # MockSender (fallback)
+│   │   └── dispatcher.go        # NewSender factory
+│   ├── ws/
+│   │   ├── hub.go
+│   │   ├── handler.go
+│   │   └── notifier.go
 │   └── di/
 │       └── container.go
 ├── test/
@@ -190,20 +202,142 @@ https://api.dicebear.com/9.x/initials/svg?seed={name}
 
 ### Channel Types
 
-| Type | Description |
-|------|-------------|
-| facebook | Facebook Page integration |
-| instagram | Instagram Professional integration |
-| whatsapp_business | Official WhatsApp Business API (Meta) |
-| whatsapp | Unofficial/third-party WhatsApp (mock for MVP) |
+| Type | Backend | Description |
+|------|---------|-------------|
+| facebook | Meta Graph API (direct) | Facebook Page integration |
+| instagram | Meta Graph API (direct) | Instagram Professional integration |
+| whatsapp_business | Evolution API (→ Meta Graph API) | Official WhatsApp Business API, proxied via Evolution API |
+| whatsapp | Evolution API (→ Baileys) | Unofficial WhatsApp Web via Baileys library |
 
 Channels are global records (shared across all tenants) with no `tenant_id`.
 
-### WhatsApp Unofficial (MVP)
+### Per-Tenant Channel Credentials
 
-- Device config stored in `whatsapp_devices` table
-- Connect/disconnect/scan endpoints return mock responses
-- Actual integration is Phase 2/3
+Each tenant stores its own channel credentials in `tenants.settings` JSONB:
+
+```json
+{
+  "channel_configuration": {
+    "meta_access_token": "...",
+    "whatsapp_phone_id": "...",
+    "evolution_business_instance": "t1-waba"
+  }
+}
+```
+
+- `meta_access_token` / `whatsapp_phone_id` — used by direct Meta sender (fallback for WhatsApp Business, primary for Facebook/Instagram)
+- `evolution_business_instance` — Evolution API instance name for WhatsApp Business (WHATSAPP-BUSINESS integration)
+
+These are set during tenant onboarding and can be updated via tenant settings API.
+
+### WhatsApp Device Management
+
+Each tenant can register multiple WhatsApp devices (unofficial) in `whatsapp_devices`:
+
+| Field | Description |
+|-------|-------------|
+| `whatsapp_id` | Evolution API instance name (matches the instance created on Evolution API server) |
+| `status` | `CONNECTED` / `DISCONNECTED` |
+| `phone` | Phone number associated |
+
+Device CRUD plus `connect`, `disconnect`, `scan` (QR code) endpoints interact with the Evolution API instance management endpoints.
+
+### Profile-to-Device Linking
+
+When a profile is created via webhook from an Evolution API instance, the profile's `linked_device_whatsapp_id` is set to the sending device's `whatsapp_id`. This links incoming messages to the correct outbound device for replies.
+
+### Messenger Architecture
+
+```
+                        ┌──────────────────┐
+                        │   CentraChannel   │
+                        │  (message_service)│
+                        └───────┬──────────┘
+                                │
+                    ┌───────────┴───────────┐
+                    │   channel type switch  │
+                    └───┬───────┬───────┬───┘
+                        │       │       │
+                   ┌────┘   ┌───┘   ┌───┘
+                   ▼        ▼       ▼
+             ┌─────────┐ ┌─────┐ ┌──────┐
+             │ FB / IG │ │ WA  │ │ WA   │
+             │         │ │Biz  │ │Unoff │
+             └────┬────┘ └──┬──┘ └──┬───┘
+                  │         │       │
+                  ▼         ▼       ▼
+          ┌──────────┐ ┌──────────────────┐
+          │Meta Graph│ │  Evolution API   │
+          │ API v22  │ │ (REST + apikey)  │
+          │ (direct) │ ├────────┬────────┤
+          └──────────┘ │Baileys │ Meta   │
+                       │(Web)   │(Cloud) │
+                       └────────┴────────┘
+```
+
+### Messenger Package
+
+`internal/messenger/` handles outbound messages to external platforms:
+
+| Sender | Channel Types | Backend |
+|--------|--------------|---------|
+| **`MetaSender`** | `facebook`, `instagram` | Meta Graph API v22.0 (direct) |
+| **`EvolutionSender`** | `whatsapp`, `whatsapp_business` | Evolution API (proxied) |
+| **`MockSender`** | fallback | Returns mock message ID |
+
+#### Sender Selection Logic
+
+```
+ch.Type = "facebook" / "instagram"
+  → MetaSender (direct to Meta Graph API)
+
+ch.Type = "whatsapp_business"
+  → EvolutionSender if tenant has evolution_business_instance configured
+  → MetaSender (direct fallback)
+
+ch.Type = "whatsapp"
+  → EvolutionSender if profile has linked_device_whatsapp_id
+  → MockSender (fallback)
+```
+
+#### EvolutionSender (`internal/messenger/evolution.go`)
+
+- Sends to `POST /message/sendText/{instanceName}` and `POST /message/sendMedia/{instanceName}`
+- Authenticated via `apikey` header
+- Returns Evolution API message key as `webhook_message_id`
+- Instance name is determined by the channel type:
+  - `whatsapp`: `profile.linked_device_whatsapp_id`
+  - `whatsapp_business`: `tenant.settings.channel_configuration.evolution_business_instance`
+
+#### Message Delivery Flow
+
+When a user sends a message:
+1. Message saved to DB in a transaction (with `status = "sent"`)
+2. `deliverToExternal()` runs in a goroutine (non-blocking)
+3. Lookup: conversation → profile (external_id) → channel (type)
+4. Load tenant settings → parse `channel_configuration`
+5. Select sender based on channel type (see selection logic above)
+6. Call `Send()` with recipient's external ID and message content
+7. On success: store external message ID in `messages.webhook_message_id`
+8. On failure: update message status to `"failed"`
+
+### WhatsApp Device Client (`internal/src/whatsapp_device/`)
+
+| Client | Description |
+|--------|-------------|
+| **`EvolutionClient`** | Real implementation using Evolution API REST endpoints |
+| **`MockClient`** | Mock for testing (returns success without API calls) |
+
+`EvolutionClient` implements `WhatsAppClient` interface:
+
+| Method | Evolution API Endpoint |
+|--------|----------------------|
+| `GetQR()` | `GET /instance/connect/{whatsapp_id}` |
+| `CheckConnection()` | `GET /instance/connectionState/{whatsapp_id}` |
+| `Disconnect()` | `DELETE /instance/delete/{whatsapp_id}` |
+| `SendMessage()` | `POST /message/sendText/{whatsapp_id}` |
+
+Used by device management endpoints (`/api/whatsapp-devices/:id/scan|connect|disconnect`).
 
 ### Campaign (Phase 3)
 

@@ -59,7 +59,7 @@ type mockTenantRepository struct {
 	createFn     func(ctx context.Context, q DBTX, tenant *Tenant) (int, error)
 	createRoleFn func(ctx context.Context, q DBTX, tenantID int, name string) (int, error)
 	createUserFn func(ctx context.Context, q DBTX, user *User) (int, error)
-	attachRoleFn func(ctx context.Context, q DBTX, userID, roleID int) error
+	attachRoleFn func(ctx context.Context, q DBTX, tenantID, userID, roleID int) error
 	listFn       func(ctx context.Context, q DBTX) ([]Tenant, error)
 }
 
@@ -75,12 +75,22 @@ func (m *mockTenantRepository) CreateUser(ctx context.Context, q DBTX, user *Use
 	return m.createUserFn(ctx, q, user)
 }
 
-func (m *mockTenantRepository) AttachRole(ctx context.Context, q DBTX, userID, roleID int) error {
-	return m.attachRoleFn(ctx, q, userID, roleID)
+func (m *mockTenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
+	return m.attachRoleFn(ctx, q, tenantID, userID, roleID)
 }
 
 func (m *mockTenantRepository) List(ctx context.Context, q DBTX) ([]Tenant, error) {
 	return m.listFn(ctx, q)
+}
+
+func (m *mockTenantRepository) GetByID(ctx context.Context, q DBTX, id int) (*Tenant, error) {
+	return &Tenant{}, nil
+}
+func (m *mockTenantRepository) GetByMetaPageID(ctx context.Context, q DBTX, pageID string) (*Tenant, error) {
+	return nil, nil
+}
+func (m *mockTenantRepository) GetByMetaInstagramBusinessID(ctx context.Context, q DBTX, igID string) (*Tenant, error) {
+	return nil, nil
 }
 
 func newMockDB() *sql.DB {
@@ -129,13 +139,16 @@ func TestOnboard(t *testing.T) {
 				}
 				return 100, nil
 			},
-			attachRoleFn: func(ctx context.Context, q DBTX, userID, roleID int) error {
+			attachRoleFn: func(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
 				calls = append(calls, "AttachRole")
 				if userID != 100 {
 					t.Errorf("unexpected userID for role attach: %d", userID)
 				}
 				if roleID != 10 {
 					t.Errorf("expected super_admin role (10), got %d", roleID)
+				}
+				if tenantID != 1 {
+					t.Errorf("expected tenantID 1, got %d", tenantID)
 				}
 				return nil
 			},
@@ -208,7 +221,7 @@ func TestOnboard(t *testing.T) {
 			createUserFn: func(ctx context.Context, q DBTX, user *User) (int, error) {
 				return 100, nil
 			},
-			attachRoleFn: func(ctx context.Context, q DBTX, userID, roleID int) error {
+			attachRoleFn: func(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
 				return nil
 			},
 		}

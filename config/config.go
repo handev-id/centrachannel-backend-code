@@ -38,6 +38,14 @@ type Config struct {
 	MaxFileSize   int64
 	LogLevel      string
 	LogFormat     string
+
+	// Evolution API
+	EvolutionAPIURL   string
+	EvolutionAPIKey   string
+	WebhookBaseURL    string
+
+	// Meta Webhook
+	MetaWebhookSecret string
 }
 
 type DatabaseConfig struct {
@@ -104,6 +112,12 @@ func Load() (*Config, error) {
         MaxFileSize: getEnvInt64("MAX_FILE_SIZE", 10485760),
         LogLevel:    getEnv("LOG_LEVEL", "info"),
         LogFormat:   getEnv("LOG_FORMAT", "json"),
+
+        EvolutionAPIURL:  getEnv("EVOLUTION_API_URL", ""),
+        EvolutionAPIKey:  getEnv("EVOLUTION_API_KEY", ""),
+        WebhookBaseURL:   getEnv("WEBHOOK_BASE_URL", ""),
+        MetaWebhookSecret: getEnv("META_WEBHOOK_SECRET", ""),
+
     }
 
     // Validate required fields using go-playground/validator

@@ -1,10 +1,14 @@
 package tag
 
-import "github.com/gofiber/fiber/v3"
+import (
+	"github.com/gofiber/fiber/v3"
+
+	"centrachannel/internal/middleware"
+)
 
 func RegisterRoutes(group fiber.Router, handler *TagHandler) {
-	group.Get("/", handler.List)
-	group.Post("/", handler.Store)
-	group.Put("/:id", handler.Update)
-	group.Delete("/:id", handler.Delete)
+	group.Get("/", middleware.Tenant(handler.List))
+	group.Post("/", middleware.Tenant(handler.Store))
+	group.Put("/:id", middleware.Tenant(handler.Update))
+	group.Delete("/:id", middleware.Tenant(handler.Delete))
 }

@@ -20,4 +20,5 @@ type ConversationRepository interface {
 	Unassign(ctx context.Context, q DBTX, tenantID int, id int) error
 	MarkRead(ctx context.Context, q DBTX, tenantID int, id int) error
 	UpdateLastMessage(ctx context.Context, q DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error
+	GetTotalUnread(ctx context.Context, q DBTX, tenantID int) (int, error)
 }

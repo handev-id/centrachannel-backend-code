@@ -7,6 +7,7 @@ import (
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -24,11 +25,7 @@ func NewNoteHandlerWithService(service NoteService) *NoteHandler {
 	return &NoteHandler{service: service}
 }
 
-func (h *NoteHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *NoteHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	conversationID, err := strconv.Atoi(c.Params("conversationId"))
 	if err != nil {
@@ -42,16 +39,9 @@ func (h *NoteHandler) List(c fiber.Ctx) error {
 	return response.OK(c, "success", notes)
 }
 
-func (h *NoteHandler) Store(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
-	userID, err := middleware.GetUserID(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
+	userID := middleware.GetUserID(c)
+	if userID == 0 { return nil }
 
 	conversationID, err := strconv.Atoi(c.Params("conversationId"))
 	if err != nil {
@@ -70,11 +60,7 @@ func (h *NoteHandler) Store(c fiber.Ctx) error {
 	return response.Created(c, "Note created", note)
 }
 
-func (h *NoteHandler) Update(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *NoteHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -93,11 +79,7 @@ func (h *NoteHandler) Update(c fiber.Ctx) error {
 	return response.OK(c, "Note updated", note)
 }
 
-func (h *NoteHandler) Delete(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *NoteHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

@@ -6,8 +6,10 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/middleware"
+	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/conversation"
+	"centrachannel/internal/src/profile"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 	"centrachannel/internal/ws"
 )
@@ -19,7 +21,10 @@ type MessageHandler struct {
 func NewMessageHandler(c *di.Container, notifier ...ws.Notifier) *MessageHandler {
 	repo := NewMessageRepository()
 	convRepo := conversation.NewConversationRepository()
-	service := NewMessageService(repo, convRepo, c.DB, c.Config, c.Logger, notifier...)
+	profileRepo := profile.NewProfileRepository()
+	channelRepo := channel.NewChannelRepository()
+	tenantRepo := tenant.NewTenantRepository()
+	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger, notifier...)
 	return &MessageHandler{service: service}
 }
 
@@ -28,11 +33,6 @@ func NewMessageHandlerWithService(service MessageService) *MessageHandler {
 }
 
 func (h *MessageHandler) List(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
-
 	conversationID, err := strconv.Atoi(c.Params("conversationId"))
 	if err != nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
@@ -47,15 +47,10 @@ func (h *MessageHandler) List(c fiber.Ctx) error {
 		return response.InternalServerError(c, err.Error())
 	}
 
-	_ = t
 	return response.OK(c, "success", result)
 }
 
-func (h *MessageHandler) Send(c fiber.Ctx) error {
-	t, err := middleware.GetTenant(c)
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
-	}
+func (h *MessageHandler) Send(c fiber.Ctx, t *tenant.Tenant) error {
 
 	conversationID, err := strconv.Atoi(c.Params("conversationId"))
 	if err != nil {

@@ -13,6 +13,9 @@ type WhatsAppClient interface {
 	GetQR(ctx context.Context, device *WhatsAppDevice) (string, error)
 	CheckConnection(ctx context.Context, device *WhatsAppDevice) (bool, error)
 	Disconnect(ctx context.Context, device *WhatsAppDevice) error
+	CreateInstance(ctx context.Context, device *WhatsAppDevice) error
+	DeleteInstance(ctx context.Context, device *WhatsAppDevice) error
+	SetWebhook(ctx context.Context, device *WhatsAppDevice, webhookURL string) error
 }
 
 type MessageResult struct {
@@ -56,5 +59,20 @@ func (c *mockClient) CheckConnection(ctx context.Context, device *WhatsAppDevice
 
 func (c *mockClient) Disconnect(ctx context.Context, device *WhatsAppDevice) error {
 	c.logger.Info("Mock WhatsApp disconnect: device_id=%d", device.ID)
+	return nil
+}
+
+func (c *mockClient) CreateInstance(ctx context.Context, device *WhatsAppDevice) error {
+	c.logger.Info("Mock WhatsApp create instance: device_id=%d, name=%s", device.ID, device.WhatsappID)
+	return nil
+}
+
+func (c *mockClient) DeleteInstance(ctx context.Context, device *WhatsAppDevice) error {
+	c.logger.Info("Mock WhatsApp delete instance: device_id=%d, name=%s", device.ID, device.WhatsappID)
+	return nil
+}
+
+func (c *mockClient) SetWebhook(ctx context.Context, device *WhatsAppDevice, webhookURL string) error {
+	c.logger.Info("Mock WhatsApp set webhook: device_id=%d, url=%s", device.ID, webhookURL)
 	return nil
 }
