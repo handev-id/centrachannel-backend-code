@@ -3,6 +3,7 @@ package whatsapp_device
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
 
 	"centrachannel/config"
@@ -18,6 +19,7 @@ type WhatsAppDeviceService interface {
 	Connect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error)
 	Disconnect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error)
 	Scan(ctx context.Context, tenantID int, id int) (string, error)
+	SendMessage(ctx context.Context, tenantID int, deviceID int, to string, text string) (*MessageResult, error)
 }
 
 type whatsAppDeviceService struct {
@@ -25,10 +27,15 @@ type whatsAppDeviceService struct {
 	db     *sql.DB
 	cfg    *config.Config
 	logger *logger.Logger
+	client WhatsAppClient
 }
 
-func NewWhatsAppDeviceService(repo WhatsAppDeviceRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) WhatsAppDeviceService {
-	return &whatsAppDeviceService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewWhatsAppDeviceService(repo WhatsAppDeviceRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, client ...WhatsAppClient) WhatsAppDeviceService {
+	svc := &whatsAppDeviceService{repo: repo, db: db, cfg: cfg, logger: logger}
+	if len(client) > 0 {
+		svc.client = client[0]
+	}
+	return svc
 }
 
 func (s *whatsAppDeviceService) List(ctx context.Context, tenantID int) ([]WhatsAppDevice, error) {
@@ -85,6 +92,11 @@ func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id in
 	if err != nil {
 		return nil, err
 	}
+	if s.client != nil {
+		if _, err := s.client.CheckConnection(ctx, device); err != nil {
+			return nil, err
+		}
+	}
 	device.Status = "CONNECTED"
 	if err := s.repo.Update(ctx, s.db, tenantID, id, device); err != nil {
 		return nil, err
@@ -97,6 +109,11 @@ func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id
 	if err != nil {
 		return nil, err
 	}
+	if s.client != nil {
+		if err := s.client.Disconnect(ctx, device); err != nil {
+			return nil, err
+		}
+	}
 	device.Status = "DISCONNECTED"
 	if err := s.repo.Update(ctx, s.db, tenantID, id, device); err != nil {
 		return nil, err
@@ -106,4 +123,15 @@ func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id
 
 func (s *whatsAppDeviceService) Scan(ctx context.Context, tenantID int, id int) (string, error) {
 	return "mock-qr-code-data-for-device-" + time.Now().Format("20060102150405"), nil
+}
+
+func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID int, deviceID int, to string, text string) (*MessageResult, error) {
+	device, err := s.repo.GetByID(ctx, s.db, tenantID, deviceID)
+	if err != nil {
+		return nil, err
+	}
+	if s.client == nil {
+		return nil, fmt.Errorf("whatsapp client not configured")
+	}
+	return s.client.SendMessage(ctx, device, to, text)
 }

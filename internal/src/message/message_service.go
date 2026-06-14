@@ -11,6 +11,7 @@ import (
 	"centrachannel/config"
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/utils/logger"
+	"centrachannel/internal/ws"
 )
 
 type MessageService interface {
@@ -25,10 +26,15 @@ type messageService struct {
 	db           *sql.DB
 	cfg          *config.Config
 	logger       *logger.Logger
+	notifier     ws.Notifier
 }
 
-func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) MessageService {
-	return &messageService{repo: repo, convRepo: convRepo, db: db, cfg: cfg, logger: logger}
+func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) MessageService {
+	svc := &messageService{repo: repo, convRepo: convRepo, db: db, cfg: cfg, logger: logger}
+	if len(notifier) > 0 {
+		svc.notifier = notifier[0]
+	}
+	return svc
 }
 
 func (s *messageService) List(ctx context.Context, conversationID int, q ListMessageQuery) (*PaginatedResponse, error) {
@@ -104,6 +110,11 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	msg.ID = id
 	msg.CreatedAt = time.Now()
 	msg.UpdatedAt = time.Now()
+
+	if s.notifier != nil {
+		s.notifier.Notify(tenantID, "message:new", msg)
+	}
+
 	return msg, nil
 }
 

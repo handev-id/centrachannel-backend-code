@@ -9,16 +9,17 @@ import (
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/ws"
 )
 
 type MessageHandler struct {
 	service MessageService
 }
 
-func NewMessageHandler(c *di.Container) *MessageHandler {
+func NewMessageHandler(c *di.Container, notifier ...ws.Notifier) *MessageHandler {
 	repo := NewMessageRepository()
 	convRepo := conversation.NewConversationRepository()
-	service := NewMessageService(repo, convRepo, c.DB, c.Config, c.Logger)
+	service := NewMessageService(repo, convRepo, c.DB, c.Config, c.Logger, notifier...)
 	return &MessageHandler{service: service}
 }
 

@@ -9,6 +9,7 @@ import (
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/auth"
+	"centrachannel/internal/src/campaign"
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/conversation"
@@ -18,10 +19,12 @@ import (
 	"centrachannel/internal/src/note"
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tag"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/ws"
 )
 
 func main() {
@@ -52,15 +55,28 @@ func main() {
 		})
 	})
 
+	hub := ws.NewHub()
+	go hub.Run()
+
 	authHandler := auth.NewAuthHandler(c)
 	auth.RegisterRoutes(app, authHandler)
+
+	tenantHandler := tenant.NewTenantHandler(c)
+	tenant.RegisterPublicRoutes(app, tenantHandler)
 
 	// Protected routes
 	authMw := middleware.AuthMiddleware(cfg)
 
+	wsHandler := ws.NewHandler(hub, cfg)
+	app.Get("/ws", authMw, wsHandler.Handle)
+
 	userGroup := app.Group("/api/user", authMw)
 	userHandler := user.NewUserHandler(c)
 	user.RegisterRoutesByGroup(userGroup, userHandler)
+
+	campaignGroup := app.Group("/api/campaigns", authMw)
+	campaignHandler := campaign.NewCampaignHandler(c)
+	campaign.RegisterRoutes(campaignGroup, campaignHandler)
 
 	channelGroup := app.Group("/api/channels", authMw)
 	channelHandler := channel.NewChannelHandler(c)
@@ -75,10 +91,10 @@ func main() {
 	profile.RegisterRoutes(profileGroup, profileHandler)
 
 	convGroup := app.Group("/api/conversations", authMw)
-	conversationHandler := conversation.NewConversationHandler(c)
+	conversationHandler := conversation.NewConversationHandler(c, hub)
 	conversation.RegisterRoutes(convGroup, conversationHandler)
 
-	messageHandler := message.NewMessageHandler(c)
+	messageHandler := message.NewMessageHandler(c, hub)
 	message.RegisterConversationRoutes(convGroup, messageHandler)
 	msgGroup := app.Group("/api/messages", authMw)
 	message.RegisterRoutes(msgGroup, messageHandler)
@@ -106,6 +122,9 @@ func main() {
 	dashGroup := app.Group("/api/dashboard", authMw)
 	dashHandler := dashboard.NewDashboardHandler(c)
 	dashboard.RegisterRoutes(dashGroup, dashHandler)
+
+	tenantGroup := app.Group("/api/tenants", authMw)
+	tenant.RegisterProtectedRoutes(tenantGroup, tenantHandler)
 
 	c.Logger.Info("Starting server on port %d", cfg.Port)
 

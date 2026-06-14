@@ -8,15 +8,16 @@ import (
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/ws"
 )
 
 type ConversationHandler struct {
 	service ConversationService
 }
 
-func NewConversationHandler(c *di.Container) *ConversationHandler {
+func NewConversationHandler(c *di.Container, notifier ...ws.Notifier) *ConversationHandler {
 	repo := NewConversationRepository()
-	service := NewConversationService(repo, c.DB, c.Config, c.Logger)
+	service := NewConversationService(repo, c.DB, c.Config, c.Logger, notifier...)
 	return &ConversationHandler{service: service}
 }
 

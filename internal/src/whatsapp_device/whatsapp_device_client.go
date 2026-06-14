@@ -1,0 +1,60 @@
+package whatsapp_device
+
+import (
+	"context"
+	"fmt"
+	"time"
+
+	"centrachannel/internal/utils/logger"
+)
+
+type WhatsAppClient interface {
+	SendMessage(ctx context.Context, device *WhatsAppDevice, to string, text string) (*MessageResult, error)
+	GetQR(ctx context.Context, device *WhatsAppDevice) (string, error)
+	CheckConnection(ctx context.Context, device *WhatsAppDevice) (bool, error)
+	Disconnect(ctx context.Context, device *WhatsAppDevice) error
+}
+
+type MessageResult struct {
+	MessageID string    `json:"message_id"`
+	Status    string    `json:"status"`
+	Timestamp time.Time `json:"timestamp"`
+}
+
+type DeviceConfig struct {
+	WebhookURL string `json:"webhook_url,omitempty"`
+	AutoReply  bool   `json:"auto_reply,omitempty"`
+	ReplyText  string `json:"reply_text,omitempty"`
+}
+
+type mockClient struct {
+	logger *logger.Logger
+}
+
+func NewMockClient(logger *logger.Logger) WhatsAppClient {
+	return &mockClient{logger: logger}
+}
+
+func (c *mockClient) SendMessage(ctx context.Context, device *WhatsAppDevice, to string, text string) (*MessageResult, error) {
+	c.logger.Info("Mock WhatsApp send: device_id=%d, to=%s", device.ID, to)
+	return &MessageResult{
+		MessageID: fmt.Sprintf("mock_msg_%d", time.Now().UnixNano()),
+		Status:    "sent",
+		Timestamp: time.Now(),
+	}, nil
+}
+
+func (c *mockClient) GetQR(ctx context.Context, device *WhatsAppDevice) (string, error) {
+	c.logger.Info("Mock WhatsApp QR generation: device_id=%d", device.ID)
+	return "mock_qr_data_for_device_" + fmt.Sprint(device.ID), nil
+}
+
+func (c *mockClient) CheckConnection(ctx context.Context, device *WhatsAppDevice) (bool, error) {
+	c.logger.Info("Mock WhatsApp connection check: device_id=%d", device.ID)
+	return true, nil
+}
+
+func (c *mockClient) Disconnect(ctx context.Context, device *WhatsAppDevice) error {
+	c.logger.Info("Mock WhatsApp disconnect: device_id=%d", device.ID)
+	return nil
+}
