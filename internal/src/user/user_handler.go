@@ -6,7 +6,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/src/tenant"
+	"centrachannel/internal/middleware"
 	"centrachannel/internal/utils/response"
 )
 
@@ -21,7 +21,10 @@ func NewUserHandler(container *di.Container) *UserHandler {
 }
 
 func (h *UserHandler) List(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
@@ -49,7 +52,10 @@ func (h *UserHandler) List(c fiber.Ctx) error {
 }
 
 func (h *UserHandler) Show(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -64,7 +70,10 @@ func (h *UserHandler) Show(c fiber.Ctx) error {
 }
 
 func (h *UserHandler) Store(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	var req CreateUserRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -79,7 +88,10 @@ func (h *UserHandler) Store(c fiber.Ctx) error {
 }
 
 func (h *UserHandler) Update(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
@@ -99,7 +111,10 @@ func (h *UserHandler) Update(c fiber.Ctx) error {
 }
 
 func (h *UserHandler) Delete(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {

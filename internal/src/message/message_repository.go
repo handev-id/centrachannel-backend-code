@@ -1,0 +1,18 @@
+package message
+
+import (
+	"context"
+	"database/sql"
+)
+
+type DBTX interface {
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+}
+
+type MessageRepository interface {
+	List(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error)
+	Create(ctx context.Context, q DBTX, msg *Message) (int, error)
+	UpdateStatus(ctx context.Context, q DBTX, id int, status string) error
+}

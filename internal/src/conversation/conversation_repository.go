@@ -1,0 +1,23 @@
+package conversation
+
+import (
+	"context"
+	"database/sql"
+)
+
+type DBTX interface {
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
+}
+
+type ConversationRepository interface {
+	List(ctx context.Context, q DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*Conversation, int, error)
+	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error)
+	Create(ctx context.Context, q DBTX, conv *Conversation) (int, error)
+	UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error
+	Assign(ctx context.Context, q DBTX, tenantID int, id int, agentID int) error
+	Unassign(ctx context.Context, q DBTX, tenantID int, id int) error
+	MarkRead(ctx context.Context, q DBTX, tenantID int, id int) error
+	UpdateLastMessage(ctx context.Context, q DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error
+}

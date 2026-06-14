@@ -38,7 +38,12 @@ func AuthMiddleware(cfg *config.Config) fiber.Handler {
 			return response.Unauthorized(c, "Invalid token claims")
 		}
 
+		subFloat, _ := claims["sub"].(float64)
+		tenantFloat, _ := claims["tenant"].(float64)
+
 		c.Locals("user", claims)
+		c.Locals("user_id", int(subFloat))
+		c.Locals("tenant_id", int(tenantFloat))
 		return c.Next()
 	}
 }

@@ -33,6 +33,7 @@ type Config struct {
 	Email EmailConfig
 
 	// Storage
+	StorageURL    string
 	StoragePath   string
 	MaxFileSize   int64
 	LogLevel      string
@@ -98,6 +99,7 @@ func Load() (*Config, error) {
 			User:     getEnv("SMTP_USER", ""),
 			Password: getEnv("SMTP_PASSWORD", ""),
 		},
+        StorageURL:  getEnv("STORAGE_URL", "https://storage.solodevs.my.id"),
         StoragePath: getEnv("STORAGE_PATH", "./storage"),
         MaxFileSize: getEnvInt64("MAX_FILE_SIZE", 10485760),
         LogLevel:    getEnv("LOG_LEVEL", "info"),

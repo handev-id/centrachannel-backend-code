@@ -4,7 +4,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/src/tenant"
+	"centrachannel/internal/middleware"
 	"centrachannel/internal/utils/response"
 )
 
@@ -19,7 +19,10 @@ func NewAuthHandler(container *di.Container) *AuthHandler {
 }
 
 func (h *AuthHandler) Register(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	var req RegisterRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -34,7 +37,10 @@ func (h *AuthHandler) Register(c fiber.Ctx) error {
 }
 
 func (h *AuthHandler) Login(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	var req LoginRequest
 	if err := c.Bind().Body(&req); err != nil {
@@ -48,7 +54,10 @@ func (h *AuthHandler) Login(c fiber.Ctx) error {
 }
 
 func (h *AuthHandler) CheckToken(c fiber.Ctx) error {
-	t := c.Locals("tenant").(*tenant.Tenant)
+	t, err := middleware.GetTenant(c)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
 
 	authHeader := c.Get("Authorization")
 	if authHeader == "" {
