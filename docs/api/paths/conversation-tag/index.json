@@ -1,0 +1,63 @@
+{
+  "get": {
+    "summary": "List tags attached to a conversation",
+    "tags": ["Conversation Tag"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "List of conversation tags",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "../../components/schemas/Tag.json" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Attach tag to conversation",
+    "tags": ["Conversation Tag"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["tag_id"],
+            "properties": {
+              "tag_id": { "type": "integer", "example": 1 }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Tag attached",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

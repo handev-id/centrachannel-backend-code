@@ -1,0 +1,15 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "name": { "type": "string", "example": "Sales Phone" },
+    "country_code": { "type": "string", "example": "62" },
+    "phone": { "type": "string", "example": "6281234567890" },
+    "whatsapp_id": { "type": "string", "example": "device-abc-123" },
+    "status": { "type": "string", "enum": ["connected", "disconnected", "connecting", "scanning"], "example": "connected" },
+    "deleted_at": { "type": "string", "format": "date-time", "example": null },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" }
+  }
+}

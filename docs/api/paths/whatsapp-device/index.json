@@ -1,0 +1,60 @@
+{
+  "get": {
+    "summary": "List WhatsApp Devices",
+    "tags": ["WhatsApp Device"],
+    "security": [{ "bearerAuth": [] }],
+    "responses": {
+      "200": {
+        "description": "List of WhatsApp devices",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "../../components/schemas/WhatsAppDevice.json" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Create WhatsApp Device",
+    "tags": ["WhatsApp Device"],
+    "security": [{ "bearerAuth": [] }],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["name", "country_code", "phone", "whatsapp_id"],
+            "properties": {
+              "name": { "type": "string", "example": "Sales Phone" },
+              "country_code": { "type": "string", "example": "62" },
+              "phone": { "type": "string", "example": "6281234567890" },
+              "whatsapp_id": { "type": "string", "example": "device-abc-123" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Device created",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/WhatsAppDevice.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

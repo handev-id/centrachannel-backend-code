@@ -1,0 +1,42 @@
+{
+  "put": {
+    "summary": "Update message status",
+    "tags": ["Message"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Message ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["status"],
+            "properties": {
+              "status": { "type": "string", "enum": ["sent", "delivered", "read", "unread"], "example": "read" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Message status updated",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/MessageModel.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

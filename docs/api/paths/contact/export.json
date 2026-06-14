@@ -1,0 +1,24 @@
+{
+  "get": {
+    "summary": "Export contacts to CSV",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search filter" },
+      { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Status filter" }
+    ],
+    "responses": {
+      "200": {
+        "description": "CSV file download",
+        "content": {
+          "text/csv": {
+            "schema": {
+              "type": "string",
+              "format": "binary"
+            }
+          }
+        }
+      }
+    }
+  }
+}

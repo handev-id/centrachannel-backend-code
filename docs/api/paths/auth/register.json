@@ -1,0 +1,44 @@
+{
+  "post": {
+    "summary": "Register a new user",
+    "tags": ["Auth"],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["first_name", "username", "email"],
+            "properties": {
+              "first_name": { "type": "string", "example": "John" },
+              "last_name": { "type": "string", "example": "Doe" },
+              "username": { "type": "string", "example": "johndoe" },
+              "email": { "type": "string", "format": "email", "example": "john@example.com" },
+              "phone": { "type": "string", "example": "6281234567890" },
+              "password": { "type": "string", "example": "password123" },
+              "avatar": { "type": "object" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "User registered successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/User.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

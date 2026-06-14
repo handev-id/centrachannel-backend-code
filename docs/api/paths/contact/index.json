@@ -1,0 +1,91 @@
+{
+  "get": {
+    "summary": "List Contacts",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Results per page" },
+      { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search keyword" },
+      { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status" },
+      { "name": "channel_id", "in": "query", "schema": { "type": "integer" }, "description": "Filter by channel ID" },
+      { "name": "sort_by", "in": "query", "schema": { "type": "string" }, "description": "Sort field" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Paginated list of contacts",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": { "$ref": "../../components/schemas/Meta.json" },
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "../../components/schemas/Contact.json" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Create Contact",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["first_name"],
+            "properties": {
+              "first_name": { "type": "string", "example": "Jane" },
+              "last_name": { "type": "string", "example": "Smith" },
+              "username": { "type": "string" },
+              "email": { "type": "string", "format": "email" },
+              "phone": { "type": "string" },
+              "avatar": { "type": "object" },
+              "country": { "type": "string" },
+              "bio": { "type": "string" },
+              "occupation": { "type": "string" },
+              "category": { "type": "string" },
+              "category_description": { "type": "string" },
+              "gender": { "type": "string" },
+              "date_of_birth": { "type": "string" },
+              "province_of_origin": { "type": "string" },
+              "facebook": { "type": "string" },
+              "instagram": { "type": "string" },
+              "whatsapp": { "type": "string" },
+              "x": { "type": "string" },
+              "tiktok": { "type": "string" },
+              "status": { "type": "string" },
+              "institution_name": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Contact created",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Contact.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

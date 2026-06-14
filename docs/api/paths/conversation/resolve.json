@@ -1,0 +1,28 @@
+{
+  "post": {
+    "summary": "Resolve conversation",
+    "tags": ["Conversation"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Conversation resolved",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "400": {
+        "description": "Conversation already resolved",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

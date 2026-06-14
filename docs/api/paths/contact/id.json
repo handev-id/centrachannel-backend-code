@@ -1,0 +1,113 @@
+{
+  "get": {
+    "summary": "Get Contact by ID",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Contact details",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Contact.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Contact not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  },
+  "put": {
+    "summary": "Update Contact",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "first_name": { "type": "string" },
+              "last_name": { "type": "string" },
+              "username": { "type": "string" },
+              "email": { "type": "string", "format": "email" },
+              "phone": { "type": "string" },
+              "avatar": { "type": "object" },
+              "country": { "type": "string" },
+              "bio": { "type": "string" },
+              "occupation": { "type": "string" },
+              "category": { "type": "string" },
+              "category_description": { "type": "string" },
+              "gender": { "type": "string" },
+              "date_of_birth": { "type": "string" },
+              "province_of_origin": { "type": "string" },
+              "facebook": { "type": "string" },
+              "instagram": { "type": "string" },
+              "whatsapp": { "type": "string" },
+              "x": { "type": "string" },
+              "tiktok": { "type": "string" },
+              "status": { "type": "string" },
+              "institution_name": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Contact updated",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Contact.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  },
+  "delete": {
+    "summary": "Delete Contact",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Contact deleted",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Contact not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

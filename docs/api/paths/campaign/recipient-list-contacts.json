@@ -1,0 +1,92 @@
+{
+  "get": {
+    "summary": "List contacts in a recipient list",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Recipient List ID" },
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Results per page" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Paginated list of contacts",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": { "$ref": "../../components/schemas/Meta.json" },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "id": { "type": "integer" },
+                      "first_name": { "type": "string" },
+                      "last_name": { "type": "string" },
+                      "username": { "type": "string" },
+                      "email": { "type": "string" },
+                      "phone": { "type": "string" },
+                      "institution": { "type": "string" },
+                      "campaign_recipient_list_id": { "type": "integer" },
+                      "master_contact_id": { "type": "integer" },
+                      "created_at": { "type": "string", "format": "date-time" },
+                      "updated_at": { "type": "string", "format": "date-time" }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Add contact to recipient list",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Recipient List ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["first_name"],
+            "properties": {
+              "first_name": { "type": "string", "example": "Jane" },
+              "last_name": { "type": "string", "example": "Doe" },
+              "username": { "type": "string" },
+              "institution": { "type": "string" },
+              "email": { "type": "string", "format": "email" },
+              "phone": { "type": "string" },
+              "master_contact_id": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Contact added to list",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

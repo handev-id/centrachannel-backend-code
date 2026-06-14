@@ -1,0 +1,34 @@
+{
+  "get": {
+    "summary": "Get dashboard chart data",
+    "tags": ["Dashboard"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "period", "in": "query", "schema": { "type": "string", "enum": ["7d", "30d", "90d"] }, "description": "Time period" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Chart data points",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "date": { "type": "string", "example": "2025-07-29" },
+                      "count": { "type": "integer", "example": 15 }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

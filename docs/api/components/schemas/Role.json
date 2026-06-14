@@ -1,0 +1,10 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "name": { "type": "string", "example": "agent" },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" }
+  }
+}

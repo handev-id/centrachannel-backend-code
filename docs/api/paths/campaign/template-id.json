@@ -1,0 +1,101 @@
+{
+  "get": {
+    "summary": "Get Campaign Template by ID",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Template ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Template details",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/CampaignTemplate.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Template not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  },
+  "put": {
+    "summary": "Update Campaign Template",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Template ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string" },
+              "type": { "type": "string" },
+              "template_type": { "type": "string" },
+              "category": { "type": "string" },
+              "language": { "type": "string" },
+              "content": { "type": "object" },
+              "variables": { "type": "object" },
+              "quality": { "type": "string" },
+              "account_id": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Template updated",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/CampaignTemplate.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  },
+  "delete": {
+    "summary": "Delete Campaign Template",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Template ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Template deleted",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Template not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

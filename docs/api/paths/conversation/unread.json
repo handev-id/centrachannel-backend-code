@@ -1,0 +1,22 @@
+{
+  "get": {
+    "summary": "Get total unread conversations",
+    "tags": ["Conversation"],
+    "security": [{ "bearerAuth": [] }],
+    "responses": {
+      "200": {
+        "description": "Total unread count",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "total_unread": { "type": "integer", "example": 5 }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

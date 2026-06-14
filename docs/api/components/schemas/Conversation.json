@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "status": { "type": "string", "enum": ["unassigned", "assigned", "resolved"], "example": "assigned" },
+    "profile_id": { "type": "integer", "example": 1 },
+    "agent_id": { "type": "integer", "example": 1 },
+    "channel_id": { "type": "integer", "example": 1 },
+    "last_agent_id": { "type": "integer", "example": 1 },
+    "unread_count": { "type": "integer", "example": 3 },
+    "last_message": { "type": "object", "example": { "text": "Hello!", "sender_type": "contact" } },
+    "last_activity": { "type": "string", "format": "date-time", "example": "2025-07-29T15:00:00.000Z" },
+    "last_seen": { "type": "string", "format": "date-time", "example": "2025-07-29T14:00:00.000Z" },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T15:00:00.000Z" },
+    "contact": { "$ref": "./Contact.json" },
+    "channel": { "$ref": "./Channel.json" },
+    "agent": { "$ref": "./User.json" },
+    "tags": { "type": "array", "items": { "$ref": "./Tag.json" } },
+    "notes": { "type": "array", "items": { "$ref": "./Note.json" } }
+  }
+}

@@ -1,0 +1,103 @@
+{
+  "get": {
+    "summary": "Get Campaign by ID",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Campaign details",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Campaign.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Campaign not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  },
+  "put": {
+    "summary": "Update Campaign",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": { "type": "string", "example": "Updated Campaign" },
+              "type": { "type": "string" },
+              "description": { "type": "string" },
+              "message_template": { "type": "string" },
+              "status": { "type": "string" },
+              "sending_option": { "type": "object" },
+              "scheduled_at": { "type": "string", "format": "date-time" },
+              "recipient_list_id": { "type": "integer" },
+              "template_id": { "type": "integer" },
+              "agent_id": { "type": "integer" },
+              "sender_id": { "type": "integer" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Campaign updated",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Campaign.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  },
+  "delete": {
+    "summary": "Delete Campaign",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Campaign deleted",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Campaign not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

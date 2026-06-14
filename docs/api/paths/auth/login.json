@@ -1,0 +1,47 @@
+{
+  "post": {
+    "summary": "Login",
+    "tags": ["Auth"],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["username", "password"],
+            "properties": {
+              "username": { "type": "string", "example": "johndoe" },
+              "password": { "type": "string", "example": "password123" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Login successful",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/LoginResponse.json" }
+          }
+        }
+      },
+      "400": {
+        "description": "Invalid Credentials",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

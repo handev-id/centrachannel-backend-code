@@ -1,0 +1,74 @@
+{
+  "get": {
+    "summary": "List Conversations",
+    "tags": ["Conversation"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Results per page" },
+      { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search keyword" },
+      { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status" },
+      { "name": "channel_id", "in": "query", "schema": { "type": "integer" }, "description": "Filter by channel ID" },
+      { "name": "agent_id", "in": "query", "schema": { "type": "integer" }, "description": "Filter by agent ID" },
+      { "name": "sort_by", "in": "query", "schema": { "type": "string" }, "description": "Sort field" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Paginated list of conversations",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": { "$ref": "../../components/schemas/Meta.json" },
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "../../components/schemas/Conversation.json" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Create Conversation",
+    "tags": ["Conversation"],
+    "security": [{ "bearerAuth": [] }],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["profile_id", "channel_id"],
+            "properties": {
+              "profile_id": { "type": "integer", "example": 1 },
+              "channel_id": { "type": "integer", "example": 1 },
+              "agent_id": { "type": "integer", "example": 1 }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Conversation created",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Conversation.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

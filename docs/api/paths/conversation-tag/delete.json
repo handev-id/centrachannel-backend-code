@@ -1,0 +1,29 @@
+{
+  "delete": {
+    "summary": "Detach tag from conversation",
+    "tags": ["Conversation Tag"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" },
+      { "name": "tagId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Tag ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Tag detached",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Tag not attached to conversation",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

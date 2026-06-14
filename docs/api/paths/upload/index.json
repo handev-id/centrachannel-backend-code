@@ -1,0 +1,50 @@
+{
+  "post": {
+    "summary": "Upload a file",
+    "tags": ["Upload"],
+    "security": [{ "bearerAuth": [] }],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "multipart/form-data": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "file": {
+                "type": "string",
+                "format": "binary",
+                "description": "File to upload"
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "File uploaded",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "url": { "type": "string", "example": "https://cdn.example.com/uploads/file.pdf" },
+                "name": { "type": "string", "example": "file.pdf" },
+                "size": { "type": "integer", "example": 2048 },
+                "type": { "type": "string", "example": "application/pdf" }
+              }
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

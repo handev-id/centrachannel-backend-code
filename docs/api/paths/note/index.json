@@ -1,0 +1,64 @@
+{
+  "get": {
+    "summary": "List notes in a conversation",
+    "tags": ["Note"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "List of notes",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "../../components/schemas/Note.json" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Create a note in a conversation",
+    "tags": ["Note"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["text"],
+            "properties": {
+              "text": { "type": "string", "example": "Customer requested a callback" },
+              "date": { "type": "string", "format": "date", "example": "2025-07-29" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Note created",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Note.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

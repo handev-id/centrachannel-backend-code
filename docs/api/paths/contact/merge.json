@@ -1,0 +1,42 @@
+{
+  "post": {
+    "summary": "Merge Contact",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Source contact ID to merge from" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["target_contact_id"],
+            "properties": {
+              "target_contact_id": { "type": "integer", "example": 2 }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Contacts merged successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

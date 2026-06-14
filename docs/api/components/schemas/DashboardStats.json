@@ -1,0 +1,9 @@
+{
+  "type": "object",
+  "properties": {
+    "total_contacts": { "type": "integer", "example": 150 },
+    "active_conversations": { "type": "integer", "example": 25 },
+    "resolved_today": { "type": "integer", "example": 12 },
+    "unassigned_count": { "type": "integer", "example": 5 }
+  }
+}

@@ -1,0 +1,28 @@
+{
+  "post": {
+    "summary": "Unmerge Contact",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID to unmerge" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Contact unmerged successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "400": {
+        "description": "Contact is not merged",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

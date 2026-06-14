@@ -1,0 +1,31 @@
+{
+  "get": {
+    "summary": "List Conversations for a Contact",
+    "tags": ["Contact"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" },
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Results per page" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Paginated list of conversations",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": { "$ref": "../../components/schemas/Meta.json" },
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "../../components/schemas/Conversation.json" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

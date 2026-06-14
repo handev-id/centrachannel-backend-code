@@ -1,0 +1,28 @@
+{
+  "post": {
+    "summary": "Connect WhatsApp Device",
+    "tags": ["WhatsApp Device"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Device ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Device connecting",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "400": {
+        "description": "Device error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

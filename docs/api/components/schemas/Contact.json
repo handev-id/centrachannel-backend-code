@@ -1,0 +1,36 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "first_name": { "type": "string", "example": "Jane" },
+    "last_name": { "type": "string", "example": "Smith" },
+    "username": { "type": "string", "example": "janesmith" },
+    "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+    "phone": { "type": "string", "example": "6281234567890" },
+    "avatar": { "type": "object", "example": { "name": "avatar.jpg", "url": "https://cdn.example.com/avatar.jpg" } },
+    "country": { "type": "string", "example": "Indonesia" },
+    "bio": { "type": "string", "example": "Digital marketing specialist" },
+    "occupation": { "type": "string", "example": "Marketing Manager" },
+    "category": { "type": "string", "example": "business" },
+    "category_description": { "type": "string", "example": "Small business owner" },
+    "gender": { "type": "string", "example": "female" },
+    "date_of_birth": { "type": "string", "format": "date", "example": "1990-05-15" },
+    "province_of_origin": { "type": "string", "example": "Jawa Barat" },
+    "facebook": { "type": "string", "example": "janesmith.fb" },
+    "instagram": { "type": "string", "example": "@janesmith" },
+    "whatsapp": { "type": "string", "example": "6281234567890" },
+    "x": { "type": "string", "example": "@janesmith_x" },
+    "tiktok": { "type": "string", "example": "@janesmith_tk" },
+    "status": { "type": "string", "example": "active" },
+    "institution_name": { "type": "string", "example": "Tech Corp" },
+    "merged_to_id": { "type": "integer", "example": null },
+    "deleted_at": { "type": "string", "format": "date-time", "example": null },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" },
+    "profiles": {
+      "type": "array",
+      "items": { "$ref": "./Profile.json" }
+    }
+  }
+}

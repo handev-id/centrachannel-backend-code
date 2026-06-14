@@ -1,0 +1,270 @@
+{
+  "openapi": "3.0.0",
+  "info": {
+    "title": "CentraChannel API",
+    "version": "1.0.0"
+  },
+  "paths": {
+    "/api/auth/register": {
+      "$ref": "/docs/api/paths/auth/register.json"
+    },
+    "/api/auth/login": {
+      "$ref": "/docs/api/paths/auth/login.json"
+    },
+    "/api/auth/check-token": {
+      "$ref": "/docs/api/paths/auth/check-token.json"
+    },
+    "/api/auth/logout": {
+      "$ref": "/docs/api/paths/auth/logout.json"
+    },
+    "/api/user": {
+      "$ref": "/docs/api/paths/user/index.json"
+    },
+    "/api/user/{id}": {
+      "$ref": "/docs/api/paths/user/id.json"
+    },
+    "/api/tenants/onboard": {
+      "$ref": "/docs/api/paths/tenant/onboard.json"
+    },
+    "/api/tenants": {
+      "$ref": "/docs/api/paths/tenant/index.json"
+    },
+    "/api/tenants/{id}": {
+      "$ref": "/docs/api/paths/tenant/id.json"
+    },
+    "/api/campaigns": {
+      "$ref": "/docs/api/paths/campaign/index.json"
+    },
+    "/api/campaigns/{id}": {
+      "$ref": "/docs/api/paths/campaign/id.json"
+    },
+    "/api/campaigns/{id}/send": {
+      "$ref": "/docs/api/paths/campaign/send.json"
+    },
+    "/api/campaigns/templates": {
+      "$ref": "/docs/api/paths/campaign/template.json"
+    },
+    "/api/campaigns/templates/{id}": {
+      "$ref": "/docs/api/paths/campaign/template-id.json"
+    },
+    "/api/campaigns/recipient-lists": {
+      "$ref": "/docs/api/paths/campaign/recipient-list.json"
+    },
+    "/api/campaigns/recipient-lists/{id}": {
+      "$ref": "/docs/api/paths/campaign/recipient-list-id.json"
+    },
+    "/api/campaigns/recipient-lists/{id}/contacts": {
+      "$ref": "/docs/api/paths/campaign/recipient-list-contacts.json"
+    },
+    "/api/campaigns/recipient-lists/{id}/contacts/add": {
+      "$ref": "/docs/api/paths/campaign/recipient-list-add-contact.json"
+    },
+    "/api/campaigns/recipient-lists/{id}/contacts/{contactId}": {
+      "$ref": "/docs/api/paths/campaign/recipient-list-remove-contact.json"
+    },
+    "/api/channels": {
+      "$ref": "/docs/api/paths/channel/index.json"
+    },
+    "/api/contacts": {
+      "$ref": "/docs/api/paths/contact/index.json"
+    },
+    "/api/contacts/{id}": {
+      "$ref": "/docs/api/paths/contact/id.json"
+    },
+    "/api/contacts/{id}/merge": {
+      "$ref": "/docs/api/paths/contact/merge.json"
+    },
+    "/api/contacts/{id}/unmerge": {
+      "$ref": "/docs/api/paths/contact/unmerge.json"
+    },
+    "/api/contacts/{id}/conversations": {
+      "$ref": "/docs/api/paths/contact/conversations.json"
+    },
+    "/api/contacts/export": {
+      "$ref": "/docs/api/paths/contact/export.json"
+    },
+    "/api/contacts/import": {
+      "$ref": "/docs/api/paths/contact/import.json"
+    },
+    "/api/conversations": {
+      "$ref": "/docs/api/paths/conversation/index.json"
+    },
+    "/api/conversations/{id}": {
+      "$ref": "/docs/api/paths/conversation/id.json"
+    },
+    "/api/conversations/{id}/assign": {
+      "$ref": "/docs/api/paths/conversation/assign.json"
+    },
+    "/api/conversations/{id}/unassign": {
+      "$ref": "/docs/api/paths/conversation/unassign.json"
+    },
+    "/api/conversations/{id}/resolve": {
+      "$ref": "/docs/api/paths/conversation/resolve.json"
+    },
+    "/api/conversations/{id}/reopen": {
+      "$ref": "/docs/api/paths/conversation/reopen.json"
+    },
+    "/api/conversations/unread": {
+      "$ref": "/docs/api/paths/conversation/unread.json"
+    },
+    "/api/conversations/{id}/read": {
+      "$ref": "/docs/api/paths/conversation/read.json"
+    },
+    "/api/conversations/{conversationId}/messages": {
+      "$ref": "/docs/api/paths/message/index.json"
+    },
+    "/api/messages/{id}": {
+      "$ref": "/docs/api/paths/message/update-status.json"
+    },
+    "/api/tags": {
+      "$ref": "/docs/api/paths/tag/index.json"
+    },
+    "/api/tags/{id}": {
+      "$ref": "/docs/api/paths/tag/id.json"
+    },
+    "/api/conversations/{id}/tags": {
+      "$ref": "/docs/api/paths/conversation-tag/index.json"
+    },
+    "/api/conversations/{id}/tags/{tagId}": {
+      "$ref": "/docs/api/paths/conversation-tag/delete.json"
+    },
+    "/api/conversations/{conversationId}/notes": {
+      "$ref": "/docs/api/paths/note/index.json"
+    },
+    "/api/notes/{id}": {
+      "$ref": "/docs/api/paths/note/id.json"
+    },
+    "/api/whatsapp-devices": {
+      "$ref": "/docs/api/paths/whatsapp-device/index.json"
+    },
+    "/api/whatsapp-devices/{id}": {
+      "$ref": "/docs/api/paths/whatsapp-device/id.json"
+    },
+    "/api/whatsapp-devices/{id}/connect": {
+      "$ref": "/docs/api/paths/whatsapp-device/connect.json"
+    },
+    "/api/whatsapp-devices/{id}/disconnect": {
+      "$ref": "/docs/api/paths/whatsapp-device/disconnect.json"
+    },
+    "/api/whatsapp-devices/{id}/scan": {
+      "$ref": "/docs/api/paths/whatsapp-device/scan.json"
+    },
+    "/api/upload": {
+      "$ref": "/docs/api/paths/upload/index.json"
+    },
+    "/api/dashboard/stats": {
+      "$ref": "/docs/api/paths/dashboard/stats.json"
+    },
+    "/api/dashboard/chart": {
+      "$ref": "/docs/api/paths/dashboard/chart.json"
+    },
+    "/health": {
+      "get": {
+        "summary": "Health check",
+        "tags": ["Observability"],
+        "responses": {
+          "200": {
+            "description": "Health status",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "/docs/api/components/schemas/Message.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/ping": {
+      "get": {
+        "summary": "Ping endpoint",
+        "tags": ["Observability"],
+        "responses": {
+          "200": {
+            "description": "Pong response",
+            "content": {
+              "text/plain": {
+                "schema": {
+                  "type": "string",
+                  "example": "pong"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/version": {
+      "get": {
+        "summary": "Version info",
+        "tags": ["Observability"],
+        "responses": {
+          "200": {
+            "description": "Version information",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "message": { "type": "string" },
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "version": { "type": "string", "example": "1.0.0" },
+                        "app": { "type": "string", "example": "CentraChannel API" }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/webhook/evolution": {
+      "post": {
+        "summary": "Evolution webhook handler",
+        "tags": ["Webhook"],
+        "responses": {
+          "200": { "description": "Webhook received" }
+        }
+      }
+    },
+    "/webhook/meta": {
+      "get": {
+        "summary": "Meta webhook verification",
+        "tags": ["Webhook"],
+        "responses": {
+          "200": { "description": "Verification response" }
+        }
+      },
+      "post": {
+        "summary": "Meta webhook handler",
+        "tags": ["Webhook"],
+        "responses": {
+          "200": { "description": "Webhook received" }
+        }
+      }
+    },
+    "/ws": {
+      "get": {
+        "summary": "WebSocket connection",
+        "tags": ["WebSocket"],
+        "responses": {
+          "101": { "description": "WebSocket protocol upgrade" }
+        }
+      }
+    }
+  },
+  "components": {
+    "securitySchemes": {
+      "bearerAuth": {
+        "type": "http",
+        "scheme": "bearer",
+        "bearerFormat": "JWT"
+      }
+    }
+  }
+}

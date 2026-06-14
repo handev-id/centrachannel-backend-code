@@ -1,0 +1,28 @@
+{
+  "post": {
+    "summary": "Send Campaign",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Campaign sending started",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "400": {
+        "description": "Campaign cannot be sent",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "total": { "type": "integer", "example": 50 },
+    "per_page": { "type": "integer", "example": 20 },
+    "current_page": { "type": "integer", "example": 1 },
+    "last_page": { "type": "integer", "example": 3 },
+    "from": { "type": "integer", "example": 1 },
+    "to": { "type": "integer", "example": 20 }
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "name": { "type": "string", "example": "Welcome Template" },
+    "type": { "type": "string", "example": "text" },
+    "template_type": { "type": "string", "example": "marketing" },
+    "category": { "type": "string", "example": "utility" },
+    "language": { "type": "string", "example": "en" },
+    "content": { "type": "object", "example": { "body": "Hello {{1}}, welcome to our service!", "header": { "type": "image", "url": "..." } } },
+    "variables": { "type": "object", "example": { "1": "name", "2": "company" } },
+    "quality": { "type": "string", "example": "high" },
+    "account_id": { "type": "integer", "example": 1 },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" }
+  }
+}

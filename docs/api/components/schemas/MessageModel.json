@@ -1,0 +1,23 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "conversation_id": { "type": "integer", "example": 1 },
+    "sender_id": { "type": "integer", "example": 1 },
+    "sender_type": { "type": "string", "enum": ["contact", "user", "ai"], "example": "contact" },
+    "text": { "type": "string", "example": "Hello, I need help" },
+    "attachment": { "type": "object", "example": { "name": "file.pdf", "url": "https://cdn.example.com/file.pdf", "type": "application/pdf" } },
+    "status": { "type": "string", "enum": ["sent", "delivered", "read", "failed"], "example": "sent" },
+    "webhook_message_id": { "type": "string", "example": "wamid.123456789" },
+    "webhook_message_reply_id": { "type": "string", "example": "wamid.987654321" },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "sender": { "type": "object", "properties": {
+      "id": { "type": "integer", "example": 1 },
+      "first_name": { "type": "string", "example": "Jane" },
+      "last_name": { "type": "string", "example": "Smith" },
+      "avatar": { "type": "object" }
+    } }
+  }
+}

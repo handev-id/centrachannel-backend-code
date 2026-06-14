@@ -1,0 +1,56 @@
+{
+  "post": {
+    "summary": "Onboard a new tenant",
+    "tags": ["Tenant"],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["name", "domain", "admin_email", "admin_password"],
+            "properties": {
+              "name": { "type": "string", "example": "Acme Corp" },
+              "domain": { "type": "string", "example": "acme.com" },
+              "admin_email": { "type": "string", "format": "email", "example": "admin@acme.com" },
+              "admin_password": { "type": "string", "example": "adminpass123" },
+              "company_name": { "type": "string", "example": "Acme Corporation" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Tenant onboarded successfully",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "tenant": { "$ref": "../../components/schemas/Tenant.json" },
+                "admin": {
+                  "type": "object",
+                  "properties": {
+                    "id": { "type": "integer", "example": 1 },
+                    "first_name": { "type": "string", "example": "Admin" },
+                    "email": { "type": "string", "example": "admin@acme.com" },
+                    "username": { "type": "string", "example": "admin" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

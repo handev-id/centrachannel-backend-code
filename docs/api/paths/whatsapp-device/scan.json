@@ -1,0 +1,34 @@
+{
+  "post": {
+    "summary": "Get QR code for WhatsApp Device scan",
+    "tags": ["WhatsApp Device"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Device ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "QR code data",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "qr_code": { "type": "string", "example": "base64-encoded-qr-image" },
+                "pairing_code": { "type": "string", "example": "ABC123" }
+              }
+            }
+          }
+        }
+      },
+      "400": {
+        "description": "Device error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

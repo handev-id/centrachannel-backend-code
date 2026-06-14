@@ -1,0 +1,112 @@
+{
+  "get": {
+    "summary": "Get User by ID",
+    "tags": ["User"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "User ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "User details",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/User.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "User not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  },
+  "put": {
+    "summary": "Update User",
+    "tags": ["User"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "User ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "first_name": { "type": "string", "example": "Jane" },
+              "last_name": { "type": "string", "example": "Doe" },
+              "username": { "type": "string", "example": "janedoe" },
+              "email": { "type": "string", "format": "email", "example": "jane@example.com" },
+              "phone": { "type": "string", "example": "6281234567890" },
+              "password": { "type": "string", "example": "newpassword123" },
+              "avatar": { "type": "object" },
+              "roles": {
+                "type": "array",
+                "items": { "type": "integer" },
+                "example": [2, 3]
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "User updated successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/User.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  },
+  "delete": {
+    "summary": "Delete User",
+    "tags": ["User"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "User ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "User deleted successfully",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "403": {
+        "description": "Cannot delete super admin",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "User not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

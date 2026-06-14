@@ -1,0 +1,21 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "tenant_id": { "type": "integer", "example": 1 },
+    "first_name": { "type": "string", "example": "John" },
+    "last_name": { "type": "string", "example": "Doe" },
+    "username": { "type": "string", "example": "johndoe" },
+    "email": { "type": "string", "format": "email", "example": "john@example.com" },
+    "phone": { "type": "string", "example": "6281234567890" },
+    "avatar": { "type": "object", "example": { "name": "avatar.png", "size": 1500, "type": "image/png", "extname": "png", "url": "https://cdn.example.com/avatar.png" } },
+    "last_login": { "type": "string", "format": "date-time", "example": "2025-07-29T15:00:00.000Z" },
+    "deleted_at": { "type": "string", "format": "date-time", "example": null },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" },
+    "roles": {
+      "type": "array",
+      "items": { "$ref": "./Role.json" }
+    }
+  }
+}

@@ -1,0 +1,58 @@
+{
+  "get": {
+    "summary": "List Tags",
+    "tags": ["Tag"],
+    "security": [{ "bearerAuth": [] }],
+    "responses": {
+      "200": {
+        "description": "List of tags",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "array",
+              "items": { "$ref": "../../components/schemas/Tag.json" }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Create Tag",
+    "tags": ["Tag"],
+    "security": [{ "bearerAuth": [] }],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["name"],
+            "properties": {
+              "name": { "type": "string", "example": "Follow Up" },
+              "color": { "type": "string", "example": "#FF5733" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Tag created",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Tag.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

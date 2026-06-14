@@ -1,0 +1,29 @@
+{
+  "delete": {
+    "summary": "Remove contact from recipient list",
+    "tags": ["Campaign"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Recipient List ID" },
+      { "name": "contactId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Contact removed from list",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Message.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Contact not found in list",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

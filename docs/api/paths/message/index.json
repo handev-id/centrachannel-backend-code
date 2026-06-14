@@ -1,0 +1,74 @@
+{
+  "get": {
+    "summary": "List messages in a conversation",
+    "tags": ["Message"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" },
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Results per page" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Paginated list of messages",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": { "$ref": "../../components/schemas/Meta.json" },
+                "data": {
+                  "type": "array",
+                  "items": { "$ref": "../../components/schemas/MessageModel.json" }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "post": {
+    "summary": "Send a message in a conversation",
+    "tags": ["Message"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "required": ["sender_id", "sender_type"],
+            "properties": {
+              "text": { "type": "string", "example": "Hello, how can I help you?" },
+              "attachment": { "type": "object" },
+              "sender_id": { "type": "integer", "example": 1 },
+              "sender_type": { "type": "string", "enum": ["contact", "user", "ai"], "example": "user" }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "201": {
+        "description": "Message sent",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/MessageModel.json" }
+          }
+        }
+      },
+      "422": {
+        "description": "Validation Error",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+          }
+        }
+      }
+    }
+  }
+}

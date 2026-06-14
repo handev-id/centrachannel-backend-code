@@ -1,0 +1,28 @@
+{
+  "get": {
+    "summary": "Get Tenant by ID",
+    "tags": ["Tenant"],
+    "security": [{ "bearerAuth": [] }],
+    "parameters": [
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Tenant ID" }
+    ],
+    "responses": {
+      "200": {
+        "description": "Tenant details",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Tenant.json" }
+          }
+        }
+      },
+      "404": {
+        "description": "Tenant not found",
+        "content": {
+          "application/json": {
+            "schema": { "$ref": "../../components/schemas/Error.json" }
+          }
+        }
+      }
+    }
+  }
+}

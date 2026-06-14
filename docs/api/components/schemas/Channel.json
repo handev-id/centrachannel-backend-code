@@ -1,0 +1,11 @@
+{
+  "type": "object",
+  "properties": {
+    "id": { "type": "integer", "example": 1 },
+    "name": { "type": "string", "example": "WhatsApp" },
+    "type": { "type": "string", "example": "whatsapp_business" },
+    "logo": { "type": "object", "example": { "name": "whatsapp.png", "url": "https://cdn.example.com/whatsapp.png" } },
+    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
+    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" }
+  }
+}
