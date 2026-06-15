@@ -587,3 +587,7 @@ Before submitting code, verify:
 - Code follows Go conventions
 
 If any item fails, revise the implementation before completion.
+
+## Commit Rule
+
+Do NOT commit, amend, or push any changes unless the user explicitly asks for it with a command like "commit", "push", "commit dan push", or similar. Pushing or committing without explicit user instruction is forbidden.

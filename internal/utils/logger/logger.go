@@ -70,6 +70,10 @@ func (l *Logger) log(level string, msg string, args ...interface{}) {
     }
 }
 
+func (l *Logger) Format() string {
+	return l.format
+}
+
 func parseLevel(level string) Level {
     switch strings.ToLower(level) {
     case "debug":
