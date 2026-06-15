@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type profileRepository struct{}
@@ -17,7 +19,7 @@ func scanProfile(row interface{ Scan(dest ...interface{}) error }) (*Profile, er
 	var p Profile
 	var username, displayName, linkedDevice sql.NullString
 	var mergedFromID sql.NullInt64
-	var deletedAt sql.NullTime
+	var deletedAt utils.NullableTime
 
 	err := row.Scan(&p.ID, &p.ExternalID, &username, &displayName, &p.IsMain, &linkedDevice, &mergedFromID, &p.ContactID, &p.ChannelID, &deletedAt, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {

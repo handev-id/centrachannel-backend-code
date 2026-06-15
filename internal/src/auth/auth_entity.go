@@ -1,9 +1,10 @@
 package auth
 
 import (
-	"database/sql"
 	"encoding/json"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type Avatar struct {
@@ -25,7 +26,7 @@ type User struct {
 	Password  string          `json:"-"`
 	Avatar    json.RawMessage `json:"avatar,omitempty"`
 	LastLogin *time.Time      `json:"last_login,omitempty"`
-	DeletedAt sql.NullTime    `json:"deleted_at,omitempty"`
+	DeletedAt utils.NullableTime `json:"deleted_at,omitempty"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
 	Roles     []Role          `json:"roles,omitempty"`

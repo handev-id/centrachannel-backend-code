@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type contactRepository struct{}
@@ -20,7 +22,7 @@ func scanContact(row interface{ Scan(dest ...interface{}) error }) (*Contact, er
 	var avatar sql.NullString
 	var dateOfBirth sql.NullTime
 	var mergedToID sql.NullInt64
-	var deletedAt sql.NullTime
+	var deletedAt utils.NullableTime
 	var tenantID int
 
 	err := row.Scan(&c.ID, &tenantID, &c.FirstName, &lastName, &username, &email, &phone, &avatar, &country, &bio, &occupation, &category, &categoryDesc, &gender, &dateOfBirth, &province, &facebook, &instagram, &whatsapp, &x, &tiktok, &c.Status, &institutionName, &mergedToID, &deletedAt, &c.CreatedAt, &c.UpdatedAt)

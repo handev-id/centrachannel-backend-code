@@ -1,9 +1,10 @@
 package contact
 
 import (
-	"database/sql"
 	"encoding/json"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type Contact struct {
@@ -31,7 +32,7 @@ type Contact struct {
 	Status              string           `json:"status"`
 	InstitutionName     *string          `json:"institution_name,omitempty"`
 	MergedToID          *int             `json:"merged_to_id,omitempty"`
-	DeletedAt           sql.NullTime     `json:"deleted_at,omitempty"`
+	DeletedAt           utils.NullableTime `json:"deleted_at,omitempty"`
 	CreatedAt           time.Time        `json:"created_at"`
 	UpdatedAt           time.Time        `json:"updated_at"`
 }

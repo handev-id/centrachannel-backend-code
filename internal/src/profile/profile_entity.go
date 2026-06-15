@@ -1,8 +1,9 @@
 package profile
 
 import (
-	"database/sql"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type Profile struct {
@@ -15,7 +16,7 @@ type Profile struct {
 	MergedFromContactID     *int         `json:"merged_from_contact_id,omitempty"`
 	ContactID               int          `json:"contact_id"`
 	ChannelID               int          `json:"channel_id"`
-	DeletedAt               sql.NullTime `json:"deleted_at,omitempty"`
+	DeletedAt               utils.NullableTime `json:"deleted_at,omitempty"`
 	CreatedAt               time.Time    `json:"created_at"`
 	UpdatedAt               time.Time    `json:"updated_at"`
 }

@@ -1,8 +1,9 @@
 package note
 
 import (
-	"database/sql"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type Note struct {
@@ -12,7 +13,7 @@ type Note struct {
 	Date           *time.Time   `json:"date,omitempty"`
 	ConversationID int          `json:"conversation_id"`
 	UserID         *int         `json:"user_id,omitempty"`
-	DeletedAt      sql.NullTime `json:"deleted_at,omitempty"`
+	DeletedAt      utils.NullableTime `json:"deleted_at,omitempty"`
 	CreatedAt      time.Time    `json:"created_at"`
 	UpdatedAt      time.Time    `json:"updated_at"`
 }

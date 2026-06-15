@@ -1,8 +1,9 @@
 package whatsapp_device
 
 import (
-	"database/sql"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type WhatsAppDevice struct {
@@ -13,7 +14,7 @@ type WhatsAppDevice struct {
 	Phone       string       `json:"phone"`
 	WhatsappID  string       `json:"whatsapp_id"`
 	Status      string       `json:"status"`
-	DeletedAt   sql.NullTime `json:"deleted_at,omitempty"`
+	DeletedAt   utils.NullableTime `json:"deleted_at,omitempty"`
 	CreatedAt   time.Time    `json:"created_at"`
 	UpdatedAt   time.Time    `json:"updated_at"`
 }

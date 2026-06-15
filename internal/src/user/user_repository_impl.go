@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"centrachannel/internal/utils"
 	"github.com/lib/pq"
 )
 
@@ -21,7 +22,8 @@ func scanUser(row interface{ Scan(dest ...interface{}) error }) (*User, error) {
 	var u User
 	var lastName, phone sql.NullString
 	var avatar sql.NullString
-	var lastLogin, deletedAt sql.NullTime
+	var lastLogin sql.NullTime
+	var deletedAt utils.NullableTime
 	var tenantID int
 
 	err := row.Scan(&u.ID, &tenantID, &u.FirstName, &lastName, &u.Username, &u.Email, &phone, &u.Password, &avatar, &lastLogin, &deletedAt, &u.CreatedAt, &u.UpdatedAt)

@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
+
+	"centrachannel/internal/utils"
 )
 
 type whatsAppDeviceRepository struct{}
@@ -15,7 +17,7 @@ func NewWhatsAppDeviceRepository() WhatsAppDeviceRepository {
 
 func scanDevice(row interface{ Scan(dest ...interface{}) error }) (*WhatsAppDevice, error) {
 	var d WhatsAppDevice
-	var deletedAt sql.NullTime
+	var deletedAt utils.NullableTime
 	var tenantID int
 
 	err := row.Scan(&d.ID, &tenantID, &d.Name, &d.CountryCode, &d.Phone, &d.WhatsappID, &d.Status, &deletedAt, &d.CreatedAt, &d.UpdatedAt)
