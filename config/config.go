@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -100,7 +101,7 @@ func Load() (*Config, error) {
 		},
 		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key-change-this-in-production"),
 		JWTExpiry:          getDurationEnv("JWT_EXPIRY", 24*time.Hour),
-		CORSAllowedOrigins: []string{"http://localhost:3000", "http://localhost:3001"},
+		CORSAllowedOrigins: getEnvSlice("CORS_ALLOWED_ORIGINS", "http://localhost:3000,http://localhost:3001"),
 		Email: EmailConfig{
 			Host:     getEnv("SMTP_HOST", "smtp.gmail.com"),
 			Port:     getEnvInt("SMTP_PORT", 587),
@@ -159,6 +160,19 @@ func getDurationEnv(key string, defaultVal time.Duration) time.Duration {
 		return val
 	}
 	return defaultVal
+}
+
+func getEnvSlice(key, defaultVal string) []string {
+	val := getEnv(key, defaultVal)
+	if val == "" {
+		return []string{}
+	}
+	parts := strings.Split(val, ",")
+	result := make([]string, len(parts))
+	for i, p := range parts {
+		result[i] = strings.TrimSpace(p)
+	}
+	return result
 }
 
 func (cfg *Config) GetDatabaseURL() string {
