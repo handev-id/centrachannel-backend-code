@@ -47,7 +47,7 @@ func main() {
 	})
 
 	app.Use(middleware.CORSMiddleware(cfg.CORSAllowedOrigins))
-	app.Use(middleware.NewLogMiddleware(c.Logger, cfg.Env))
+	app.Use(middleware.LogMiddleware(c.Logger, cfg.Env))
 
 	obsHandler := observability.NewObservabilityHandler()
 	observability.RegisterRoutes(app, obsHandler)

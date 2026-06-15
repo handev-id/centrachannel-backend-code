@@ -12,7 +12,7 @@ import (
 	"centrachannel/internal/utils/response"
 )
 
-func NewLogMiddleware(l *logger.Logger, env string) fiber.Handler {
+func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		start := time.Now()
 
