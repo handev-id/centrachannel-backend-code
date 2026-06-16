@@ -16,7 +16,7 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/ws"
+	"centrachannel/internal/event"
 )
 
 type WebhookService interface {
@@ -34,10 +34,10 @@ type webhookService struct {
 	tenantRepo  tenant.TenantRepository
 	db          *sql.DB
 	logger      *logger.Logger
-	notifier    ws.Notifier
+	notifier    event.Notifier
 }
 
-func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, notifier ...ws.Notifier) WebhookService {
+func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, notifier ...event.Notifier) WebhookService {
 	svc := &webhookService{
 		deviceRepo:  deviceRepo,
 		contactRepo: contactRepo,

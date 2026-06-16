@@ -26,7 +26,7 @@ import (
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
 	"centrachannel/internal/src/whatsapp_device"
-	"centrachannel/internal/ws"
+	"centrachannel/internal/event"
 )
 
 func main() {
@@ -54,7 +54,7 @@ func main() {
 
 	docs.RegisterRoutes(app)
 
-	broker := ws.NewSSEBroker()
+	broker := event.NewSSEBroker()
 
 	webhookHandler := webhook.NewWebhookHandler(c, cfg, broker)
 	webhook.RegisterRoutes(app, webhookHandler)
@@ -74,8 +74,8 @@ func main() {
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
 	
-	sseHandler := ws.NewHandler(broker)
-	app.Get("/event", authMw, middleware.Tenant(sseHandler.Handle))
+	sseHandler := event.NewHandler(broker)
+	app.Get("/api/event", authMw, middleware.Tenant(sseHandler.Handle))
 
 	userGroup := app.Group("/api/user", authMw, adminOrAbove)
 	userHandler := user.NewUserHandler(c)

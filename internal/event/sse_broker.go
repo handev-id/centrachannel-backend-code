@@ -1,4 +1,4 @@
-package ws
+package event
 
 import (
 	"encoding/json"

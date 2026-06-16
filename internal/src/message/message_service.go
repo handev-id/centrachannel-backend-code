@@ -15,7 +15,7 @@ import (
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/ws"
+	"centrachannel/internal/event"
 )
 
 type MessageService interface {
@@ -34,10 +34,10 @@ type messageService struct {
 	db           *sql.DB
 	cfg          *config.Config
 	logger       *logger.Logger
-	notifier     ws.Notifier
+	notifier     event.Notifier
 }
 
-func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) MessageService {
+func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...event.Notifier) MessageService {
 	svc := &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger}
 	if len(notifier) > 0 {
 		svc.notifier = notifier[0]

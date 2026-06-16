@@ -13,7 +13,7 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/response"
-	"centrachannel/internal/ws"
+	"centrachannel/internal/event"
 )
 
 type WebhookHandler struct {
@@ -22,7 +22,7 @@ type WebhookHandler struct {
 	metaSecret string
 }
 
-func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ...ws.Notifier) *WebhookHandler {
+func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ...event.Notifier) *WebhookHandler {
 	deviceRepo := whatsapp_device.NewWhatsAppDeviceRepository()
 	contactRepo := contact.NewContactRepository()
 	profileRepo := profile.NewProfileRepository()

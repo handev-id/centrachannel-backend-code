@@ -10,7 +10,7 @@ import (
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/ws"
+	"centrachannel/internal/event"
 )
 
 type ConversationService interface {
@@ -31,10 +31,10 @@ type conversationService struct {
 	db       *sql.DB
 	cfg      *config.Config
 	logger   *logger.Logger
-	notifier ws.Notifier
+	notifier event.Notifier
 }
 
-func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) ConversationService {
+func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...event.Notifier) ConversationService {
 	svc := &conversationService{repo: repo, db: db, cfg: cfg, logger: logger}
 	if len(notifier) > 0 {
 		svc.notifier = notifier[0]

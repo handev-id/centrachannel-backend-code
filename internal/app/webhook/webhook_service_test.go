@@ -15,7 +15,7 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/ws"
+	"centrachannel/internal/event"
 )
 
 // ---- mock repositories ----
@@ -160,7 +160,7 @@ func newTestService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contact
 	return NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"))
 }
 
-func newTestServiceWithNotifier(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, notifier ws.Notifier) WebhookService {
+func newTestServiceWithNotifier(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, notifier event.Notifier) WebhookService {
 	return NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), notifier)
 }
 
