@@ -91,7 +91,7 @@ internal/
 │   └── whatsapp_device/     #   WhatsApp device management
 ├── messenger/               # Outbound message senders
 ├── middleware/               # Tenant, Auth, CORS, Logger
-├── ws/                      # WebSocket hub & handler
+├── ws/                      # SSE broker & handler (real-time events)
 ├── di/                      # Dependency injection container
 └── utils/                   # hash, logger, response helpers
 ```

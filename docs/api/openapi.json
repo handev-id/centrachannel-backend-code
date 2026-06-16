@@ -245,12 +245,13 @@
         }
       }
     },
-    "/ws": {
+    "/event": {
       "get": {
-        "summary": "WebSocket connection",
-        "tags": ["WebSocket"],
+        "summary": "SSE event stream",
+        "tags": ["SSE"],
+        "security": [{ "bearerAuth": [] }],
         "responses": {
-          "101": { "description": "WebSocket protocol upgrade" }
+          "200": { "description": "SSE event stream (text/event-stream)" }
         }
       }
     }

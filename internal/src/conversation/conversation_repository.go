@@ -3,6 +3,7 @@ package conversation
 import (
 	"context"
 	"database/sql"
+	"time"
 )
 
 type DBTX interface {
@@ -13,6 +14,7 @@ type DBTX interface {
 
 type ConversationRepository interface {
 	List(ctx context.Context, q DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*Conversation, int, error)
+	ListCursor(ctx context.Context, q DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*Conversation, error)
 	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error)
 	Create(ctx context.Context, q DBTX, conv *Conversation) (int, error)
 	UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error

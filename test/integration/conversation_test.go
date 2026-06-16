@@ -13,6 +13,7 @@ import (
 
 type mockConversationService struct {
 	listFunc         func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.PaginatedResponse, error)
+	listCursorFunc   func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.CursorPaginatedResponse, error)
 	getByIDFunc      func(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error)
 	createFunc       func(ctx context.Context, req conversation.CreateConversationRequest, t *tenant.Tenant) (*conversation.Conversation, error)
 	assignFunc       func(ctx context.Context, tenantID int, id int, agentID int) error
@@ -25,6 +26,9 @@ type mockConversationService struct {
 
 func (m *mockConversationService) List(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.PaginatedResponse, error) {
 	return m.listFunc(ctx, q, t)
+}
+func (m *mockConversationService) ListCursor(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.CursorPaginatedResponse, error) {
+	return m.listCursorFunc(ctx, q, t)
 }
 func (m *mockConversationService) GetByID(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error) {
 	return m.getByIDFunc(ctx, tenantID, id)

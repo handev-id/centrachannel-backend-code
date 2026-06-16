@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"testing"
+	"time"
 
 	"centrachannel/config"
 	"centrachannel/internal/messenger"
@@ -58,6 +59,7 @@ func (t *mockSQLTx) Rollback() error { return nil }
 type mockMessageRepository struct {
 	createFunc                 func(ctx context.Context, q DBTX, msg *Message) (int, error)
 	listFunc                   func(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error)
+	listCursorFunc             func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error)
 	updateStatusFunc           func(ctx context.Context, q DBTX, id int, status string) error
 	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, webhookMessageID string, status string) error
 }
@@ -68,6 +70,9 @@ func (m *mockMessageRepository) Create(ctx context.Context, q DBTX, msg *Message
 
 func (m *mockMessageRepository) List(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error) {
 	return m.listFunc(ctx, q, conversationID, limit, offset)
+}
+func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
+	return m.listCursorFunc(ctx, q, conversationID, limit, lastID)
 }
 
 func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, id int, status string) error {
@@ -118,6 +123,10 @@ func (m *mockConversationRepository) MarkRead(ctx context.Context, q conversatio
 }
 
 func (m *mockConversationRepository) GetTotalUnread(ctx context.Context, q conversation.DBTX, tenantID int) (int, error) {
+	panic("unexpected call")
+}
+
+func (m *mockConversationRepository) ListCursor(ctx context.Context, q conversation.DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*conversation.Conversation, error) {
 	panic("unexpected call")
 }
 

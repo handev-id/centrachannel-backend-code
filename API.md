@@ -16,17 +16,27 @@ Auth: `Bearer` JWT token in `Authorization` header.
 }
 ```
 
-Paginated responses include:
+### Offset Pagination (default)
+
+Used by most endpoints (contacts, users, campaigns, etc.).
 ```json
 {
   "meta": { "code": 200, "message": "Success" },
-  "data": [...],
-  "meta_pagination": {
-    "total": 50, "per_page": 20, "current_page": 1,
-    "last_page": 3, "from": 1, "to": 20
-  }
+  "data": { "meta": { "total": 50, "per_page": 20, "current_page": 1, "last_page": 3, "from": 1, "to": 20 }, "data": [...] }
 }
 ```
+
+### Cursor Pagination (Conversations & Messages)
+
+Used by `GET /conversations` and `GET /conversations/{id}/messages` when `last_id` is provided.
+```json
+{
+  "meta": { "code": 200, "message": "Success" },
+  "data": { "meta_pagination": { "last_id": 42, "has_more": true }, "data": [...] }
+}
+```
+
+For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 timestamp) for composite cursor positioning.
 
 ---
 
@@ -46,11 +56,38 @@ Paginated responses include:
 | GET | `/webhook/meta` | Meta webhook verification |
 | POST | `/webhook/meta` | Meta webhook handler |
 
-## WebSocket
+## SSE (Server-Sent Events)
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/ws` | WebSocket connection (auth required) |
+| GET | `/event` | SSE event stream (auth required) |
+
+### Events
+
+The SSE endpoint pushes real-time events in standard SSE format:
+
+```text
+event: message:new
+data: {"id":1,"text":"Hello","sender_type":"contact",...}
+
+event: conversation:updated
+data: {"id":1,"action":"assign","agent_id":2}
+
+event: user:online
+data: {"id":5}
+
+event: connected
+data: {"user_id":5}
+```
+
+Client usage (JavaScript):
+```js
+const evtSource = new EventSource('/event?token=...');
+evtSource.addEventListener('message:new', (e) => {
+  const msg = JSON.parse(e.data);
+  // update UI
+});
+```
 
 ---
 
@@ -232,7 +269,7 @@ Trigger sending campaign.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/conversations` | List conversations (paginated). Query: `page`, `limit`, `status`, `channel_id`, `search`, `agent_id`, `tag` |
+| GET | `/api/conversations` | List conversations (paginated). Query: `page`, `limit`, `status`, `channel_id`, `search`, `agent_id`, `tag`. For cursor pagination: `last_activity` (ISO 8601), `last_id` |
 | POST | `/api/conversations` | Create conversation |
 | GET | `/api/conversations/{id}` | Get conversation with contact, channel, agent, tags, notes, latest messages |
 | POST | `/api/conversations/{id}/assign` | Assign to agent. Body: `{ "agent_id": 1 }` |
@@ -248,7 +285,7 @@ Trigger sending campaign.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/conversations/{conversationId}/messages` | List messages in conversation (paginated). Query: `page`, `limit` |
+| GET | `/api/conversations/{conversationId}/messages` | List messages in conversation (paginated). Query: `page`, `limit`. For cursor pagination: `last_id` |
 | POST | `/api/conversations/{conversationId}/messages` | Send message |
 | PUT | `/api/messages/{id}` | Update message status. Body: `{ "status": "read" }` |
 

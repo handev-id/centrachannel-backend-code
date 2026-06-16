@@ -32,6 +32,8 @@ func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	channelID, _ := strconv.Atoi(c.Query("channel_id"))
 	agentID, _ := strconv.Atoi(c.Query("agent_id"))
+	lastActivity := c.Query("last_activity")
+	lastID, _ := strconv.Atoi(c.Query("last_id"))
 
 	if middleware.IsAgentOnly(c) {
 		uid, err := middleware.GetUserID(c)
@@ -43,6 +45,15 @@ func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 		Page: page, Limit: limit, Status: c.Query("status"),
 		ChannelID: channelID, AgentID: agentID, Search: c.Query("search"),
 		SortBy: c.Query("sort_by"),
+		LastActivity: lastActivity, LastID: lastID,
+	}
+
+	if q.LastID > 0 {
+		result, err := h.service.ListCursor(c.Context(), q, t)
+		if err != nil {
+			return response.InternalServerError(c, err.Error())
+		}
+		return response.OK(c, "success", result)
 	}
 
 	result, err := h.service.List(c.Context(), q, t)

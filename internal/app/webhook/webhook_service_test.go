@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"testing"
+	"time"
 
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
@@ -104,6 +105,9 @@ func (m *mockConvRepo) Assign(ctx context.Context, q conversation.DBTX, tenantID
 func (m *mockConvRepo) Unassign(ctx context.Context, q conversation.DBTX, tenantID int, id int) error { return nil }
 func (m *mockConvRepo) GetTotalUnread(ctx context.Context, q conversation.DBTX, tenantID int) (int, error) { return 0, nil }
 func (m *mockConvRepo) MarkRead(ctx context.Context, q conversation.DBTX, tenantID int, id int) error { return nil }
+func (m *mockConvRepo) ListCursor(ctx context.Context, q conversation.DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*conversation.Conversation, error) {
+	return nil, nil
+}
 func (m *mockConvRepo) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
 	if m.updateLastMessageFunc != nil { return m.updateLastMessageFunc(ctx, q, tenantID, id, lastMessageJSON, lastAgentID) }
 	return nil
@@ -124,6 +128,7 @@ func (m *mockMsgRepo) UpdateStatusByWebhookID(ctx context.Context, q message.DBT
 	if m.updateStatusByWebhookIDFunc != nil { return m.updateStatusByWebhookIDFunc(ctx, q, webhookMessageID, status) }
 	return nil
 }
+func (m *mockMsgRepo) ListCursor(ctx context.Context, q message.DBTX, conversationID int, limit int, lastID int) ([]*message.Message, error) { return nil, nil }
 func (m *mockMsgRepo) UpdateWebhookID(ctx context.Context, q message.DBTX, id int, webhookMessageID string) error { return nil }
 
 type mockNotifier struct {

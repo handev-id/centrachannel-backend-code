@@ -4,17 +4,19 @@
     "tags": ["Conversation"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number (offset pagination)" },
       { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 20 }, "description": "Results per page" },
       { "name": "search", "in": "query", "schema": { "type": "string" }, "description": "Search keyword" },
       { "name": "status", "in": "query", "schema": { "type": "string" }, "description": "Filter by status" },
       { "name": "channel_id", "in": "query", "schema": { "type": "integer" }, "description": "Filter by channel ID" },
       { "name": "agent_id", "in": "query", "schema": { "type": "integer" }, "description": "Filter by agent ID" },
-      { "name": "sort_by", "in": "query", "schema": { "type": "string" }, "description": "Sort field" }
+      { "name": "sort_by", "in": "query", "schema": { "type": "string" }, "description": "Sort field" },
+      { "name": "last_activity", "in": "query", "schema": { "type": "string", "format": "date-time" }, "description": "Cursor: last_activity from previous page (ISO 8601). Required with last_id for cursor pagination." },
+      { "name": "last_id", "in": "query", "schema": { "type": "integer" }, "description": "Cursor: last conversation ID from previous page. When provided, switches to cursor pagination." }
     ],
     "responses": {
       "200": {
-        "description": "Paginated list of conversations",
+        "description": "List of conversations. Uses offset or cursor pagination based on query params.",
         "content": {
           "application/json": {
             "schema": {
@@ -22,8 +24,38 @@
               "properties": {
                 "meta": { "$ref": "../../components/schemas/Meta.json" },
                 "data": {
-                  "type": "array",
-                  "items": { "$ref": "../../components/schemas/Conversation.json" }
+                  "type": "object",
+                  "properties": {
+                    "meta_pagination": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "total": { "type": "integer" },
+                            "per_page": { "type": "integer" },
+                            "current_page": { "type": "integer" },
+                            "last_page": { "type": "integer" },
+                            "from": { "type": "integer" },
+                            "to": { "type": "integer" }
+                          },
+                          "description": "Offset pagination meta (when page param used)"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "last_id": { "type": "integer" },
+                            "last_activity": { "type": "string", "format": "date-time" },
+                            "has_more": { "type": "boolean" }
+                          },
+                          "description": "Cursor pagination meta (when last_id param provided)"
+                        }
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "../../components/schemas/Conversation.json" }
+                    }
+                  }
                 }
               }
             }

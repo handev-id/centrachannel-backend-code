@@ -40,8 +40,18 @@ func (h *MessageHandler) List(c fiber.Ctx) error {
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "50"))
+	lastID, _ := strconv.Atoi(c.Query("last_id"))
 
-	q := ListMessageQuery{Page: page, Limit: limit}
+	q := ListMessageQuery{Page: page, Limit: limit, LastID: lastID}
+
+	if q.LastID > 0 {
+		result, err := h.service.ListCursor(c.Context(), conversationID, q)
+		if err != nil {
+			return response.InternalServerError(c, err.Error())
+		}
+		return response.OK(c, "success", result)
+	}
+
 	result, err := h.service.List(c.Context(), conversationID, q)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())

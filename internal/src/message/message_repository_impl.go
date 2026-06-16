@@ -62,6 +62,37 @@ func (r *messageRepository) List(ctx context.Context, q DBTX, conversationID int
 	return msgs, total, rows.Err()
 }
 
+func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
+	query := `SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1`
+	args := []interface{}{conversationID}
+	argIdx := 2
+
+	if lastID > 0 {
+		query += fmt.Sprintf(" AND id < $%d", argIdx)
+		args = append(args, lastID)
+		argIdx++
+	}
+
+	query += fmt.Sprintf(" ORDER BY id DESC LIMIT $%d", argIdx)
+	args = append(args, limit)
+
+	rows, err := q.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []*Message
+	for rows.Next() {
+		msg, err := scanMessage(rows)
+		if err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, msg)
+	}
+	return msgs, rows.Err()
+}
+
 func (r *messageRepository) Create(ctx context.Context, q DBTX, msg *Message) (int, error) {
 	query := `INSERT INTO messages (tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`
 	var id int

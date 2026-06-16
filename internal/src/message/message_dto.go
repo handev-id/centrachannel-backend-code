@@ -3,8 +3,9 @@ package message
 import "encoding/json"
 
 type ListMessageQuery struct {
-	Page  int `query:"page"`
-	Limit int `query:"limit"`
+	Page   int `query:"page"`
+	Limit  int `query:"limit"`
+	LastID int `query:"last_id"`
 }
 
 type SendMessageRequest struct {
@@ -30,4 +31,14 @@ type PaginationMeta struct {
 	LastPage    int `json:"last_page"`
 	From        int `json:"from"`
 	To          int `json:"to"`
+}
+
+type CursorPaginationMeta struct {
+	LastID  int  `json:"last_id"`
+	HasMore bool `json:"has_more"`
+}
+
+type CursorPaginatedResponse struct {
+	Meta CursorPaginationMeta `json:"meta_pagination"`
+	Data interface{}         `json:"data"`
 }

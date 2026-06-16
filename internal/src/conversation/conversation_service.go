@@ -15,6 +15,7 @@ import (
 
 type ConversationService interface {
 	List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*PaginatedResponse, error)
+	ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*CursorPaginatedResponse, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error)
 	Create(ctx context.Context, req CreateConversationRequest, t *tenant.Tenant) (*Conversation, error)
 	Assign(ctx context.Context, tenantID int, id int, agentID int) error
@@ -59,6 +60,44 @@ func (s *conversationService) List(ctx context.Context, q ListConversationQuery,
 
 	meta := PaginationMeta{Total: total, PerPage: q.Limit, CurrentPage: q.Page, LastPage: lastPage, From: from, To: to}
 	return &PaginatedResponse{Meta: meta, Data: convs}, nil
+}
+
+func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*CursorPaginatedResponse, error) {
+	if q.Limit < 1 || q.Limit > 100 {
+		q.Limit = 20
+	}
+
+	var lastActivityTime *time.Time
+	if q.LastActivity != "" {
+		parsed, err := time.Parse(time.RFC3339, q.LastActivity)
+		if err != nil {
+			return nil, fmt.Errorf("invalid last_activity: %w", err)
+		}
+		lastActivityTime = &parsed
+	}
+
+	convs, err := s.repo.ListCursor(ctx, s.db, t.ID, q.Limit+1, q.Status, q.ChannelID, q.AgentID, q.Search, lastActivityTime, q.LastID)
+	if err != nil {
+		return nil, err
+	}
+
+	hasMore := len(convs) > q.Limit
+	if hasMore {
+		convs = convs[:q.Limit]
+	}
+
+	var lastID int
+	var lastActivityStr string
+	if len(convs) > 0 {
+		last := convs[len(convs)-1]
+		lastID = last.ID
+		if last.LastActivity != nil {
+			lastActivityStr = last.LastActivity.Format(time.RFC3339)
+		}
+	}
+
+	meta := CursorPaginationMeta{LastID: lastID, LastActivity: lastActivityStr, HasMore: hasMore}
+	return &CursorPaginatedResponse{Meta: meta, Data: convs}, nil
 }
 
 func (s *conversationService) GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error) {

@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"testing"
+	"time"
 
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
@@ -140,6 +141,10 @@ func (m *mockConversationRepository) MarkRead(_ context.Context, _ DBTX, tenantI
 	m.markReadTenantID = tenantID
 	m.markReadConvID = id
 	return m.markReadErr
+}
+
+func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ int, _ int, _ string, _, _ int, _ string, _ *time.Time, _ int) ([]*Conversation, error) {
+	return nil, nil
 }
 
 func (m *mockConversationRepository) UpdateLastMessage(_ context.Context, _ DBTX, _, _ int, _ []byte, _ int) error {

@@ -10,13 +10,17 @@ import (
 )
 
 type mockMessageService struct {
-	listFunc       func(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.PaginatedResponse, error)
-	sendFunc       func(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error)
+	listFunc         func(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.PaginatedResponse, error)
+	listCursorFunc   func(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.CursorPaginatedResponse, error)
+	sendFunc         func(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error)
 	updateStatusFunc func(ctx context.Context, id int, status string) error
 }
 
 func (m *mockMessageService) List(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.PaginatedResponse, error) {
 	return m.listFunc(ctx, conversationID, q)
+}
+func (m *mockMessageService) ListCursor(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.CursorPaginatedResponse, error) {
+	return m.listCursorFunc(ctx, conversationID, q)
 }
 func (m *mockMessageService) Send(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error) {
 	return m.sendFunc(ctx, req, tenantID, conversationID)

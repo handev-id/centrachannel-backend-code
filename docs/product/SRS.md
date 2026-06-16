@@ -373,14 +373,20 @@ Two access layers based on domain:
 |--------|------|------|-------------|
 | POST | /api/upload | JWT, agent+ | Upload file |
 
-### 2.14 WebSocket
+### 2.14 SSE (Server-Sent Events)
 
-| Event | Direction | Payload |
-|-------|-----------|---------|
-| conversation.created | → client | `{ type, data: conversation }` |
-| conversation.updated | → client | `{ type, data: conversation }` |
-| message.created | → client | `{ type, data: message }` |
-| message.updated | → client | `{ type, data: message }` |
+| Event | Direction | Description |
+|-------|-----------|-------------|
+| `connected` | → client | Initial connection confirmation with `user_id` |
+| `message:new` | → client | New message (from webhook or user send) |
+| `conversation:updated` | → client | Conversation status change (assign/unassign/resolve/reopen) |
+| `device:updated` | → client | WhatsApp device status change |
+| `user:online` | → client | User came online (first connection) |
+| `user:offline` | → client | User went offline (last disconnection) |
+
+**Endpoint:** `GET /event` (auth required, tenant-scoped)
+
+**Format:** Standard SSE (`text/event-stream`), each event includes `event:` name and `data:` JSON payload.
 
 ---
 
@@ -440,4 +446,4 @@ Paginated:
 | 11 | Campaigns | tenants | 16–17 |
 | 12 | Dashboard | contacts, conversations | — (query-only) |
 | 13 | Upload | — | — (external service) |
-| 14 | WebSocket | — | — (infrastructure) |
+| 14 | SSE | — | — (real-time events) |

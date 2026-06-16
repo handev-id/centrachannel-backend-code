@@ -9,7 +9,7 @@
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | Migrations | golang-migrate |
-| WebSocket | gorilla/websocket |
+| Realtime Events | SSE (Server-Sent Events, built-in) |
 | Auth | JWT (golang-jwt) |
 | DI | Manual (container pattern) |
 
@@ -164,9 +164,9 @@ centrachannel/
 │   │   ├── mock.go              # MockSender (fallback)
 │   │   └── dispatcher.go        # NewSender factory
 │   ├── ws/
-│   │   ├── hub.go
-│   │   ├── handler.go
-│   │   └── notifier.go
+│   │   ├── sse_broker.go       # SSE broker (tenant-scoped rooms, online user tracking)
+│   │   ├── sse_handler.go      # SSE endpoint handler
+│   │   └── notifier.go         # Notifier interface
 │   └── di/
 │       └── container.go
 ├── test/
@@ -217,15 +217,30 @@ All repository methods accept `DBTX` (interface matching both `*sql.DB` and `*sq
 
 Files are uploaded to `https://storage.solodevs.my.id` via multipart POST. The returned `public_url` is stored in the message's `attachment` JSONB field.
 
-### WebSocket
+### SSE (Server-Sent Events)
 
-WebSocket only pushes notification events (created/updated). The FE refetches data when notified. No data is transported over WebSocket.
+Real-time events use SSE (`GET /event`, auth + tenant required). The `SSEBroker` maintains tenant-scoped rooms and reference-counted online user tracking. Events are pushed via standard SSE format:
 
-Example events:
-```json
-{"type": "message.created", "data": {"conversation_id": 1, "message_id": 42}}
-{"type": "conversation.updated", "data": {"conversation_id": 1, "status": "assigned"}}
+```text
+event: message:new
+data: {"id":1,"text":"Hello","sender_type":"contact",...}
+
+event: conversation:updated
+data: {"id":1,"action":"assign","agent_id":2}
+
+event: user:online
+data: {"id":5}
 ```
+
+The `Notifier` interface (`ws.Notifier`) decouples senders (services/webhooks) from the broker. Services call `notifier.Notify(tenantID, event, data)` to broadcast to all connected clients in that tenant.
+
+**Events emitted by services:**
+| Sender | Events |
+|--------|--------|
+| Webhook service | `message:new`, `conversation:updated`, `device:updated` |
+| Conversation service | `conversation:updated` (assign/unassign/resolve/reopen) |
+| Message service | `message:new` |
+| SSE broker | `user:online`, `user:offline` (auto on connect/disconnect) |
 
 ### Avatar Generation
 

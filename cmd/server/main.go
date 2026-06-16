@@ -54,10 +54,9 @@ func main() {
 
 	docs.RegisterRoutes(app)
 
-	hub := ws.NewHub()
-	go hub.Run()
+	broker := ws.NewSSEBroker()
 
-	webhookHandler := webhook.NewWebhookHandler(c, cfg, hub)
+	webhookHandler := webhook.NewWebhookHandler(c, cfg, broker)
 	webhook.RegisterRoutes(app, webhookHandler)
 
 	regHandler := registration.NewRegistrationHandler(c)
@@ -75,8 +74,8 @@ func main() {
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
 	
-	wsHandler := ws.NewHandler(hub, cfg)
-	app.Get("/ws", authMw, middleware.Tenant(wsHandler.Handle))
+	sseHandler := ws.NewHandler(broker)
+	app.Get("/event", authMw, middleware.Tenant(sseHandler.Handle))
 
 	userGroup := app.Group("/api/user", authMw, adminOrAbove)
 	userHandler := user.NewUserHandler(c)
@@ -95,10 +94,10 @@ func main() {
 	contact.RegisterRoutes(contactGroup, contactHandler)
 
 	convGroup := app.Group("/api/conversations", authMw, agentOrAbove)
-	conversationHandler := conversation.NewConversationHandler(c, hub)
+	conversationHandler := conversation.NewConversationHandler(c, broker)
 	conversation.RegisterRoutes(convGroup, conversationHandler)
 
-	messageHandler := message.NewMessageHandler(c, hub)
+	messageHandler := message.NewMessageHandler(c, broker)
 	message.RegisterConversationRoutes(convGroup, messageHandler)
 	msgGroup := app.Group("/api/messages", authMw, agentOrAbove)
 	message.RegisterRoutes(msgGroup, messageHandler)

@@ -106,6 +106,72 @@ func (r *conversationRepository) List(ctx context.Context, q DBTX, tenantID int,
 	return convs, total, rows.Err()
 }
 
+func (r *conversationRepository) ListCursor(ctx context.Context, q DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*Conversation, error) {
+	var conditions []string
+	var args []interface{}
+	argIdx := 1
+
+	conditions = append(conditions, fmt.Sprintf("c.tenant_id = $%d", argIdx))
+	args = append(args, tenantID)
+	argIdx++
+
+	if status != "" {
+		conditions = append(conditions, fmt.Sprintf("c.status = $%d", argIdx))
+		args = append(args, status)
+		argIdx++
+	}
+
+	if channelID > 0 {
+		conditions = append(conditions, fmt.Sprintf("c.channel_id = $%d", argIdx))
+		args = append(args, channelID)
+		argIdx++
+	}
+
+	if agentID > 0 {
+		conditions = append(conditions, fmt.Sprintf("c.agent_id = $%d", argIdx))
+		args = append(args, agentID)
+		argIdx++
+	}
+
+	if search != "" {
+		conditions = append(conditions, fmt.Sprintf("(LOWER(p.display_name) LIKE LOWER($%d) OR LOWER(p.username) LIKE LOWER($%d))", argIdx, argIdx))
+		args = append(args, "%"+search+"%")
+		argIdx++
+	}
+
+	if lastActivity != nil && lastID > 0 {
+		conditions = append(conditions, fmt.Sprintf("(c.last_activity < $%d OR (c.last_activity = $%d AND c.id < $%d))", argIdx, argIdx, argIdx+1))
+		args = append(args, *lastActivity, lastID)
+		argIdx += 2
+	}
+
+	where := strings.Join(conditions, " AND ")
+
+	fromClause := "conversations c"
+	if search != "" {
+		fromClause = "conversations c INNER JOIN profiles p ON p.id = c.profile_id"
+	}
+
+	query := fmt.Sprintf(`SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at FROM %s WHERE %s ORDER BY c.last_activity DESC NULLS LAST, c.id DESC LIMIT $%d`, fromClause, where, argIdx)
+	args = append(args, limit)
+
+	rows, err := q.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var convs []*Conversation
+	for rows.Next() {
+		conv, err := scanConversation(rows)
+		if err != nil {
+			return nil, err
+		}
+		convs = append(convs, conv)
+	}
+	return convs, rows.Err()
+}
+
 func (r *conversationRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error) {
 	query := `SELECT id, tenant_id, status, profile_id, agent_id, channel_id, last_agent_id, unread_count, last_message, last_activity, last_seen, created_at, updated_at FROM conversations WHERE id = $1 AND tenant_id = $2`
 	return scanConversation(q.QueryRowContext(ctx, query, id, tenantID))

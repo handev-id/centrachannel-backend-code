@@ -5,12 +5,13 @@
     "security": [{ "bearerAuth": [] }],
     "parameters": [
       { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" },
-      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number" },
-      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Results per page" }
+      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number (offset pagination)" },
+      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Results per page" },
+      { "name": "last_id", "in": "query", "schema": { "type": "integer" }, "description": "Cursor: last message ID from previous page. When provided, switches to cursor pagination." }
     ],
     "responses": {
       "200": {
-        "description": "Paginated list of messages",
+        "description": "List of messages. Uses offset or cursor pagination based on query params.",
         "content": {
           "application/json": {
             "schema": {
@@ -18,8 +19,37 @@
               "properties": {
                 "meta": { "$ref": "../../components/schemas/Meta.json" },
                 "data": {
-                  "type": "array",
-                  "items": { "$ref": "../../components/schemas/MessageModel.json" }
+                  "type": "object",
+                  "properties": {
+                    "meta_pagination": {
+                      "oneOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "total": { "type": "integer" },
+                            "per_page": { "type": "integer" },
+                            "current_page": { "type": "integer" },
+                            "last_page": { "type": "integer" },
+                            "from": { "type": "integer" },
+                            "to": { "type": "integer" }
+                          },
+                          "description": "Offset pagination meta (when page param used)"
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "last_id": { "type": "integer" },
+                            "has_more": { "type": "boolean" }
+                          },
+                          "description": "Cursor pagination meta (when last_id param provided)"
+                        }
+                      ]
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": { "$ref": "../../components/schemas/MessageModel.json" }
+                    }
+                  }
                 }
               }
             }

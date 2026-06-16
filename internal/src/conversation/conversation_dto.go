@@ -1,13 +1,15 @@
 package conversation
 
 type ListConversationQuery struct {
-	Page      int    `query:"page"`
-	Limit     int    `query:"limit"`
-	Status    string `query:"status"`
-	ChannelID int    `query:"channel_id"`
-	AgentID   int    `query:"agent_id"`
-	Search    string `query:"search"`
-	SortBy    string `query:"sort_by"`
+	Page         int    `query:"page"`
+	Limit        int    `query:"limit"`
+	Status       string `query:"status"`
+	ChannelID    int    `query:"channel_id"`
+	AgentID      int    `query:"agent_id"`
+	Search       string `query:"search"`
+	SortBy       string `query:"sort_by"`
+	LastActivity string `query:"last_activity"`
+	LastID       int    `query:"last_id"`
 }
 
 type CreateConversationRequest struct {
@@ -28,4 +30,15 @@ type PaginationMeta struct {
 	LastPage    int `json:"last_page"`
 	From        int `json:"from"`
 	To          int `json:"to"`
+}
+
+type CursorPaginationMeta struct {
+	LastID       int    `json:"last_id"`
+	LastActivity string `json:"last_activity,omitempty"`
+	HasMore      bool   `json:"has_more"`
+}
+
+type CursorPaginatedResponse struct {
+	Meta CursorPaginationMeta `json:"meta_pagination"`
+	Data interface{}         `json:"data"`
 }

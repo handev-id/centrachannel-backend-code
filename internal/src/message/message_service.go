@@ -20,6 +20,7 @@ import (
 
 type MessageService interface {
 	List(ctx context.Context, conversationID int, q ListMessageQuery) (*PaginatedResponse, error)
+	ListCursor(ctx context.Context, conversationID int, q ListMessageQuery) (*CursorPaginatedResponse, error)
 	Send(ctx context.Context, req SendMessageRequest, tenantID int, conversationID int) (*Message, error)
 	UpdateStatus(ctx context.Context, id int, status string) error
 }
@@ -62,6 +63,34 @@ func (s *messageService) List(ctx context.Context, conversationID int, q ListMes
 
 	meta := PaginationMeta{Total: total, PerPage: q.Limit, CurrentPage: q.Page, LastPage: lastPage, From: from, To: to}
 	return &PaginatedResponse{Meta: meta, Data: msgs}, nil
+}
+
+func (s *messageService) ListCursor(ctx context.Context, conversationID int, q ListMessageQuery) (*CursorPaginatedResponse, error) {
+	if q.Limit < 1 || q.Limit > 100 {
+		q.Limit = 50
+	}
+
+	msgs, err := s.repo.ListCursor(ctx, s.db, conversationID, q.Limit+1, q.LastID)
+	if err != nil {
+		return nil, err
+	}
+
+	hasMore := len(msgs) > q.Limit
+	if hasMore {
+		msgs = msgs[:q.Limit]
+	}
+
+	cursorID := 0
+	if len(msgs) > 0 {
+		cursorID = msgs[len(msgs)-1].ID
+	}
+
+	for i, j := 0, len(msgs)-1; i < j; i, j = i+1, j-1 {
+		msgs[i], msgs[j] = msgs[j], msgs[i]
+	}
+
+	meta := CursorPaginationMeta{LastID: cursorID, HasMore: hasMore}
+	return &CursorPaginatedResponse{Meta: meta, Data: msgs}, nil
 }
 
 func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenantID int, conversationID int) (*Message, error) {
