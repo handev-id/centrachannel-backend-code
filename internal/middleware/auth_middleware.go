@@ -15,13 +15,18 @@ import (
 func AuthMiddleware(cfg *config.Config, rdb *redis.Client) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		authHeader := c.Get("Authorization")
+		tokenStr := authHeader
+
 		if authHeader == "" {
+			tokenStr = c.Query("token")
+		}
+		
+		if tokenStr == "" {
 			return response.Unauthorized(c, "Missing token")
 		}
 
-		tokenStr := authHeader
-		if len(authHeader) > 7 && strings.HasPrefix(authHeader, "Bearer ") {
-			tokenStr = authHeader[7:]
+		if len(tokenStr) > 7 && strings.HasPrefix(tokenStr, "Bearer ") {
+			tokenStr = tokenStr[7:]
 		}
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {
