@@ -31,9 +31,7 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 	c.Set("Connection", "keep-alive")
 	c.Set("X-Accel-Buffering", "no")
 
-	fctx := c.RequestCtx()
-
-	fctx.SetBodyStreamWriter(func(w *bufio.Writer) {
+	c.SendStreamWriter(func(w *bufio.Writer) {
 		client := h.broker.Subscribe(t.ID, uid)
 		defer h.broker.Unsubscribe(client)
 
@@ -43,7 +41,7 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 
 		for {
 			select {
-			case <-fctx.Done():
+			case <-c.Done():
 				return
 			case event, ok := <-client.ch:
 				if !ok {
