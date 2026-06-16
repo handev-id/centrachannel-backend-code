@@ -149,8 +149,8 @@
     "/api/upload": {
       "$ref": "/docs/api/paths/upload/index.json"
     },
-    "/api/dashboard/stats": {
-      "$ref": "/docs/api/paths/dashboard/stats.json"
+    "/api/dashboard/": {
+      "$ref": "/docs/api/paths/dashboard/index.json"
     },
     "/api/dashboard/chart": {
       "$ref": "/docs/api/paths/dashboard/chart.json"

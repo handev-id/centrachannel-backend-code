@@ -25,8 +25,9 @@ func NewDashboardHandlerWithService(service DashboardService) *DashboardHandler 
 }
 
 func (h *DashboardHandler) Stats(c fiber.Ctx, t *tenant.Tenant) error {
+	days, _ := strconv.Atoi(c.Query("days", "30"))
 
-	stats, err := h.service.GetStats(c.Context(), t.ID)
+	stats, err := h.service.GetStats(c.Context(), t.ID, days)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
@@ -34,8 +35,7 @@ func (h *DashboardHandler) Stats(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *DashboardHandler) Chart(c fiber.Ctx, t *tenant.Tenant) error {
-
-	days, _ := strconv.Atoi(c.Query("days", "30"))
+	days, _ := strconv.Atoi(c.Query("days", "7"))
 
 	chart, err := h.service.GetChart(c.Context(), t.ID, days)
 	if err != nil {

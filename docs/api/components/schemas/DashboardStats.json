@@ -1,9 +1,160 @@
 {
   "type": "object",
   "properties": {
-    "total_contacts": { "type": "integer", "example": 150 },
-    "active_conversations": { "type": "integer", "example": 25 },
-    "resolved_today": { "type": "integer", "example": 12 },
-    "unassigned_count": { "type": "integer", "example": 5 }
+    "summary": {
+      "type": "object",
+      "properties": {
+        "total_contacts": { "type": "integer", "example": 3210 },
+        "new_contacts": { "type": "integer", "example": 54 },
+        "total_conversations": { "type": "integer", "example": 1276 },
+        "active_conversations": { "type": "integer", "example": 60 },
+        "new_conversations": { "type": "integer", "example": 121 },
+        "resolved_today": { "type": "integer", "example": 15 },
+        "total_unread_conversations": { "type": "integer", "example": 37 },
+        "total_unread_messages": { "type": "integer", "example": 90 },
+        "total_messages": { "type": "integer", "example": 15420 },
+        "messages_today": { "type": "integer", "example": 235 },
+        "total_campaigns": { "type": "integer", "example": 42 },
+        "connected_whatsapp_devices": { "type": "integer", "example": 3 }
+      }
+    },
+    "conversations": {
+      "type": "object",
+      "properties": {
+        "by_status": {
+          "type": "object",
+          "properties": {
+            "unassigned": { "type": "integer", "example": 19 },
+            "assigned": { "type": "integer", "example": 41 },
+            "resolved": { "type": "integer", "example": 1216 }
+          }
+        },
+        "by_channel": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "channel_id": { "type": "integer", "example": 1 },
+              "channel_name": { "type": "string", "example": "whatsapp" },
+              "total": { "type": "integer", "example": 978 },
+              "unread": { "type": "integer", "example": 65 }
+            }
+          }
+        },
+        "recent": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "id": { "type": "integer", "example": 1001 },
+              "status": { "type": "string", "example": "assigned" },
+              "unread_count": { "type": "integer", "example": 2 },
+              "last_activity": { "type": "string", "format": "date-time", "example": "2026-06-15T13:40:00Z" },
+              "last_message": { "type": "object", "nullable": true },
+              "channel": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": { "type": "integer" },
+                  "name": { "type": "string" },
+                  "logo": { "type": "object", "nullable": true }
+                }
+              },
+              "agent": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": { "type": "integer" },
+                  "first_name": { "type": "string" },
+                  "last_name": { "type": "string", "nullable": true },
+                  "avatar": { "type": "object", "nullable": true }
+                }
+              },
+              "contact": {
+                "type": "object",
+                "nullable": true,
+                "properties": {
+                  "id": { "type": "integer" },
+                  "first_name": { "type": "string" },
+                  "last_name": { "type": "string", "nullable": true },
+                  "avatar": { "type": "object", "nullable": true }
+                }
+              }
+            }
+          }
+        },
+        "trend": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string", "example": "2026-06-15" },
+              "count": { "type": "integer", "example": 15 }
+            }
+          }
+        }
+      }
+    },
+    "contacts": {
+      "type": "object",
+      "properties": {
+        "by_status": {
+          "type": "object",
+          "properties": {
+            "individual": { "type": "integer", "example": 3021 },
+            "institution": { "type": "integer", "example": 189 }
+          }
+        },
+        "new_contacts": { "type": "integer", "example": 54 }
+      }
+    },
+    "messages": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer", "example": 15420 },
+        "today": { "type": "integer", "example": 235 },
+        "by_sender_type": {
+          "type": "object",
+          "properties": {
+            "contact": { "type": "integer", "example": 10200 },
+            "user": { "type": "integer", "example": 5220 }
+          }
+        },
+        "by_date": {
+          "type": "array",
+          "items": {
+            "type": "object",
+            "properties": {
+              "date": { "type": "string", "example": "2026-06-15" },
+              "count": { "type": "integer", "example": 235 }
+            }
+          }
+        }
+      }
+    },
+    "campaigns": {
+      "type": "object",
+      "properties": {
+        "total": { "type": "integer", "example": 42 },
+        "by_status": {
+          "type": "object",
+          "additionalProperties": { "type": "integer" },
+          "example": { "draft": 3, "inprogress": 2, "completed": 7 }
+        }
+      }
+    },
+    "agents": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "id": { "type": "integer", "example": 9 },
+          "first_name": { "type": "string", "example": "Alya" },
+          "last_name": { "type": "string", "nullable": true, "example": "Putri" },
+          "avatar": { "type": "object", "nullable": true },
+          "ongoing_conversations": { "type": "integer", "example": 16 }
+        }
+      }
+    }
   }
 }

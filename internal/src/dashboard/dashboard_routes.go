@@ -7,6 +7,6 @@ import (
 )
 
 func RegisterRoutes(group fiber.Router, handler *DashboardHandler) {
-	group.Get("/stats", middleware.Tenant(handler.Stats))
+	group.Get("/", middleware.Tenant(handler.Stats))
 	group.Get("/chart", middleware.Tenant(handler.Chart))
 }

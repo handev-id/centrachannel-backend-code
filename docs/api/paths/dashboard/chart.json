@@ -1,10 +1,10 @@
 {
   "get": {
-    "summary": "Get dashboard chart data",
+    "summary": "Get conversation trend chart data",
     "tags": ["Dashboard"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "period", "in": "query", "schema": { "type": "string", "enum": ["7d", "30d", "90d"] }, "description": "Time period" }
+      { "name": "days", "in": "query", "schema": { "type": "integer", "minimum": 1, "maximum": 365, "default": 7 }, "description": "Number of days to include in the chart" }
     ],
     "responses": {
       "200": {
@@ -19,7 +19,7 @@
                   "items": {
                     "type": "object",
                     "properties": {
-                      "date": { "type": "string", "example": "2025-07-29" },
+                      "date": { "type": "string", "example": "2026-06-15" },
                       "count": { "type": "integer", "example": 15 }
                     }
                   }

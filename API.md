@@ -311,12 +311,69 @@ Trigger sending campaign.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/dashboard/stats` | Stats: `total_contacts`, `active_conversations`, `resolved_today`, `unassigned_count` |
-| GET | `/api/dashboard/chart` | Chart data for dashboard |
+| GET | `/api/dashboard/` | Comprehensive analytics: summary, conversations, contacts, messages, campaigns, agents |
+| GET | `/api/dashboard/chart` | Conversation trend chart |
 
----
+**Query params:** `days` (integer, 1-365, default 30) — rolling window for new/new metrics, trends, and message history.
 
-## Entity Schemas
+### Response Structure
+
+```json
+{
+  "summary": {
+    "total_contacts": 3210,
+    "new_contacts": 54,
+    "total_conversations": 1276,
+    "active_conversations": 60,
+    "new_conversations": 121,
+    "resolved_today": 15,
+    "total_unread_conversations": 37,
+    "total_unread_messages": 90,
+    "total_messages": 15420,
+    "messages_today": 235,
+    "total_campaigns": 42,
+    "connected_whatsapp_devices": 3
+  },
+  "conversations": {
+    "by_status": { "unassigned": 19, "assigned": 41, "resolved": 1216 },
+    "by_channel": [
+      { "channel_id": 1, "channel_name": "whatsapp", "total": 978, "unread": 65 }
+    ],
+    "recent": [
+      {
+        "id": 1001, "status": "assigned", "unread_count": 2,
+        "last_activity": "2026-06-15T13:40:00Z",
+        "last_message": { "text": "Hello!" },
+        "channel": { "id": 1, "name": "whatsapp", "logo": null },
+        "agent": { "id": 9, "first_name": "Alya", "last_name": "Putri", "avatar": null },
+        "contact": { "id": 44, "first_name": "Rafi", "last_name": "Saputra", "avatar": null }
+      }
+    ],
+    "trend": [
+      { "date": "2026-06-15", "count": 15 }
+    ]
+  },
+  "contacts": {
+    "by_status": { "individual": 3021, "institution": 189 },
+    "new_contacts": 54
+  },
+  "messages": {
+    "total": 15420,
+    "today": 235,
+    "by_sender_type": { "contact": 10200, "user": 5220 },
+    "by_date": [
+      { "date": "2026-06-15", "count": 235 }
+    ]
+  },
+  "campaigns": {
+    "total": 42,
+    "by_status": { "draft": 3, "inprogress": 2, "completed": 7 }
+  },
+  "agents": [
+    { "id": 9, "first_name": "Alya", "last_name": "Putri", "avatar": null, "ongoing_conversations": 16 }
+  ]
+}
+```
 
 ### User
 ```json
@@ -428,14 +485,7 @@ Trigger sending campaign.
 `id`, `tenant_id`, `name`, `country_code`, `phone`, `whatsapp_id`, `status` (CONNECTED|DISCONNECTED), `deleted_at`, `created_at`, `updated_at`
 
 ### DashboardStats
-```json
-{
-  "total_contacts": 150,
-  "active_conversations": 25,
-  "resolved_today": 12,
-  "unassigned_count": 5
-}
-```
+See [Dashboard Response Structure](#dashboard-requires-auth) above.
 
 ---
 
