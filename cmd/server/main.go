@@ -49,12 +49,13 @@ func main() {
 	app.Use(middleware.CORSMiddleware(cfg.CORSAllowedOrigins))
 	app.Use(middleware.LogMiddleware(c.Logger, cfg.Env))
 
-	obsHandler := observability.NewObservabilityHandler()
+	broker := event.NewSSEBroker()
+	broker.StartHeartbeat()
+
+	obsHandler := observability.NewObservabilityHandler(broker)
 	observability.RegisterRoutes(app, obsHandler)
 
 	docs.RegisterRoutes(app)
-
-	broker := event.NewSSEBroker()
 
 	webhookHandler := webhook.NewWebhookHandler(c, cfg, broker)
 	webhook.RegisterRoutes(app, webhookHandler)

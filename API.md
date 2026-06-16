@@ -47,6 +47,7 @@ For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 tim
 | GET | `/health` | Health status |
 | GET | `/ping` | Returns `pong` |
 | GET | `/version` | Version info |
+| GET | `/sse-test-ping` | Send test ping via SSE to a tenant. Query: `tenant_id` (required) |
 
 ## Webhooks (Public)
 
@@ -64,9 +65,12 @@ For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 tim
 
 ### Events
 
-The SSE endpoint pushes real-time events in standard SSE format:
+The SSE endpoint pushes real-time events in standard SSE format. A **heartbeat ping** is sent every 5 seconds so the client can verify connectivity:
 
 ```text
+event: ping
+data: {}
+
 event: message:new
 data: {"id":1,"text":"Hello","sender_type":"contact",...}
 
@@ -79,6 +83,14 @@ data: {"id":5}
 event: connected
 data: {"user_id":5}
 ```
+
+| Event | Description |
+|-------|-------------|
+| `connected` | Initial connection confirmation with `user_id` |
+| `ping` | Heartbeat every 5s. FE can listen to this to detect stale connections |
+| `message:new` | New message in a conversation |
+| `conversation:updated` | Conversation status change (assign/unassign/resolve/reopen) |
+| `user:online` / `user:offline` | User presence change |
 
 Client usage (JavaScript):
 ```js

@@ -254,6 +254,15 @@ Two access layers based on domain:
 | Main domain | `https://centrachannel.com/api` | No (resolved from payload) | API key (webhook) |
 | Subdomain | `https://{tenant}.centrachannel.com/api` | Yes (from Host header) | JWT + Role |
 
+### 2.0 Observability & Debug (main domain, public)
+
+| Method | Path | Description |
+|--------|------|-------------|
+| GET | /health | Health check |
+| GET | /ping | Returns `pong` |
+| GET | /version | Version info |
+| GET | /sse-test-ping | Send test ping via SSE to a tenant. Query: `tenant_id` (required). Debug endpoint |
+
 ### 2.1 Tenant Registration (main domain, no tenant middleware)
 
 | Method | Path | Description |
@@ -378,6 +387,7 @@ Two access layers based on domain:
 | Event | Direction | Description |
 |-------|-----------|-------------|
 | `connected` | → client | Initial connection confirmation with `user_id` |
+| `ping` | → client | Heartbeat every 5 seconds (data: `{}`). Use to verify connection is alive |
 | `message:new` | → client | New message (from webhook or user send) |
 | `conversation:updated` | → client | Conversation status change (assign/unassign/resolve/reopen) |
 | `device:updated` | → client | WhatsApp device status change |

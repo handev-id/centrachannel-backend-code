@@ -3,6 +3,7 @@ package event
 import (
 	"encoding/json"
 	"sync"
+	"time"
 )
 
 type SSEBroker struct {
@@ -107,6 +108,25 @@ func (b *SSEBroker) Notify(tenantID int, event string, data interface{}) {
 			// client too slow, skip to avoid blocking
 		}
 	}
+}
+
+func (b *SSEBroker) StartHeartbeat() {
+	go func() {
+		ticker := time.NewTicker(5 * time.Second)
+		defer ticker.Stop()
+		for range ticker.C {
+			b.mu.RLock()
+			tenants := make([]int, 0, len(b.rooms))
+			for tenantID := range b.rooms {
+				tenants = append(tenants, tenantID)
+			}
+			b.mu.RUnlock()
+
+			for _, tenantID := range tenants {
+				b.Notify(tenantID, "ping", map[string]string{})
+			}
+		}
+	}()
 }
 
 func (b *SSEBroker) GetOnlineUsers(tenantID int) []int {
