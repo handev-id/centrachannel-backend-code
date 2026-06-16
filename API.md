@@ -68,29 +68,35 @@ For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 tim
 The SSE endpoint pushes real-time events in standard SSE format. A **heartbeat ping** is sent every 5 seconds so the client can verify connectivity:
 
 ```text
+event: connected
+data: {"user_id":5}
+
 event: ping
 data: {}
+
+event: user:online
+data: {"id":3}
+
+event: user:offline
+data: {"id":3}
 
 event: message:new
 data: {"id":1,"text":"Hello","sender_type":"contact",...}
 
 event: conversation:updated
 data: {"id":1,"action":"assign","agent_id":2}
-
-event: user:online
-data: {"id":5}
-
-event: connected
-data: {"user_id":5}
 ```
 
 | Event | Description |
 |-------|-------------|
 | `connected` | Initial connection confirmation with `user_id` |
 | `ping` | Heartbeat every 5s. FE can listen to this to detect stale connections |
+| `user:online` | Broadcast to **all** connected clients (including sender) when a user comes online |
+| `user:offline` | Broadcast to remaining clients when a user disconnects |
 | `message:new` | New message in a conversation |
 | `conversation:updated` | Conversation status change (assign/unassign/resolve/reopen) |
-| `user:online` / `user:offline` | User presence change |
+
+**Initial presence state:** Fetch via `GET /api/user` — response includes `is_online` field for each user.
 
 Client usage (JavaScript):
 ```js
@@ -434,6 +440,7 @@ Trigger sending campaign.
   "avatar": { "name": "avatar.png", "url": "..." },
   "last_login": "2025-07-29T15:00:00.000Z",
   "deleted_at": null,
+  "is_online": true,
   "created_at": "...", "updated_at": "...",
   "roles": [{ "id": 1, "name": "agent" }]
 }

@@ -384,15 +384,17 @@ Two access layers based on domain:
 
 ### 2.14 SSE (Server-Sent Events)
 
+Initial presence state is fetched via `GET /api/user` (includes `is_online`). SSE events are for real-time updates only.
+
 | Event | Direction | Description |
 |-------|-----------|-------------|
 | `connected` | → client | Initial connection confirmation with `user_id` |
 | `ping` | → client | Heartbeat every 5 seconds (data: `{}`). Use to verify connection is alive |
+| `user:online` | → client | Broadcast to **all** connected clients (including sender) when a user comes online |
+| `user:offline` | → client | Broadcast to remaining clients when a user disconnects |
 | `message:new` | → client | New message (from webhook or user send) |
 | `conversation:updated` | → client | Conversation status change (assign/unassign/resolve/reopen) |
 | `device:updated` | → client | WhatsApp device status change |
-| `user:online` | → client | User came online (first connection) |
-| `user:offline` | → client | User went offline (last disconnection) |
 
 **Endpoint:** `GET /event` (auth required, tenant-scoped)
 

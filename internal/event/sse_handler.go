@@ -26,11 +26,6 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 		return response.Unauthorized(c, err.Error())
 	}
 
-	origin := c.Get("Origin")
-	if origin == "" {
-		origin = "*"
-	}
-
 	fctx := c.RequestCtx()
 	fctx.HijackSetNoResponse(true)
 	fctx.Hijack(func(cw net.Conn) {
@@ -41,7 +36,7 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 		cw.Write([]byte("Cache-Control: no-cache\r\n"))
 		cw.Write([]byte("Connection: keep-alive\r\n"))
 		cw.Write([]byte("X-Accel-Buffering: no\r\n"))
-		cw.Write([]byte("Access-Control-Allow-Origin: " + origin + "\r\n"))
+		cw.Write([]byte("Access-Control-Allow-Origin: *\r\n"))
 		cw.Write([]byte("\r\n"))
 
 		client := h.broker.Subscribe(t.ID, uid)
@@ -56,7 +51,9 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 				if !ok {
 					return
 				}
-				fmt.Fprintf(cw, "event: %s\ndata: %s\n\n", event.Event, string(event.Data))
+				if _, err := fmt.Fprintf(cw, "event: %s\ndata: %s\n\n", event.Event, string(event.Data)); err != nil {
+					return
+				}
 			case <-c.Context().Done():
 				return
 			}

@@ -79,7 +79,7 @@ func main() {
 	app.Get("/api/event", authMw, middleware.Tenant(sseHandler.Handle))
 
 	userGroup := app.Group("/api/user", authMw, adminOrAbove)
-	userHandler := user.NewUserHandler(c)
+	userHandler := user.NewUserHandler(c, broker)
 	user.RegisterRoutesByGroup(userGroup, userHandler)
 
 	campaignGroup := app.Group("/api/campaigns", authMw, agentOrAbove)

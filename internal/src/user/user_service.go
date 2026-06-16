@@ -14,6 +14,10 @@ import (
 	"centrachannel/internal/utils/logger"
 )
 
+type OnlineChecker interface {
+	IsUserOnline(tenantID int, userID int) bool
+}
+
 type UserService interface {
 	List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) (*PaginatedResponse, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*User, error)
@@ -23,14 +27,19 @@ type UserService interface {
 }
 
 type userService struct {
-	repo   UserRepository
-	db     *sql.DB
-	cfg    *config.Config
-	logger *logger.Logger
+	repo    UserRepository
+	db      *sql.DB
+	cfg     *config.Config
+	logger  *logger.Logger
+	checker OnlineChecker
 }
 
-func NewUserService(repo UserRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) UserService {
-	return &userService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewUserService(repo UserRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, checker ...OnlineChecker) UserService {
+	s := &userService{repo: repo, db: db, cfg: cfg, logger: logger}
+	if len(checker) > 0 {
+		s.checker = checker[0]
+	}
+	return s
 }
 
 func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
@@ -56,6 +65,9 @@ func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenan
 		rolesMap, _ := s.repo.GetRolesByUserIDs(ctx, s.db, t.ID, userIDs)
 		for _, u := range users {
 			u.Roles = rolesMap[u.ID]
+			if s.checker != nil {
+				u.IsOnline = s.checker.IsUserOnline(t.ID, u.ID)
+			}
 		}
 	}
 
@@ -89,6 +101,9 @@ func (s *userService) GetByID(ctx context.Context, tenantID int, id int) (*User,
 	}
 	roles, _ := s.repo.GetRolesByUserID(ctx, s.db, tenantID, user.ID)
 	user.Roles = roles
+	if s.checker != nil {
+		user.IsOnline = s.checker.IsUserOnline(tenantID, user.ID)
+	}
 	return user, nil
 }
 

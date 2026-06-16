@@ -38,6 +38,7 @@ func (b *SSEBroker) Subscribe(tenantID, userID int) *SSEClient {
 	}
 
 	b.mu.Lock()
+
 	if b.rooms[tenantID] == nil {
 		b.rooms[tenantID] = make(map[*SSEClient]bool)
 	}
@@ -46,6 +47,7 @@ func (b *SSEBroker) Subscribe(tenantID, userID int) *SSEClient {
 	if b.onlineUsers[tenantID] == nil {
 		b.onlineUsers[tenantID] = make(map[int]int)
 	}
+
 	b.onlineUsers[tenantID][userID]++
 	firstConnection := b.onlineUsers[tenantID][userID] == 1
 	b.mu.Unlock()
@@ -94,18 +96,12 @@ func (b *SSEBroker) Notify(tenantID int, event string, data interface{}) {
 	}
 
 	b.mu.RLock()
-	clients := b.rooms[tenantID]
-	b.mu.RUnlock()
+	defer b.mu.RUnlock()
 
-	if clients == nil {
-		return
-	}
-
-	for client := range clients {
+	for client := range b.rooms[tenantID] {
 		select {
 		case client.ch <- SSEEvent{Event: event, Data: msg}:
 		default:
-			// client too slow, skip to avoid blocking
 		}
 	}
 }

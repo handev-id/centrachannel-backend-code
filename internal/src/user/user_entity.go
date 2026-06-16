@@ -16,20 +16,21 @@ type Avatar struct {
 }
 
 type User struct {
-	ID        int             `json:"id"`
-	TenantID  int             `json:"tenant_id"`
-	FirstName string          `json:"first_name"`
-	LastName  *string         `json:"last_name,omitempty"`
-	Username  string          `json:"username"`
-	Email     string          `json:"email"`
-	Phone     *string         `json:"phone,omitempty"`
-	Password  string          `json:"-"`
-	Avatar    json.RawMessage `json:"avatar,omitempty"`
-	LastLogin *time.Time      `json:"last_login,omitempty"`
+	ID        int                `json:"id"`
+	TenantID  int                `json:"tenant_id"`
+	FirstName string             `json:"first_name"`
+	LastName  *string            `json:"last_name,omitempty"`
+	Username  string             `json:"username"`
+	Email     string             `json:"email"`
+	Phone     *string            `json:"phone,omitempty"`
+	Password  string             `json:"-"`
+	Avatar    json.RawMessage    `json:"avatar,omitempty"`
+	LastLogin *time.Time         `json:"last_login,omitempty"`
 	DeletedAt utils.NullableTime `json:"deleted_at,omitempty"`
-	CreatedAt time.Time       `json:"created_at"`
-	UpdatedAt time.Time       `json:"updated_at"`
-	Roles     []Role          `json:"roles,omitempty"`
+	CreatedAt time.Time          `json:"created_at"`
+	UpdatedAt time.Time          `json:"updated_at"`
+	Roles     []Role             `json:"roles,omitempty"`
+	IsOnline  bool               `json:"is_online"`
 }
 
 type Role struct {
