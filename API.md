@@ -60,7 +60,7 @@ For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 tim
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/event` | SSE event stream (auth required) |
+| GET | `/api/event` | SSE event stream (auth required, use `?token=` query param) |
 
 ### Events
 
@@ -82,7 +82,7 @@ data: {"user_id":5}
 
 Client usage (JavaScript):
 ```js
-const evtSource = new EventSource('/event?token=...');
+const evtSource = new EventSource('/api/event?token=...');
 evtSource.addEventListener('message:new', (e) => {
   const msg = JSON.parse(e.data);
   // update UI
