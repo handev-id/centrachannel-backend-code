@@ -1,9 +1,9 @@
 package event
 
 import (
+	"bufio"
 	"encoding/json"
 	"fmt"
-	"net"
 
 	"github.com/gofiber/fiber/v3"
 
@@ -26,24 +26,23 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 		return response.Unauthorized(c, err.Error())
 	}
 
-	fctx := c.RequestCtx()
-	fctx.HijackSetNoResponse(true)
-	fctx.Hijack(func(cw net.Conn) {
-		defer cw.Close()
+	c.Set("Content-Type", "text/event-stream")
+	c.Set("Cache-Control", "no-cache")
+	c.Set("Connection", "keep-alive")
+	c.Set("X-Accel-Buffering", "no")
 
-		cw.Write([]byte("HTTP/1.1 200 OK\r\n"))
-		cw.Write([]byte("Content-Type: text/event-stream\r\n"))
-		cw.Write([]byte("Cache-Control: no-cache\r\n"))
-		cw.Write([]byte("Connection: keep-alive\r\n"))
-		cw.Write([]byte("X-Accel-Buffering: no\r\n"))
-		cw.Write([]byte("Access-Control-Allow-Origin: *\r\n"))
-		cw.Write([]byte("\r\n"))
+	client := h.broker.Subscribe(t.ID, uid)
 
-		client := h.broker.Subscribe(t.ID, uid)
+	c.RequestCtx().SetBodyStreamWriter(func(w *bufio.Writer) {
 		defer h.broker.Unsubscribe(client)
 
 		initialData, _ := json.Marshal(map[string]int{"user_id": uid})
-		fmt.Fprintf(cw, "event: connected\ndata: %s\n\n", string(initialData))
+		if _, err := fmt.Fprintf(w, "event: connected\ndata: %s\n\n", initialData); err != nil {
+			return
+		}
+		if err := w.Flush(); err != nil {
+			return
+		}
 
 		for {
 			select {
@@ -51,7 +50,10 @@ func (h *Handler) Handle(c fiber.Ctx, t *tenant.Tenant) error {
 				if !ok {
 					return
 				}
-				if _, err := fmt.Fprintf(cw, "event: %s\ndata: %s\n\n", event.Event, string(event.Data)); err != nil {
+				if _, err := fmt.Fprintf(w, "event: %s\ndata: %s\n\n", event.Event, string(event.Data)); err != nil {
+					return
+				}
+				if err := w.Flush(); err != nil {
 					return
 				}
 			case <-c.Context().Done():

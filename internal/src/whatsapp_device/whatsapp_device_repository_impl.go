@@ -5,8 +5,6 @@ import (
 	"database/sql"
 	"fmt"
 	"time"
-
-	"centrachannel/internal/utils"
 )
 
 type whatsAppDeviceRepository struct{}
@@ -17,10 +15,9 @@ func NewWhatsAppDeviceRepository() WhatsAppDeviceRepository {
 
 func scanDevice(row interface{ Scan(dest ...interface{}) error }) (*WhatsAppDevice, error) {
 	var d WhatsAppDevice
-	var deletedAt utils.NullableTime
 	var tenantID int
 
-	err := row.Scan(&d.ID, &tenantID, &d.Name, &d.CountryCode, &d.Phone, &d.WhatsappID, &d.Status, &deletedAt, &d.CreatedAt, &d.UpdatedAt)
+	err := row.Scan(&d.ID, &tenantID, &d.Name, &d.CountryCode, &d.Phone, &d.WhatsappID, &d.Status, &d.CreatedAt, &d.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("device not found")
 	}
@@ -28,12 +25,11 @@ func scanDevice(row interface{ Scan(dest ...interface{}) error }) (*WhatsAppDevi
 		return nil, err
 	}
 	d.TenantID = tenantID
-	d.DeletedAt = deletedAt
 	return &d, nil
 }
 
 func (r *whatsAppDeviceRepository) List(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, deleted_at, created_at, updated_at FROM whatsapp_devices WHERE tenant_id = $1 AND deleted_at IS NULL ORDER BY name`, tenantID)
+	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE tenant_id = $1 ORDER BY name`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -51,12 +47,12 @@ func (r *whatsAppDeviceRepository) List(ctx context.Context, q DBTX, tenantID in
 }
 
 func (r *whatsAppDeviceRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
-	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, deleted_at, created_at, updated_at FROM whatsapp_devices WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`
+	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE id = $1 AND tenant_id = $2`
 	return scanDevice(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
 func (r *whatsAppDeviceRepository) GetByWhatsappID(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error) {
-	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, deleted_at, created_at, updated_at FROM whatsapp_devices WHERE whatsapp_id = $1 AND deleted_at IS NULL`
+	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE whatsapp_id = $1`
 	return scanDevice(q.QueryRowContext(ctx, query, whatsappID))
 }
 
@@ -71,7 +67,7 @@ func (r *whatsAppDeviceRepository) Create(ctx context.Context, q DBTX, device *W
 }
 
 func (r *whatsAppDeviceRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error {
-	result, err := q.ExecContext(ctx, `UPDATE whatsapp_devices SET name=$1, country_code=$2, phone=$3, status=$4, updated_at=$5 WHERE id=$6 AND tenant_id=$7 AND deleted_at IS NULL`,
+	result, err := q.ExecContext(ctx, `UPDATE whatsapp_devices SET name=$1, country_code=$2, phone=$3, status=$4, updated_at=$5 WHERE id=$6 AND tenant_id=$7`,
 		device.Name, device.CountryCode, device.Phone, device.Status, time.Now(), id, tenantID)
 	if err != nil {
 		return err
@@ -84,7 +80,7 @@ func (r *whatsAppDeviceRepository) Update(ctx context.Context, q DBTX, tenantID 
 }
 
 func (r *whatsAppDeviceRepository) Delete(ctx context.Context, q DBTX, tenantID int, id int) error {
-	result, err := q.ExecContext(ctx, `UPDATE whatsapp_devices SET deleted_at=$1, updated_at=$2 WHERE id=$3 AND tenant_id=$4 AND deleted_at IS NULL`, time.Now(), time.Now(), id, tenantID)
+	result, err := q.ExecContext(ctx, `DELETE FROM whatsapp_devices WHERE id=$1 AND tenant_id=$2`, id, tenantID)
 	if err != nil {
 		return err
 	}
