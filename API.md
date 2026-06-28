@@ -358,7 +358,35 @@ Trigger sending campaign.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| POST | `/api/upload` | Upload file. Multipart form: `file` field |
+| POST | `/api/upload` | Upload a file |
+
+**Request:** `multipart/form-data`
+
+| Field | Type | Required | Description |
+|-------|------|----------|-------------|
+| `file` | binary | Yes | File to upload |
+
+**cURL Example:**
+```bash
+curl -X POST https://{tenant}.centrachannel.com/api/upload \
+  -H "Authorization: Bearer {token}" \
+  -F "file=@/path/to/file.pdf"
+```
+
+### Response Structure
+
+```json
+{
+  "meta": { "code": 201, "message": "File uploaded" },
+  "data": {
+    "message": "File uploaded successfully",
+    "key": "uploads/abc123-file.pdf",
+    "public_url": "https://storage.example.com/uploads/abc123-file.pdf",
+    "type": "application/pdf",
+    "size": 204800
+  }
+}
+```
 
 ---
 
