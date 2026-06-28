@@ -12,7 +12,7 @@ type UploadHandler struct {
 }
 
 func NewUploadHandler(c *di.Container) *UploadHandler {
-	service := NewUploadService(c.Config.StorageURL)
+	service := NewUploadService(c.Config.StorageURL, c.Config.StorageSecretKey)
 	return &UploadHandler{service: service}
 }
 

@@ -24,11 +24,12 @@ type UploadService interface {
 }
 
 type uploadService struct {
-	storageURL string
+	storageURL     string
+	storageSecretKey string
 }
 
-func NewUploadService(storageURL string) UploadService {
-	return &uploadService{storageURL: storageURL}
+func NewUploadService(storageURL, storageSecretKey string) UploadService {
+	return &uploadService{storageURL: storageURL, storageSecretKey: storageSecretKey}
 }
 
 func (s *uploadService) Upload(file *multipart.FileHeader) (*UploadResult, error) {
@@ -50,7 +51,14 @@ func (s *uploadService) Upload(file *multipart.FileHeader) (*UploadResult, error
 	}
 	writer.Close()
 
-	resp, err := http.Post(s.storageURL, writer.FormDataContentType(), &buf)
+	req, err := http.NewRequest(http.MethodPost, s.storageURL, &buf)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", writer.FormDataContentType())
+	req.Header.Set("Authorization", "Bearer "+s.storageSecretKey)
+
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to storage: %w", err)
 	}

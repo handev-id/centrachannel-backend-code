@@ -54,7 +54,7 @@ func TestUploadService_Upload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		svc := NewUploadService(server.URL)
+		svc := NewUploadService(server.URL, "")
 		file := createTestFileHeader(t, "test.txt", "hello world")
 
 		result, err := svc.Upload(file)
@@ -85,7 +85,7 @@ func TestUploadService_Upload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		svc := NewUploadService(server.URL)
+		svc := NewUploadService(server.URL, "")
 		file := createTestFileHeader(t, "test.txt", "hello world")
 
 		_, err := svc.Upload(file)
@@ -101,7 +101,7 @@ func TestUploadService_Upload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		svc := NewUploadService(server.URL)
+		svc := NewUploadService(server.URL, "")
 		file := createTestFileHeader(t, "test.txt", "hello world")
 
 		_, err := svc.Upload(file)
