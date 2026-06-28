@@ -214,7 +214,7 @@ var testTenant = &tenant.Tenant{ID: 1, Name: "Test Tenant"}
 // ---------------------------------------------------------------------------
 
 func TestCreate(t *testing.T) {
-	t.Run("generates dicebear avatar when none provided", func(t *testing.T) {
+	t.Run("creates user without avatar when none provided", func(t *testing.T) {
 		repo := &mockUserRepository{}
 		svc := newTestService(repo)
 
@@ -242,19 +242,8 @@ func TestCreate(t *testing.T) {
 		if !repo.createCalled {
 			t.Fatal("Create was not called")
 		}
-		if len(repo.createUser.Avatar) == 0 {
-			t.Fatal("avatar should be non-empty when none provided")
-		}
-		var avatarData map[string]interface{}
-		if err := json.Unmarshal(repo.createUser.Avatar, &avatarData); err != nil {
-			t.Fatalf("avatar should be valid JSON: %v", err)
-		}
-		url, ok := avatarData["url"].(string)
-		if !ok {
-			t.Fatal("avatar should contain a url field")
-		}
-		if !strings.Contains(url, "dicebear.com") {
-			t.Fatalf("avatar URL should reference dicebear.com, got: %s", url)
+		if len(repo.createUser.Avatar) != 0 {
+			t.Fatalf("expected empty avatar when none provided, got %s", string(repo.createUser.Avatar))
 		}
 
 		if !repo.attachRolesCalled {

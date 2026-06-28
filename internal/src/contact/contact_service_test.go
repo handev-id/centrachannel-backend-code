@@ -4,11 +4,9 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
-	"encoding/json"
 	"fmt"
 	"io"
 	"reflect"
-	"strings"
 	"testing"
 	"time"
 
@@ -205,7 +203,7 @@ func strPtr(s string) *string { return &s }
 // ---- Tests ----
 
 func TestContactService_Create(t *testing.T) {
-	t.Run("success with dicebear avatar and default status", func(t *testing.T) {
+	t.Run("success with default status", func(t *testing.T) {
 		var captured *Contact
 		repo := &mockContactRepository{
 			createFunc: func(ctx context.Context, q DBTX, contact *Contact) (int, error) {
@@ -228,12 +226,8 @@ func TestContactService_Create(t *testing.T) {
 		if result.Status != "individual" {
 			t.Errorf("expected status 'individual', got %q", result.Status)
 		}
-		var av map[string]string
-		if err := json.Unmarshal(captured.Avatar, &av); err != nil {
-			t.Fatalf("failed to unmarshal avatar: %v", err)
-		}
-		if !strings.Contains(av["url"], "dicebear.com") {
-			t.Errorf("expected DiceBear avatar URL, got %s", av["url"])
+		if captured.Avatar != nil {
+			t.Errorf("expected nil avatar when none provided, got %s", string(captured.Avatar))
 		}
 		if captured.FirstName != "John" {
 			t.Errorf("expected FirstName 'John', got %q", captured.FirstName)

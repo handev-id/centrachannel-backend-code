@@ -549,10 +549,7 @@ The response shape matches the `avatar` object used in user/contact create/updat
 }
 ```
 
-When `avatar` is not provided on create, a DiceBear initials avatar is auto-generated:
-```json
-{ "url": "https://api.dicebear.com/9.x/initials/svg?seed=John" }
-```
+When `avatar` is not provided, it will be `null` — the frontend handles default avatar display.
 
 ### Role
 `id`, `tenant_id`, `name`, `created_at`, `updated_at`
@@ -639,9 +636,7 @@ When `avatar` is not provided on create, a DiceBear initials avatar is auto-gene
   "sender": {
     "id": 1,
     "first_name": "Jane",
-    "avatar": {
-      "url": "https://api.dicebear.com/9.x/initials/svg?seed=Jane"
-    }
+    "avatar": null
   }
 }
 ```

@@ -9,7 +9,6 @@ import (
 
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
-	"centrachannel/internal/utils/avatar"
 	"centrachannel/internal/utils/hash"
 	"centrachannel/internal/utils/logger"
 )
@@ -119,11 +118,6 @@ func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tena
 	}
 	defer tx.Rollback()
 
-	avatarData := req.Avatar
-	if len(avatarData) == 0 {
-		avatarData = avatar.GenerateInitials(req.FirstName)
-	}
-
 	user := &User{
 		TenantID:  t.ID,
 		FirstName: req.FirstName,
@@ -132,7 +126,7 @@ func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tena
 		Email:     req.Email,
 		Phone:     req.Phone,
 		Password:  hashed,
-		Avatar:    avatarData,
+		Avatar:    req.Avatar,
 	}
 
 	userID, err := s.repo.Create(ctx, tx, user)

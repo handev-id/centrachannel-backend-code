@@ -13,7 +13,6 @@ import (
 
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
-	"centrachannel/internal/utils/avatar"
 	"centrachannel/internal/utils/logger"
 )
 
@@ -91,11 +90,6 @@ func (s *contactService) Create(ctx context.Context, req CreateContactRequest, t
 		}
 	}
 
-	avatarData := req.Avatar
-	if len(avatarData) == 0 {
-		avatarData = avatar.GenerateInitials(req.FirstName)
-	}
-
 	contact := &Contact{
 		TenantID:  t.ID,
 		FirstName: req.FirstName,
@@ -103,7 +97,7 @@ func (s *contactService) Create(ctx context.Context, req CreateContactRequest, t
 		Username:  req.Username,
 		Email:     req.Email,
 		Phone:     req.Phone,
-		Avatar:    avatarData,
+		Avatar:    req.Avatar,
 		Country:   req.Country,
 		Bio:       req.Bio,
 		Occupation: req.Occupation,
