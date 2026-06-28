@@ -123,9 +123,17 @@ Register a new user for the current tenant.
   "email": "john@example.com",
   "phone": "6281234567890",
   "password": "password123",
-  "avatar": { ... }
+  "avatar": {
+    "name": "avatar.jpg",
+    "extname": "jpg",
+    "size": 204800,
+    "type": "image/jpeg",
+    "url": "https://storage.example.com/uploads/abc123.jpg"
+  }
 }
 ```
+
+**Note:** Upload the file via `POST /api/upload` first, then use the returned `public_url` in the JSON body.
 
 ### POST /api/auth/login
 Login and get JWT token.
@@ -191,10 +199,18 @@ Create user. Requires super-admin/admin.
   "email": "jane@example.com",
   "phone": "6281234567890",
   "password": "password123",
-  "avatar": { ... },
+  "avatar": {
+    "name": "avatar.jpg",
+    "extname": "jpg",
+    "size": 204800,
+    "type": "image/jpeg",
+    "url": "https://storage.example.com/uploads/abc123.jpg"
+  },
   "roles": [2, 3]
 }
 ```
+
+**Note:** Upload the file via `POST /api/upload` first, then use the returned `public_url` in the JSON body.
 
 ### GET /api/user/{id}
 Get user details with roles.
@@ -275,6 +291,40 @@ Trigger sending campaign.
 | GET | `/api/contacts/{id}` | Get contact with profiles |
 | PUT | `/api/contacts/{id}` | Update contact |
 | DELETE | `/api/contacts/{id}` | Soft-delete contact |
+
+**POST /api/contacts Request:**
+```json
+{
+  "first_name": "Jane",
+  "last_name": "Smith",
+  "username": "janesmith",
+  "email": "jane@example.com",
+  "phone": "6281234567890",
+  "avatar": {
+    "name": "avatar.jpg",
+    "extname": "jpg",
+    "size": 204800,
+    "type": "image/jpeg",
+    "url": "https://storage.example.com/uploads/abc123.jpg"
+  },
+  "country": "Indonesia",
+  "bio": "...",
+  "occupation": "Marketing Manager",
+  "category": "business",
+  "gender": "female",
+  "date_of_birth": "1990-05-15",
+  "province_of_origin": "Jawa Barat",
+  "facebook": "...",
+  "instagram": "...",
+  "whatsapp": "...",
+  "x": "...",
+  "tiktok": "...",
+  "status": "individual",
+  "institution_name": "Tech Corp"
+}
+```
+
+**Note:** Upload the file via `POST /api/upload` first, then use the returned `public_url` in the JSON body.
 | POST | `/api/contacts/{id}/merge` | Merge duplicate contacts. Body: `{ "target_contact_id": 2 }` |
 | POST | `/api/contacts/{id}/unmerge` | Unmerge contacts |
 | GET | `/api/contacts/{id}/conversations` | Get conversations for contact |
@@ -306,6 +356,23 @@ Trigger sending campaign.
 | GET | `/api/conversations/{conversationId}/messages` | List messages in conversation (paginated). Query: `page`, `limit`. For cursor pagination: `last_id` |
 | POST | `/api/conversations/{conversationId}/messages` | Send message |
 | PUT | `/api/messages/{id}` | Update message status. Body: `{ "status": "read" }` |
+
+**POST /api/conversations/{conversationId}/messages Request:**
+```json
+{
+  "text": "Hello, I need help",
+  "attachment": {
+    "url": "https://storage.example.com/uploads/abc123.pdf",
+    "type": "document"
+  },
+  "sender_id": 1,
+  "sender_type": "user"
+}
+```
+
+**Fields:** `text` or `attachment` (or both). Attachment supports `url` (required), `type`, `caption`, `fileName`.
+
+Upload files via `POST /api/upload` first, then use the returned `public_url` in the attachment JSON.
 
 ---
 
@@ -465,7 +532,13 @@ curl -X POST https://{tenant}.centrachannel.com/api/upload \
   "first_name": "John", "last_name": "Doe",
   "username": "johndoe", "email": "john@example.com",
   "phone": "6281234567890",
-  "avatar": { "name": "avatar.png", "url": "..." },
+  "avatar": {
+    "name": "avatar.png",
+    "extname": "png",
+    "size": 204800,
+    "type": "image/png",
+    "url": "https://storage.example.com/uploads/abc123.png"
+  },
   "last_login": "2025-07-29T15:00:00.000Z",
   "deleted_at": null,
   "is_online": true,
@@ -474,14 +547,32 @@ curl -X POST https://{tenant}.centrachannel.com/api/upload \
 }
 ```
 
+When `avatar` is not provided on create, a DiceBear initials avatar is auto-generated:
+```json
+{ "url": "https://api.dicebear.com/9.x/initials/svg?seed=John" }
+```
+
 ### Role
 `id`, `tenant_id`, `name`, `created_at`, `updated_at`
 
 ### Tenant
-`id`, `name`, `domain`, `logo`, `address`, `phone`, `email`, `is_active`, `settings` (JSON — contains `channel_configuration` with `meta_access_token` & `whatsapp_phone_id`), `created_at`, `updated_at`
+`id`, `name`, `domain`, `address`, `phone`, `email`, `is_active`, `created_at`, `updated_at`
+
+**JSON fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `logo` | `JSON` | `{ "url": "https://..." }` |
+| `settings` | `JSON` | `{ "channel_configuration": { "meta_access_token": "...", "whatsapp_phone_id": "..." } }` |
 
 ### Channel
-`id`, `name`, `type` (facebook|instagram|whatsapp_business|whatsapp), `logo`, `created_at`, `updated_at`
+`id`, `name`, `type` (facebook\|instagram\|whatsapp_business\|whatsapp), `created_at`, `updated_at`
+
+**JSON fields:**
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `logo` | `JSON` | `{ "url": "https://..." }` |
 
 ### Profile
 `id`, `external_id`, `username`, `display_name`, `is_main`, `linked_device_whatsapp_id`, `contact_id`, `channel_id`, `deleted_at`, `created_at`, `updated_at`
@@ -493,7 +584,14 @@ curl -X POST https://{tenant}.centrachannel.com/api/upload \
   "first_name": "Jane", "last_name": "Smith",
   "username": "janesmith", "email": "jane@example.com",
   "phone": "6281234567890",
-  "avatar": {}, "country": "Indonesia", "bio": "...",
+  "avatar": {
+    "name": "avatar.png",
+    "extname": "png",
+    "size": 204800,
+    "type": "image/png",
+    "url": "https://storage.example.com/uploads/abc123.png"
+  },
+  "country": "Indonesia", "bio": "...",
   "occupation": "Marketing Manager",
   "category": "business", "gender": "female",
   "date_of_birth": "1990-05-15",
@@ -530,12 +628,31 @@ curl -X POST https://{tenant}.centrachannel.com/api/upload \
   "conversation_id": 1,
   "sender_id": 1, "sender_type": "contact|user|ai",
   "text": "Hello, I need help",
-  "attachment": { "name": "file.pdf", "url": "...", "type": "application/pdf" },
+  "attachment": {
+    "url": "https://storage.example.com/uploads/abc123.pdf",
+    "type": "document"
+  },
   "status": "sent|delivered|read|failed",
   "webhook_message_id": "wamid.123456789",
-  "sender": { "id": 1, "first_name": "Jane", "avatar": {} }
+  "sender": {
+    "id": 1,
+    "first_name": "Jane",
+    "avatar": {
+      "url": "https://api.dicebear.com/9.x/initials/svg?seed=Jane"
+    }
+  }
 }
 ```
+
+**Attachment shapes** vary by source:
+
+| Source | Fields |
+|--------|--------|
+| API send request | `url` (required), `type`, `caption`, `fileName` |
+| Incoming webhook (image) | `url`, `type: "image"`, `mimetype`, `caption` |
+| Incoming webhook (video) | `url`, `type: "video"`, `mimetype`, `caption` |
+| Incoming webhook (audio) | `url`, `type: "audio"`, `mimetype` |
+| Incoming webhook (document) | `url`, `type: "document"`, `mimetype`, `file_name` |
 
 ### Tag
 `id`, `tenant_id`, `name`, `color` (hex), `created_at`, `updated_at`
