@@ -446,14 +446,16 @@ curl -X POST https://{tenant}.centrachannel.com/api/upload \
 {
   "meta": { "code": 201, "message": "File uploaded" },
   "data": {
-    "message": "File uploaded successfully",
-    "key": "uploads/abc123-file.pdf",
-    "public_url": "https://storage.example.com/uploads/abc123-file.pdf",
+    "name": "file.pdf",
+    "extname": "pdf",
+    "size": 204800,
     "type": "application/pdf",
-    "size": 204800
+    "url": "https://storage.example.com/uploads/abc123-file.pdf"
   }
 }
 ```
+
+The response shape matches the `avatar` object used in user/contact create/update — you can use the entire `data` object directly as the `avatar` value.
 
 ---
 

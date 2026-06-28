@@ -35,12 +35,8 @@ func createTestFileHeader(t *testing.T, filename, content string) *multipart.Fil
 
 func TestUploadService_Upload(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		expected := UploadResult{
-			Message:   "File uploaded",
-			Key:       "uploads/test.txt",
-			PublicURL: "https://storage.example.com/uploads/test.txt",
-			Type:      "text/plain",
-			Size:      11,
+		storageResp := map[string]string{
+			"public_url": "https://storage.example.com/uploads/test.txt",
 		}
 
 		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -54,7 +50,7 @@ func TestUploadService_Upload(t *testing.T) {
 
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusCreated)
-			json.NewEncoder(w).Encode(expected)
+			json.NewEncoder(w).Encode(storageResp)
 		}))
 		defer server.Close()
 
@@ -65,20 +61,20 @@ func TestUploadService_Upload(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Message != expected.Message {
-			t.Errorf("Message = %q, want %q", result.Message, expected.Message)
+		if result.Name != "test.txt" {
+			t.Errorf("Name = %q, want %q", result.Name, "test.txt")
 		}
-		if result.Key != expected.Key {
-			t.Errorf("Key = %q, want %q", result.Key, expected.Key)
+		if result.Extname != "txt" {
+			t.Errorf("Extname = %q, want %q", result.Extname, "txt")
 		}
-		if result.PublicURL != expected.PublicURL {
-			t.Errorf("PublicURL = %q, want %q", result.PublicURL, expected.PublicURL)
+		if result.Size != 11 {
+			t.Errorf("Size = %d, want %d", result.Size, 11)
 		}
-		if result.Type != expected.Type {
-			t.Errorf("Type = %q, want %q", result.Type, expected.Type)
+		if result.Type != "text/plain; charset=utf-8" {
+			t.Errorf("Type = %q, want %q", result.Type, "text/plain; charset=utf-8")
 		}
-		if result.Size != expected.Size {
-			t.Errorf("Size = %d, want %d", result.Size, expected.Size)
+		if result.URL != "https://storage.example.com/uploads/test.txt" {
+			t.Errorf("URL = %q, want %q", result.URL, "https://storage.example.com/uploads/test.txt")
 		}
 	})
 

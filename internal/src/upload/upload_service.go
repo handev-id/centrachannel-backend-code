@@ -5,16 +5,18 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"mime"
 	"mime/multipart"
 	"net/http"
+	"strings"
 )
 
 type UploadResult struct {
-	Message   string `json:"message"`
-	Key       string `json:"key"`
-	PublicURL string `json:"public_url"`
-	Type      string `json:"type"`
-	Size      int64  `json:"size"`
+	Name    string `json:"name"`
+	Extname string `json:"extname"`
+	Size    int64  `json:"size"`
+	Type    string `json:"type"`
+	URL     string `json:"url"`
 }
 
 type UploadService interface {
@@ -59,10 +61,28 @@ func (s *uploadService) Upload(file *multipart.FileHeader) (*UploadResult, error
 		return nil, fmt.Errorf("storage returned %d: %s", resp.StatusCode, string(body))
 	}
 
-	var result UploadResult
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	var storageResp struct {
+		PublicURL string `json:"public_url"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&storageResp); err != nil {
 		return nil, fmt.Errorf("failed to decode storage response: %w", err)
 	}
 
-	return &result, nil
+	name := file.Filename
+	var extname string
+	if idx := strings.LastIndex(name, "."); idx != -1 {
+		extname = name[idx+1:]
+	}
+	mediaType := mime.TypeByExtension("." + extname)
+	if mediaType == "" {
+		mediaType = "application/octet-stream"
+	}
+
+	return &UploadResult{
+		Name:    name,
+		Extname: extname,
+		Size:    file.Size,
+		Type:    mediaType,
+		URL:     storageResp.PublicURL,
+	}, nil
 }
