@@ -46,7 +46,7 @@ func main() {
 		AppName: "CentraChannel API v1.0.0",
 	})
 
-	app.Use(middleware.CORSMiddleware(cfg.CORSAllowedOrigins))
+	app.Use(middleware.CORSMiddleware())
 	app.Use(middleware.LogMiddleware(c.Logger, cfg.Env))
 
 	broker := event.NewSSEBroker()

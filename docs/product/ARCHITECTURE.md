@@ -95,8 +95,6 @@ centrachannel/
 │       ├── 000003_create_users_table.down.sql
 │       ├── 000004_create_role_user_table.up.sql
 │       ├── 000004_create_role_user_table.down.sql
-│       ├── 000005_create_auth_access_tokens_table.up.sql
-│       ├── 000005_create_auth_access_tokens_table.down.sql
 │       └── ...
 ├── internal/
 │   ├── app/

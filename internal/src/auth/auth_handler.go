@@ -1,23 +1,24 @@
 package auth
 
 import (
-	"strings"
-
 	"github.com/gofiber/fiber/v3"
 
+	"centrachannel/config"
 	"centrachannel/internal/di"
+	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
 type AuthHandler struct {
 	service AuthService
+	cfg     *config.Config
 }
 
 func NewAuthHandler(container *di.Container) *AuthHandler {
 	repo := NewAuthRepository()
 	service := NewAuthService(repo, container.DB, container.Config, container.Logger, container.Redis)
-	return &AuthHandler{service: service}
+	return &AuthHandler{service: service, cfg: container.Config}
 }
 
 func NewAuthHandlerWithService(service AuthService) *AuthHandler {
@@ -52,17 +53,27 @@ func (h *AuthHandler) Login(c fiber.Ctx, t *tenant.Tenant) error {
 	if err != nil {
 		return response.Unauthorized(c, err.Error())
 	}
-	return response.OK(c, "Login successful", fiber.Map{"type": "bearer", "token": token})
+
+	if h.cfg != nil {
+		secure := h.cfg.Env == "production"
+		c.Cookie(&fiber.Cookie{
+			Name:     middleware.TokenCookieName,
+			Value:    token,
+			Path:     "/",
+			MaxAge:   int(h.cfg.JWTExpiry.Seconds()),
+			HTTPOnly: true,
+			Secure:   secure,
+			SameSite: fiber.CookieSameSiteStrictMode,
+		})
+	}
+
+	return response.OK(c, "Login successful", nil)
 }
 
 func (h *AuthHandler) CheckToken(c fiber.Ctx, t *tenant.Tenant) error {
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
+	token := middleware.ExtractToken(c)
+	if token == "" {
 		return response.Unauthorized(c, "Missing token")
-	}
-	token := authHeader
-	if len(authHeader) > 7 && authHeader[:7] == "Bearer " {
-		token = authHeader[7:]
 	}
 	user, err := h.service.CheckToken(c.Context(), token, t)
 	if err != nil {
@@ -72,17 +83,23 @@ func (h *AuthHandler) CheckToken(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *AuthHandler) Logout(c fiber.Ctx) error {
-	authHeader := c.Get("Authorization")
-	if authHeader == "" {
+	tokenStr := middleware.ExtractToken(c)
+	if tokenStr == "" {
 		return response.Unauthorized(c, "Missing token")
-	}
-	tokenStr := authHeader
-	if len(authHeader) > 7 && strings.HasPrefix(authHeader, "Bearer ") {
-		tokenStr = authHeader[7:]
 	}
 
 	if err := h.service.Logout(c.Context(), tokenStr); err != nil {
 		return response.Unauthorized(c, err.Error())
 	}
+
+	c.Cookie(&fiber.Cookie{
+		Name:     middleware.TokenCookieName,
+		Value:    "",
+		Path:     "/",
+		MaxAge:   -1,
+		HTTPOnly: true,
+		SameSite: fiber.CookieSameSiteStrictMode,
+	})
+
 	return response.OK(c, "Logged out successfully", nil)
 }

@@ -397,7 +397,6 @@ The `tenants` table MUST be created BEFORE any table that references it via fore
 02. create_roles_table          ← references tenants.id via tenant_id
 03. create_users_table          ← references tenants.id via tenant_id
 04. create_role_user_table      ← pivot between users and roles
-05. create_auth_access_tokens   ← references users.id
 ```
 
 Agents MUST NOT create migrations out of this order. A migration creating a table with `REFERENCES tenants(id)` MUST have a version number higher than the tenants table migration.

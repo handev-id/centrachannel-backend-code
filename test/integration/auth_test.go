@@ -197,15 +197,8 @@ func TestAuthLogin_Success(t *testing.T) {
 		t.Errorf("meta.message = %q, want %q", apiResp.Meta.Message, "Login successful")
 	}
 
-	data, ok := apiResp.Data.(map[string]interface{})
-	if !ok {
-		t.Fatalf("data type = %T, want map[string]interface{}", apiResp.Data)
-	}
-	if data["type"] != "bearer" {
-		t.Errorf("data.type = %v, want bearer", data["type"])
-	}
-	if data["token"] != "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.token" {
-		t.Errorf("data.token = %v, want %v", data["token"], "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.token")
+	if apiResp.Data != nil {
+		t.Errorf("data = %v, want nil (token removed from response body)", apiResp.Data)
 	}
 }
 

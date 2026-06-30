@@ -69,47 +69,6 @@ CREATE TABLE public.adonis_schema_versions (
 
 ALTER TABLE public.adonis_schema_versions OWNER TO postgres;
 
---
--- Name: auth_access_tokens; Type: TABLE; Schema: public; Owner: postgres
---
-
-CREATE TABLE public.auth_access_tokens (
-    id integer NOT NULL,
-    tokenable_id integer NOT NULL,
-    type character varying(255) NOT NULL,
-    name character varying(255),
-    hash character varying(255) NOT NULL,
-    abilities text NOT NULL,
-    created_at timestamp with time zone,
-    updated_at timestamp with time zone,
-    last_used_at timestamp with time zone,
-    expires_at timestamp with time zone
-);
-
-
-ALTER TABLE public.auth_access_tokens OWNER TO postgres;
-
---
--- Name: auth_access_tokens_id_seq; Type: SEQUENCE; Schema: public; Owner: postgres
---
-
-CREATE SEQUENCE public.auth_access_tokens_id_seq
-    AS integer
-    START WITH 1
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE public.auth_access_tokens_id_seq OWNER TO postgres;
-
---
--- Name: auth_access_tokens_id_seq; Type: SEQUENCE OWNED BY; Schema: public; Owner: postgres
---
-
-ALTER SEQUENCE public.auth_access_tokens_id_seq OWNED BY public.auth_access_tokens.id;
-
 
 --
 -- Name: campaign_recipient_contact_lists; Type: TABLE; Schema: public; Owner: postgres
@@ -911,12 +870,6 @@ ALTER SEQUENCE public.whatsapp_devices_id_seq OWNED BY public.whatsapp_devices.i
 ALTER TABLE ONLY public.adonis_schema ALTER COLUMN id SET DEFAULT nextval('public.adonis_schema_id_seq'::regclass);
 
 
---
--- Name: auth_access_tokens id; Type: DEFAULT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.auth_access_tokens ALTER COLUMN id SET DEFAULT nextval('public.auth_access_tokens_id_seq'::regclass);
-
 
 --
 -- Name: campaign_recipient_contact_lists id; Type: DEFAULT; Schema: public; Owner: postgres
@@ -1066,13 +1019,6 @@ ALTER TABLE ONLY public.adonis_schema
 ALTER TABLE ONLY public.adonis_schema_versions
     ADD CONSTRAINT adonis_schema_versions_pkey PRIMARY KEY (version);
 
-
---
--- Name: auth_access_tokens auth_access_tokens_pkey; Type: CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.auth_access_tokens
-    ADD CONSTRAINT auth_access_tokens_pkey PRIMARY KEY (id);
 
 
 --
@@ -1286,13 +1232,6 @@ CREATE INDEX profiles_contact_id_idx ON public.profiles USING btree (contact_id)
 
 CREATE UNIQUE INDEX profiles_unique_channel_external_not_deleted ON public.profiles USING btree (channel_id, external_id) WHERE (deleted_at IS NULL);
 
-
---
--- Name: auth_access_tokens auth_access_tokens_tokenable_id_foreign; Type: FK CONSTRAINT; Schema: public; Owner: postgres
---
-
-ALTER TABLE ONLY public.auth_access_tokens
-    ADD CONSTRAINT auth_access_tokens_tokenable_id_foreign FOREIGN KEY (tokenable_id) REFERENCES public.users(id) ON DELETE CASCADE;
 
 
 --

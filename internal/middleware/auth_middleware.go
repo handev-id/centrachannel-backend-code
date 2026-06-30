@@ -2,7 +2,6 @@ package middleware
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
@@ -14,19 +13,10 @@ import (
 
 func AuthMiddleware(cfg *config.Config, rdb *redis.Client) fiber.Handler {
 	return func(c fiber.Ctx) error {
-		authHeader := c.Get("Authorization")
-		tokenStr := authHeader
+		tokenStr := ExtractToken(c)
 
-		if authHeader == "" {
-			tokenStr = c.Query("token")
-		}
-		
 		if tokenStr == "" {
 			return response.Unauthorized(c, "Missing token")
-		}
-
-		if len(tokenStr) > 7 && strings.HasPrefix(tokenStr, "Bearer ") {
-			tokenStr = tokenStr[7:]
 		}
 
 		token, err := jwt.Parse(tokenStr, func(t *jwt.Token) (interface{}, error) {

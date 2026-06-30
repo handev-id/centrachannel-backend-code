@@ -61,20 +61,6 @@ UNIQUE(tenant_id, email). Soft delete.
 | created_at | TIMESTAMPTZ | |
 | updated_at | TIMESTAMPTZ | |
 
-### 1.5 auth_access_tokens
-
-| Column | Type | Constraints |
-|--------|------|-------------|
-| id | SERIAL | PK |
-| tokenable_id | INTEGER | NOT NULL, FK → users.id ON DELETE CASCADE |
-| type | VARCHAR(255) | NOT NULL |
-| name | VARCHAR(255) | |
-| hash | VARCHAR(255) | NOT NULL |
-| abilities | TEXT | NOT NULL |
-| created_at | TIMESTAMPTZ | |
-| updated_at | TIMESTAMPTZ | |
-| last_used_at | TIMESTAMPTZ | |
-| expires_at | TIMESTAMPTZ | |
 
 ### 1.6 channels (global — no tenant_id)
 
