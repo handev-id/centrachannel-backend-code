@@ -104,11 +104,11 @@ func (h *WhatsAppDeviceHandler) Connect(c fiber.Ctx, t *tenant.Tenant) error {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
-	device, err := h.service.Connect(c.Context(), t.ID, id)
+	pairingCode, err := h.service.Connect(c.Context(), t.ID, id)
 	if err != nil {
 		return response.BadRequest(c, err.Error(), nil)
 	}
-	return response.OK(c, "Device connected", device)
+	return response.OK(c, "success", fiber.Map{"pairing_code": pairingCode})
 }
 
 func (h *WhatsAppDeviceHandler) Disconnect(c fiber.Ctx, t *tenant.Tenant) error {
@@ -123,6 +123,20 @@ func (h *WhatsAppDeviceHandler) Disconnect(c fiber.Ctx, t *tenant.Tenant) error 
 		return response.BadRequest(c, err.Error(), nil)
 	}
 	return response.OK(c, "Device disconnected", device)
+}
+
+func (h *WhatsAppDeviceHandler) ConnectionState(c fiber.Ctx, t *tenant.Tenant) error {
+
+	id, err := strconv.Atoi(c.Params("id"))
+	if err != nil {
+		return response.BadRequest(c, "Invalid ID", nil)
+	}
+
+	connected, err := h.service.CheckConnection(c.Context(), t.ID, id)
+	if err != nil {
+		return response.BadRequest(c, err.Error(), nil)
+	}
+	return response.OK(c, "success", fiber.Map{"connected": connected})
 }
 
 func (h *WhatsAppDeviceHandler) Scan(c fiber.Ctx, t *tenant.Tenant) error {

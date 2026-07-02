@@ -18,8 +18,9 @@ type WhatsAppDeviceService interface {
 	Create(ctx context.Context, req CreateDeviceRequest, tenantID int) (*WhatsAppDevice, error)
 	Update(ctx context.Context, tenantID int, id int, req UpdateDeviceRequest) (*WhatsAppDevice, error)
 	Delete(ctx context.Context, tenantID int, id int) error
-	Connect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error)
+	Connect(ctx context.Context, tenantID int, id int) (string, error)
 	Disconnect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error)
+	CheckConnection(ctx context.Context, tenantID int, id int) (bool, error)
 	Scan(ctx context.Context, tenantID int, id int) (string, error)
 	SendMessage(ctx context.Context, tenantID int, deviceID int, to string, text string) (*MessageResult, error)
 }
@@ -107,30 +108,25 @@ func (s *whatsAppDeviceService) Delete(ctx context.Context, tenantID int, id int
 	return s.repo.Delete(ctx, s.db, tenantID, id)
 }
 
-func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error) {
+func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id int) (string, error) {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
-		return nil, err
+		return "", err
 	}
 	if device.WhatsappID == "" {
-		return nil, fmt.Errorf("device has no whatsapp_id")
+		return "", fmt.Errorf("device has no whatsapp_id")
 	}
-	if s.client != nil {
-		if _, err := s.client.CheckConnection(ctx, device); err != nil {
-			return nil, err
-		}
-		if s.cfg.EvolutionAPIURL != "" && s.cfg.WebhookBaseURL != "" {
-			webhookURL := strings.TrimRight(s.cfg.WebhookBaseURL, "/") + "/webhook/evolution"
-			if err := s.client.SetWebhook(ctx, device, webhookURL); err != nil {
-				s.logger.Warn("failed to set webhook: %v", err)
-			}
-		}
+	if s.client == nil {
+		return "", fmt.Errorf("whatsapp client not configured")
 	}
-	device.Status = "CONNECTED"
-	if err := s.repo.Update(ctx, s.db, tenantID, id, device); err != nil {
-		return nil, err
+
+	fullPhone := device.CountryCode + device.Phone
+	pairingCode, err := s.client.GetPairingCode(ctx, device, fullPhone)
+	if err != nil {
+		return "", err
 	}
-	return device, nil
+
+	return pairingCode, nil
 }
 
 func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error) {
@@ -148,6 +144,17 @@ func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id
 		return nil, err
 	}
 	return device, nil
+}
+
+func (s *whatsAppDeviceService) CheckConnection(ctx context.Context, tenantID int, id int) (bool, error) {
+	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
+	if err != nil {
+		return false, err
+	}
+	if s.client != nil {
+		return s.client.CheckConnection(ctx, device)
+	}
+	return false, fmt.Errorf("whatsapp client not configured")
 }
 
 func (s *whatsAppDeviceService) Scan(ctx context.Context, tenantID int, id int) (string, error) {

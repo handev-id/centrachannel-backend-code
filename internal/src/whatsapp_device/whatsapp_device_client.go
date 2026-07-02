@@ -11,6 +11,7 @@ import (
 type WhatsAppClient interface {
 	SendMessage(ctx context.Context, device *WhatsAppDevice, to string, text string) (*MessageResult, error)
 	GetQR(ctx context.Context, device *WhatsAppDevice) (string, error)
+	GetPairingCode(ctx context.Context, device *WhatsAppDevice, phoneNumber string) (string, error)
 	CheckConnection(ctx context.Context, device *WhatsAppDevice) (bool, error)
 	Disconnect(ctx context.Context, device *WhatsAppDevice) error
 	CreateInstance(ctx context.Context, device *WhatsAppDevice) error
@@ -50,6 +51,11 @@ func (c *mockClient) SendMessage(ctx context.Context, device *WhatsAppDevice, to
 func (c *mockClient) GetQR(ctx context.Context, device *WhatsAppDevice) (string, error) {
 	c.logger.Info("Mock WhatsApp QR generation: device_id=%d", device.ID)
 	return "mock_qr_data_for_device_" + fmt.Sprint(device.ID), nil
+}
+
+func (c *mockClient) GetPairingCode(ctx context.Context, device *WhatsAppDevice, phoneNumber string) (string, error) {
+	c.logger.Info("Mock WhatsApp pairing code: device_id=%d, phone=%s", device.ID, phoneNumber)
+	return "ABCD-1234", nil
 }
 
 func (c *mockClient) CheckConnection(ctx context.Context, device *WhatsAppDevice) (bool, error) {

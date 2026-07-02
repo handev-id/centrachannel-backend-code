@@ -353,36 +353,30 @@ func TestWhatsAppDeviceService_Delete(t *testing.T) {
 }
 
 func TestWhatsAppDeviceService_Connect(t *testing.T) {
-	t.Run("updates status to connected", func(t *testing.T) {
+	t.Run("returns pairing code", func(t *testing.T) {
 		existing := &WhatsAppDevice{
 			ID: 1, TenantID: 1, Name: "Device",
+			CountryCode: "62",
+			Phone: "81234567890",
 			WhatsappID: "device-test",
 			Status: "DISCONNECTED",
 		}
-		var updated *WhatsAppDevice
 		repo := &mockWhatsAppDeviceRepository{
 			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
 				return existing, nil
-			},
-			updateFunc: func(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error {
-				updated = device
-				return nil
 			},
 		}
 		m := &mockConn{}
 		db := newMockDB(m)
 		defer db.Close()
-		svc := newService(repo, db)
+		svc := NewWhatsAppDeviceService(repo, db, &config.Config{}, logger.NewLogger("error", "json"), NewMockClient(logger.NewLogger("error", "json"))).(*whatsAppDeviceService)
 
-		result, err := svc.Connect(context.Background(), 1, 1)
+		pairingCode, err := svc.Connect(context.Background(), 1, 1)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Status != "CONNECTED" {
-			t.Errorf("expected Status 'CONNECTED', got %q", result.Status)
-		}
-		if updated != nil && updated.Status != "CONNECTED" {
-			t.Errorf("expected captured Status 'CONNECTED', got %q", updated.Status)
+		if pairingCode != "ABCD-1234" {
+			t.Errorf("expected pairing code 'ABCD-1234', got %q", pairingCode)
 		}
 	})
 }

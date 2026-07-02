@@ -67,14 +67,14 @@ func (c *evolutionClient) SendMessage(ctx context.Context, device *WhatsAppDevic
 		Key    struct {
 			ID string `json:"id"`
 		} `json:"key"`
-		Error string `json:"error,omitempty"`
+		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil, fmt.Errorf("failed to parse evolution api response: %w", err)
 	}
 
-	if result.Error != "" {
-		return nil, fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return nil, fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	msgResult := &MessageResult{
@@ -107,16 +107,16 @@ func (c *evolutionClient) GetQR(ctx context.Context, device *WhatsAppDevice) (st
 	respBody, _ := io.ReadAll(resp.Body)
 
 	var result struct {
-		Base64 string `json:"base64"`
-		Code   string `json:"code"`
-		Error  string `json:"error,omitempty"`
+		Base64 string      `json:"base64"`
+		Code   string      `json:"code"`
+		Error  interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return "", fmt.Errorf("failed to parse evolution api response: %w", err)
 	}
 
-	if result.Error != "" {
-		return "", fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return "", fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	if result.Base64 != "" {
@@ -127,6 +127,47 @@ func (c *evolutionClient) GetQR(ctx context.Context, device *WhatsAppDevice) (st
 	}
 
 	return "", fmt.Errorf("no qr code returned from evolution api")
+}
+
+func (c *evolutionClient) GetPairingCode(ctx context.Context, device *WhatsAppDevice, phoneNumber string) (string, error) {
+	endpoint := fmt.Sprintf("%s/instance/connect/%s?number=%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID, phoneNumber)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("apikey", c.apiKey)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("evolution api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	var result struct {
+		Base64      string      `json:"base64"`
+		Code        string      `json:"code"`
+		PairingCode string      `json:"pairingCode"`
+		Error       interface{} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return "", fmt.Errorf("failed to parse evolution api response: %w", err)
+	}
+
+	if errStr := errorToString(result.Error); errStr != "" {
+		return "", fmt.Errorf("evolution api error: %s", errStr)
+	}
+
+	if result.PairingCode != "" {
+		return result.PairingCode, nil
+	}
+	if result.Code != "" {
+		return result.Code, nil
+	}
+
+	return "", fmt.Errorf("no pairing code returned from evolution api")
 }
 
 func (c *evolutionClient) CheckConnection(ctx context.Context, device *WhatsAppDevice) (bool, error) {
@@ -150,14 +191,14 @@ func (c *evolutionClient) CheckConnection(ctx context.Context, device *WhatsAppD
 		Instance struct {
 			State string `json:"state"`
 		} `json:"instance"`
-		Error string `json:"error,omitempty"`
+		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return false, fmt.Errorf("failed to parse evolution api response: %w", err)
 	}
 
-	if result.Error != "" {
-		return false, fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return false, fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	return result.Instance.State == "open", nil
@@ -192,13 +233,13 @@ func (c *evolutionClient) CreateInstance(ctx context.Context, device *WhatsAppDe
 	respBody, _ := io.ReadAll(resp.Body)
 
 	var result struct {
-		Error string `json:"error,omitempty"`
+		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil
 	}
-	if result.Error != "" {
-		return fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	return nil
@@ -222,20 +263,20 @@ func (c *evolutionClient) DeleteInstance(ctx context.Context, device *WhatsAppDe
 	respBody, _ := io.ReadAll(resp.Body)
 
 	var result struct {
-		Error string `json:"error,omitempty"`
+		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil
 	}
-	if result.Error != "" {
-		return fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	return nil
 }
 
 func (c *evolutionClient) SetWebhook(ctx context.Context, device *WhatsAppDevice, webhookURL string) error {
-	endpoint := fmt.Sprintf("%s/event/webhook/set/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
+	endpoint := fmt.Sprintf("%s/webhook/set/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
 
 	payload := map[string]interface{}{
 		"webhook": map[string]interface{}{
@@ -266,20 +307,20 @@ func (c *evolutionClient) SetWebhook(ctx context.Context, device *WhatsAppDevice
 	respBody, _ := io.ReadAll(resp.Body)
 
 	var result struct {
-		Error string `json:"error,omitempty"`
+		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return nil
 	}
-	if result.Error != "" {
-		return fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	return nil
 }
 
 func (c *evolutionClient) Disconnect(ctx context.Context, device *WhatsAppDevice) error {
-	endpoint := fmt.Sprintf("%s/instance/delete/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
+	endpoint := fmt.Sprintf("%s/instance/logout/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
 
 	req, err := http.NewRequestWithContext(ctx, http.MethodDelete, endpoint, nil)
 	if err != nil {
@@ -296,15 +337,32 @@ func (c *evolutionClient) Disconnect(ctx context.Context, device *WhatsAppDevice
 	respBody, _ := io.ReadAll(resp.Body)
 
 	var result struct {
-		Error string `json:"error,omitempty"`
+		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
 		return fmt.Errorf("failed to parse evolution api response: %w", err)
 	}
 
-	if result.Error != "" {
-		return fmt.Errorf("evolution api error: %s", result.Error)
+	if errStr := errorToString(result.Error); errStr != "" {
+		return fmt.Errorf("evolution api error: %s", errStr)
 	}
 
 	return nil
+}
+
+func errorToString(err interface{}) string {
+	if err == nil {
+		return ""
+	}
+	switch v := err.(type) {
+	case string:
+		return v
+	case bool:
+		if v {
+			return "true"
+		}
+		return ""
+	default:
+		return fmt.Sprintf("%v", err)
+	}
 }
