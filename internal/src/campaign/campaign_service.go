@@ -282,7 +282,7 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 					APIKey:   s.cfg.EvolutionAPIKey,
 					DeviceID: device.WhatsappID,
 				}
-				sender := messenger.NewEvolutionSender(evoCfg)
+				sender := messenger.NewEvolutionSender(evoCfg, s.logger)
 				recipientID := r.Phone
 				if !strings.HasPrefix(recipientID, "+") && !strings.HasPrefix(recipientID, "55") {
 					recipientID = device.CountryCode + r.Phone

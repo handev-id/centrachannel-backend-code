@@ -7,6 +7,9 @@ import (
 	"io"
 	"net/http"
 	"time"
+
+	"centrachannel/internal/utils/httplog"
+	"centrachannel/internal/utils/logger"
 )
 
 const graphAPI = "https://graph.facebook.com/v22.0"
@@ -14,12 +17,17 @@ const graphAPI = "https://graph.facebook.com/v22.0"
 type MetaSender struct {
 	cfg    MetaConfig
 	client *http.Client
+	logger *logger.Logger
 }
 
-func NewMetaSender(cfg MetaConfig) *MetaSender {
+func NewMetaSender(cfg MetaConfig, l *logger.Logger) *MetaSender {
 	return &MetaSender{
-		cfg:    cfg,
-		client: &http.Client{Timeout: 30 * time.Second},
+		cfg: cfg,
+		client: &http.Client{
+			Transport: httplog.NewLoggingRoundTripper(http.DefaultTransport, l, "MetaSender"),
+			Timeout:   30 * time.Second,
+		},
+		logger: l,
 	}
 }
 

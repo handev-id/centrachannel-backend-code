@@ -9,7 +9,11 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+
+	"centrachannel/internal/utils/logger"
 )
+
+var testLogger = logger.NewLogger("error", "text")
 
 func createTestFileHeader(t *testing.T, filename, content string) *multipart.FileHeader {
 	t.Helper()
@@ -54,7 +58,7 @@ func TestUploadService_Upload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		svc := NewUploadService(server.URL, "")
+		svc := NewUploadService(server.URL, "", testLogger)
 		file := createTestFileHeader(t, "test.txt", "hello world")
 
 		result, err := svc.Upload(file)
@@ -85,7 +89,7 @@ func TestUploadService_Upload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		svc := NewUploadService(server.URL, "")
+		svc := NewUploadService(server.URL, "", testLogger)
 		file := createTestFileHeader(t, "test.txt", "hello world")
 
 		_, err := svc.Upload(file)
@@ -101,7 +105,7 @@ func TestUploadService_Upload(t *testing.T) {
 		}))
 		defer server.Close()
 
-		svc := NewUploadService(server.URL, "")
+		svc := NewUploadService(server.URL, "", testLogger)
 		file := createTestFileHeader(t, "test.txt", "hello world")
 
 		_, err := svc.Upload(file)

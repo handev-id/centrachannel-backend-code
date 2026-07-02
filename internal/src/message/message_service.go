@@ -208,7 +208,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 				WhatsappPhoneID: settings.ChannelConfiguration.WhatsappPhoneID,
 			}
 		}
-		sender = messenger.NewMetaSender(cfg)
+		sender = messenger.NewMetaSender(cfg, s.logger)
 	case "whatsapp_business":
 		instance := ""
 		if settings.ChannelConfiguration != nil {
@@ -220,7 +220,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 				APIKey:   s.cfg.EvolutionAPIKey,
 				DeviceID: instance,
 			}
-			sender = messenger.NewEvolutionSender(evoCfg)
+			sender = messenger.NewEvolutionSender(evoCfg, s.logger)
 		} else {
 			cfg := messenger.MetaConfig{}
 			if settings.ChannelConfiguration != nil {
@@ -229,7 +229,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 					WhatsappPhoneID: settings.ChannelConfiguration.WhatsappPhoneID,
 				}
 			}
-			sender = messenger.NewMetaSender(cfg)
+			sender = messenger.NewMetaSender(cfg, s.logger)
 		}
 	case "whatsapp":
 		if prof.LinkedDeviceWhatsappID == nil || *prof.LinkedDeviceWhatsappID == "" {
@@ -245,7 +245,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 			s.logger.Warn("evolution api url not configured, falling back to mock sender")
 			sender = messenger.NewMockSender()
 		} else {
-			sender = messenger.NewEvolutionSender(evoCfg)
+			sender = messenger.NewEvolutionSender(evoCfg, s.logger)
 		}
 	default:
 		sender = messenger.NewMockSender()

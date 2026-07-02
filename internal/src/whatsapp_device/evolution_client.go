@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"centrachannel/internal/utils/httplog"
 	"centrachannel/internal/utils/logger"
 )
 
@@ -25,7 +26,10 @@ func NewEvolutionClient(apiURL, apiKey string, logger *logger.Logger) WhatsAppCl
 		apiURL: apiURL,
 		apiKey: apiKey,
 		logger: logger,
-		client: &http.Client{Timeout: 30 * time.Second},
+		client: &http.Client{
+			Transport: httplog.NewLoggingRoundTripper(http.DefaultTransport, logger, "EvolutionClient"),
+			Timeout:   30 * time.Second,
+		},
 	}
 }
 

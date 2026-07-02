@@ -9,6 +9,10 @@ import (
 	"mime/multipart"
 	"net/http"
 	"strings"
+	"time"
+
+	"centrachannel/internal/utils/httplog"
+	"centrachannel/internal/utils/logger"
 )
 
 type UploadResult struct {
@@ -24,12 +28,20 @@ type UploadService interface {
 }
 
 type uploadService struct {
-	storageURL     string
+	storageURL       string
 	storageSecretKey string
+	client           *http.Client
 }
 
-func NewUploadService(storageURL, storageSecretKey string) UploadService {
-	return &uploadService{storageURL: storageURL, storageSecretKey: storageSecretKey}
+func NewUploadService(storageURL, storageSecretKey string, l *logger.Logger) UploadService {
+	return &uploadService{
+		storageURL:       storageURL,
+		storageSecretKey: storageSecretKey,
+		client: &http.Client{
+			Transport: httplog.NewLoggingRoundTripper(http.DefaultTransport, l, "Storage"),
+			Timeout:   60 * time.Second,
+		},
+	}
 }
 
 func (s *uploadService) Upload(file *multipart.FileHeader) (*UploadResult, error) {
@@ -58,7 +70,7 @@ func (s *uploadService) Upload(file *multipart.FileHeader) (*UploadResult, error
 	req.Header.Set("Content-Type", writer.FormDataContentType())
 	req.Header.Set("Authorization", "Bearer "+s.storageSecretKey)
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := s.client.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("failed to upload to storage: %w", err)
 	}

@@ -8,6 +8,9 @@ import (
 	"net/http"
 	"strings"
 	"time"
+
+	"centrachannel/internal/utils/httplog"
+	"centrachannel/internal/utils/logger"
 )
 
 type EvolutionConfig struct {
@@ -19,12 +22,17 @@ type EvolutionConfig struct {
 type EvolutionSender struct {
 	cfg    EvolutionConfig
 	client *http.Client
+	logger *logger.Logger
 }
 
-func NewEvolutionSender(cfg EvolutionConfig) *EvolutionSender {
+func NewEvolutionSender(cfg EvolutionConfig, l *logger.Logger) *EvolutionSender {
 	return &EvolutionSender{
-		cfg:    cfg,
-		client: &http.Client{Timeout: 30 * time.Second},
+		cfg: cfg,
+		client: &http.Client{
+			Transport: httplog.NewLoggingRoundTripper(http.DefaultTransport, l, "EvolutionSender"),
+			Timeout:   30 * time.Second,
+		},
+		logger: l,
 	}
 }
 
