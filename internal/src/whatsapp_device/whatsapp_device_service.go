@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"regexp"
 	"strings"
 	"time"
 
@@ -53,7 +54,7 @@ func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequ
 		Name:        req.Name,
 		CountryCode: req.CountryCode,
 		Phone:       req.Phone,
-		WhatsappID:  req.WhatsappID,
+		WhatsappID:  generateWhatsappID(req.Name, req.Phone),
 		Status:      "DISCONNECTED",
 	}
 	id, err := s.repo.Create(ctx, s.db, device)
@@ -111,6 +112,9 @@ func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id in
 	if err != nil {
 		return nil, err
 	}
+	if device.WhatsappID == "" {
+		return nil, fmt.Errorf("device has no whatsapp_id")
+	}
 	if s.client != nil {
 		if _, err := s.client.CheckConnection(ctx, device); err != nil {
 			return nil, err
@@ -166,4 +170,14 @@ func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID int, d
 		return nil, fmt.Errorf("whatsapp client not configured")
 	}
 	return s.client.SendMessage(ctx, device, to, text)
+}
+
+var nonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
+
+func generateWhatsappID(name, phone string) string {
+	slug := strings.ToLower(name)
+	slug = nonAlphaNum.ReplaceAllString(slug, "-")
+	slug = strings.Trim(slug, "-")
+	cleanPhone := nonAlphaNum.ReplaceAllString(phone, "")
+	return fmt.Sprintf("%s-%s", slug, cleanPhone)
 }

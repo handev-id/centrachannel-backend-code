@@ -1,10 +1,9 @@
 package whatsapp_device
 
 type CreateDeviceRequest struct {
-	Name        string `json:"name" validate:"required"`
-	CountryCode string `json:"country_code" validate:"required"`
-	Phone       string `json:"phone" validate:"required"`
-	WhatsappID  string `json:"whatsapp_id" validate:"required"`
+	Name        string `json:"name" validate:"required,max=255"`
+	CountryCode string `json:"country_code" validate:"required,max=10"`
+	Phone       string `json:"phone" validate:"required,max=20"`
 }
 
 type UpdateDeviceRequest struct {

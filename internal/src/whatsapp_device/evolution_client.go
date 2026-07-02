@@ -235,11 +235,14 @@ func (c *evolutionClient) DeleteInstance(ctx context.Context, device *WhatsAppDe
 }
 
 func (c *evolutionClient) SetWebhook(ctx context.Context, device *WhatsAppDevice, webhookURL string) error {
-	endpoint := fmt.Sprintf("%s/instance/setWebhook/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
+	endpoint := fmt.Sprintf("%s/event/webhook/set/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
 
 	payload := map[string]interface{}{
-		"url":     webhookURL,
-		"enabled": true,
+		"webhook": map[string]interface{}{
+			"url":     webhookURL,
+			"enabled": true,
+			"events":  []string{"messages.upsert", "messages.update", "connection.update"},
+		},
 	}
 
 	body, err := json.Marshal(payload)

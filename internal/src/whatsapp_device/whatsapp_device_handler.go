@@ -54,6 +54,9 @@ func (h *WhatsAppDeviceHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
 
 	device, err := h.service.Create(c.Context(), req, t.ID)
 	if err != nil {

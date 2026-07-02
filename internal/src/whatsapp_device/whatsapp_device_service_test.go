@@ -238,7 +238,6 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 			Name:        "Test Device",
 			CountryCode: "62",
 			Phone:       "81234567890",
-			WhatsappID:  "whatsapp:12345",
 		}
 
 		result, err := svc.Create(context.Background(), req, 1)
@@ -257,8 +256,9 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 		if captured.Phone != "81234567890" {
 			t.Errorf("expected Phone '81234567890', got %q", captured.Phone)
 		}
-		if captured.WhatsappID != "whatsapp:12345" {
-			t.Errorf("expected WhatsappID 'whatsapp:12345', got %q", captured.WhatsappID)
+		expectedID := "test-device-81234567890"
+		if captured.WhatsappID != expectedID {
+			t.Errorf("expected WhatsappID %q, got %q", expectedID, captured.WhatsappID)
 		}
 		if captured.Status != "DISCONNECTED" {
 			t.Errorf("expected Status 'DISCONNECTED', got %q", captured.Status)
@@ -356,6 +356,7 @@ func TestWhatsAppDeviceService_Connect(t *testing.T) {
 	t.Run("updates status to connected", func(t *testing.T) {
 		existing := &WhatsAppDevice{
 			ID: 1, TenantID: 1, Name: "Device",
+			WhatsappID: "device-test",
 			Status: "DISCONNECTED",
 		}
 		var updated *WhatsAppDevice
