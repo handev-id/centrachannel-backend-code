@@ -55,7 +55,7 @@ func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequ
 		Name:        req.Name,
 		CountryCode: req.CountryCode,
 		Phone:       req.Phone,
-		WhatsappID:  generateWhatsappID(req.Name, req.Phone),
+		WhatsappID:  generateWhatsappID(req.Name, req.Phone, tenantID),
 		Status:      "DISCONNECTED",
 	}
 	id, err := s.repo.Create(ctx, s.db, device)
@@ -181,10 +181,10 @@ func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID int, d
 
 var nonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
 
-func generateWhatsappID(name, phone string) string {
+func generateWhatsappID(name, phone string, tenantID int) string {
 	slug := strings.ToLower(name)
 	slug = nonAlphaNum.ReplaceAllString(slug, "-")
 	slug = strings.Trim(slug, "-")
 	cleanPhone := nonAlphaNum.ReplaceAllString(phone, "")
-	return fmt.Sprintf("%s-%s", slug, cleanPhone)
+	return fmt.Sprintf("%d-%s-%s", tenantID, slug, cleanPhone)
 }
