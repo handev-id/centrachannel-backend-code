@@ -115,6 +115,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	if displayName == "" {
 		displayName = phone
 	}
+	atPhone := "@" + phone
 
 	parts := strings.SplitN(displayName, " ", 2)
 	firstName := parts[0]
@@ -129,6 +130,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 			TenantID:  tenantID,
 			FirstName: firstName,
 			LastName:  lastName,
+			Username:  &atPhone,
 			Phone:     &phone,
 			Whatsapp:  &phone,
 			Status:    "individual",
@@ -297,6 +299,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	if displayName == "" {
 		displayName = phone
 	}
+	atPhone := "@" + phone
 
 	parts := strings.SplitN(displayName, " ", 2)
 	firstName := parts[0]
@@ -311,6 +314,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 			TenantID:  tenantID,
 			FirstName: firstName,
 			LastName:  lastName,
+			Username:  &atPhone,
 			Phone:     &phone,
 			Whatsapp:  &phone,
 			Status:    "individual",
