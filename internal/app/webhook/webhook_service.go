@@ -16,6 +16,7 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/logger"
+	"centrachannel/internal/ws"
 )
 
 type WebhookService interface {
@@ -33,10 +34,11 @@ type webhookService struct {
 	tenantRepo  tenant.TenantRepository
 	db          *sql.DB
 	logger      *logger.Logger
+	notifier    ws.Notifier
 }
 
-func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger) WebhookService {
-	return &webhookService{
+func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, notifier ...ws.Notifier) WebhookService {
+	svc := &webhookService{
 		deviceRepo:  deviceRepo,
 		contactRepo: contactRepo,
 		profileRepo: profileRepo,
@@ -47,6 +49,10 @@ func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, cont
 		db:          db,
 		logger:      logger,
 	}
+	if len(notifier) > 0 {
+		svc.notifier = notifier[0]
+	}
+	return svc
 }
 
 func (s *webhookService) ProcessEvolutionEvent(ctx context.Context, payload *EvolutionWebhookPayload) error {
@@ -235,6 +241,13 @@ func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *Ev
 	}
 
 	s.logger.Info("device %s status updated to %s via webhook", payload.Instance, newStatus)
+
+	if s.notifier != nil {
+		s.notifier.Notify(device.TenantID, "device-updated", map[string]interface{}{
+			"id":     device.ID,
+			"status": newStatus,
+		})
+	}
 
 	return nil
 }

@@ -10,6 +10,7 @@ import (
     "centrachannel/config"
     "centrachannel/database"
     "centrachannel/internal/utils/logger"
+    "centrachannel/internal/ws"
 )
 
 type Container struct {
@@ -17,6 +18,7 @@ type Container struct {
     DB     *sql.DB
     Redis  *redis.Client
     Logger *logger.Logger
+    Hub    *ws.Hub
 }
 
 func New() (*Container, error) {
@@ -42,8 +44,13 @@ func New() (*Container, error) {
     }
 
     l := logger.NewLogger(cfg.LogLevel, cfg.LogFormat)
+    hub := ws.NewHub()
 
-    return &Container{Config: cfg, DB: db, Redis: rdb, Logger: l}, nil
+    return &Container{Config: cfg, DB: db, Redis: rdb, Logger: l, Hub: hub}, nil
+}
+
+func (c *Container) StartHub() {
+    go c.Hub.Run()
 }
 
 func (c *Container) Close() error {

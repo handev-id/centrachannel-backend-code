@@ -26,6 +26,7 @@ import (
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
 	"centrachannel/internal/src/whatsapp_device"
+	"centrachannel/internal/ws"
 )
 
 func main() {
@@ -38,6 +39,8 @@ func main() {
 			log.Printf("Error closing container: %v", cerr)
 		}
 	}()
+
+	c.StartHub()
 
 	cfg := c.Config
 
@@ -53,11 +56,14 @@ func main() {
 
 	docs.RegisterRoutes(app)
 
-	webhookHandler := webhook.NewWebhookHandler(c, cfg)
+	webhookHandler := webhook.NewWebhookHandler(c, cfg, ws.NewHubNotifier(c.Hub))
 	webhook.RegisterRoutes(app, webhookHandler)
 
 	regHandler := registration.NewRegistrationHandler(c)
 	registration.RegisterRoutes(app, regHandler)
+
+	wsHandler := ws.NewWSHandler(c.Hub, cfg.JWTSecret, c.Logger)
+	app.Get("/ws", wsHandler.Handle)
 
 	tenantHandler := tenant.NewTenantHandler(c)
 
