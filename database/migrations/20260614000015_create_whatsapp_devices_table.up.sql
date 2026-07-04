@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS whatsapp_devices (
     created_at    TIMESTAMPTZ,
     updated_at    TIMESTAMPTZ,
     UNIQUE(tenant_id, whatsapp_id),
-    CONSTRAINT chk_whatsapp_devices_status CHECK (status IN ('CONNECTED', 'DISCONNECTED'))
+    CONSTRAINT chk_whatsapp_devices_status CHECK (status IN ('CONNECTED', 'DISCONNECTED', 'CONNECTING'))
 );
 
 CREATE INDEX IF NOT EXISTS idx_whatsapp_devices_tenant ON whatsapp_devices(tenant_id);
