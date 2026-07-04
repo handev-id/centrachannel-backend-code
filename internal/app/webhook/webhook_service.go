@@ -231,8 +231,11 @@ func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *Ev
 	}
 
 	newStatus := "DISCONNECTED"
-	if data.State == "open" {
+	switch data.State {
+	case "open":
 		newStatus = "CONNECTED"
+	case "connecting":
+		newStatus = "CONNECTING"
 	}
 
 	device.Status = newStatus
