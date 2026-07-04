@@ -116,11 +116,20 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		displayName = phone
 	}
 
+	parts := strings.SplitN(displayName, " ", 2)
+	firstName := parts[0]
+	var lastName *string
+	if len(parts) > 1 {
+		lastName = &parts[1]
+	}
+
 	c, err := s.contactRepo.GetByPhone(ctx, s.db, tenantID, phone)
 	if err != nil {
 		c = &contact.Contact{
 			TenantID:  tenantID,
-			FirstName: displayName,
+			FirstName: firstName,
+			LastName:  lastName,
+			Phone:     &phone,
 			Whatsapp:  &phone,
 			Status:    "individual",
 		}
@@ -289,11 +298,20 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		displayName = phone
 	}
 
+	parts := strings.SplitN(displayName, " ", 2)
+	firstName := parts[0]
+	var lastName *string
+	if len(parts) > 1 {
+		lastName = &parts[1]
+	}
+
 	c, err := s.contactRepo.GetByPhone(ctx, s.db, tenantID, phone)
 	if err != nil {
 		c = &contact.Contact{
 			TenantID:  tenantID,
-			FirstName: displayName,
+			FirstName: firstName,
+			LastName:  lastName,
+			Phone:     &phone,
 			Whatsapp:  &phone,
 			Status:    "individual",
 		}
@@ -570,7 +588,7 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 			lastMsgJSON, _ := json.Marshal(lastMsg)
 			_ = s.convRepo.UpdateLastMessage(ctx, s.db, t.ID, conv.ID, lastMsgJSON, 0)
 
-				s.logger.Info("meta webhook: tenant=%d, channel=%s, sender=%s, text=%s, msg_id=%s",
+			s.logger.Info("meta webhook: tenant=%d, channel=%s, sender=%s, text=%s, msg_id=%s",
 				t.ID, channelType, externalID, text, msg.Message.MID)
 		}
 	}
