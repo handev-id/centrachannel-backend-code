@@ -247,8 +247,6 @@ Two access layers based on domain:
 | GET | /health | Health check |
 | GET | /ping | Returns `pong` |
 | GET | /version | Version info |
-| GET | /sse-test-ping | Send test ping via SSE to a tenant. Query: `tenant_id` (required). Debug endpoint |
-
 ### 2.1 Tenant Registration (main domain, no tenant middleware)
 
 | Method | Path | Description |
@@ -368,26 +366,6 @@ Two access layers based on domain:
 |--------|------|------|-------------|
 | POST | /api/upload | JWT, agent+ | Upload file |
 
-### 2.14 SSE (Server-Sent Events)
-
-Initial presence state is fetched via `GET /api/user` (includes `is_online`). SSE events are for real-time updates only.
-
-| Event | Direction | Description |
-|-------|-----------|-------------|
-| `connected` | → client | Initial connection confirmation with `user_id` |
-| `ping` | → client | Heartbeat every 5 seconds (data: `{}`). Use to verify connection is alive |
-| `user:online` | → client | Broadcast to **all** connected clients (including sender) when a user comes online |
-| `user:offline` | → client | Broadcast to remaining clients when a user disconnects |
-| `message:new` | → client | New message (from webhook or user send) |
-| `conversation:updated` | → client | Conversation status change (assign/unassign/resolve/reopen) |
-| `device:updated` | → client | WhatsApp device status change |
-
-**Endpoint:** `GET /event` (auth required, tenant-scoped)
-
-**Format:** Standard SSE (`text/event-stream`), each event includes `event:` name and `data:` JSON payload.
-
----
-
 ## 3. Error Response Format
 
 ```json
@@ -444,4 +422,4 @@ Paginated:
 | 11 | Campaigns | tenants | 16–17 |
 | 12 | Dashboard | contacts, conversations | — (query-only) |
 | 13 | Upload | — | — (external service) |
-| 14 | SSE | — | — (real-time events) |
+| 14 | (real-time events) | — | — (future: WebSocket/SSE) |

@@ -72,7 +72,6 @@ When contacts are merged:
 - Tags CRUD (per-tenant, name + color)
 - Notes on conversations (text + date)
 - WhatsApp device management (connect/disconnect/scan via Evolution API, real QR codes)
-- SSE real-time events (message:new, conversation:updated, user:online/offline)
 
 ### Phase 3 — Campaigns (future)
 

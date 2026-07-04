@@ -13,7 +13,6 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/response"
-	"centrachannel/internal/event"
 )
 
 type WebhookHandler struct {
@@ -22,7 +21,7 @@ type WebhookHandler struct {
 	metaSecret string
 }
 
-func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ...event.Notifier) *WebhookHandler {
+func NewWebhookHandler(c *di.Container, cfg *config.Config) *WebhookHandler {
 	deviceRepo := whatsapp_device.NewWhatsAppDeviceRepository()
 	contactRepo := contact.NewContactRepository()
 	profileRepo := profile.NewProfileRepository()
@@ -30,18 +29,18 @@ func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ...event.No
 	convRepo := conversation.NewConversationRepository()
 	msgRepo := message.NewMessageRepository()
 	tenantRepo := tenant.NewTenantRepository()
-	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, c.DB, c.Logger, notifier...)
+	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, c.DB, c.Logger)
 	return &WebhookHandler{service: service, apiKey: cfg.EvolutionAPIKey, metaSecret: cfg.MetaWebhookSecret}
 }
 
 func (h *WebhookHandler) HandleEvolution(c fiber.Ctx) error {
-	key := c.Get("apikey")
-	if key == "" {
-		key = c.Get("x-api-key")
-	}
-	if h.apiKey != "" && key != h.apiKey {
-		return response.Unauthorized(c, "invalid api key")
-	}
+	// key := c.Get("apikey")
+	// if key == "" {
+	// 	key = c.Get("x-api-key")
+	// }
+	// if h.apiKey != "" && key != h.apiKey {
+	// 	return response.Unauthorized(c, "invalid api key")
+	// }
 
 	var payload EvolutionWebhookPayload
 	if err := c.Bind().Body(&payload); err != nil {

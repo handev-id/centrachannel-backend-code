@@ -11,20 +11,19 @@ import (
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
-	"centrachannel/internal/event"
 )
 
 type MessageHandler struct {
 	service MessageService
 }
 
-func NewMessageHandler(c *di.Container, notifier ...event.Notifier) *MessageHandler {
+func NewMessageHandler(c *di.Container) *MessageHandler {
 	repo := NewMessageRepository()
 	convRepo := conversation.NewConversationRepository()
 	profileRepo := profile.NewProfileRepository()
 	channelRepo := channel.NewChannelRepository()
 	tenantRepo := tenant.NewTenantRepository()
-	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger, notifier...)
+	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger)
 	return &MessageHandler{service: service}
 }
 

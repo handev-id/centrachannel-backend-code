@@ -256,7 +256,7 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 		if captured.Phone != "81234567890" {
 			t.Errorf("expected Phone '81234567890', got %q", captured.Phone)
 		}
-		expectedID := "test-device-81234567890"
+		expectedID := "1-test-device-81234567890"
 		if captured.WhatsappID != expectedID {
 			t.Errorf("expected WhatsappID %q, got %q", expectedID, captured.WhatsappID)
 		}

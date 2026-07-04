@@ -16,7 +16,6 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/event"
 )
 
 type WebhookService interface {
@@ -34,11 +33,10 @@ type webhookService struct {
 	tenantRepo  tenant.TenantRepository
 	db          *sql.DB
 	logger      *logger.Logger
-	notifier    event.Notifier
 }
 
-func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, notifier ...event.Notifier) WebhookService {
-	svc := &webhookService{
+func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger) WebhookService {
+	return &webhookService{
 		deviceRepo:  deviceRepo,
 		contactRepo: contactRepo,
 		profileRepo: profileRepo,
@@ -49,10 +47,6 @@ func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, cont
 		db:          db,
 		logger:      logger,
 	}
-	if len(notifier) > 0 {
-		svc.notifier = notifier[0]
-	}
-	return svc
 }
 
 func (s *webhookService) ProcessEvolutionEvent(ctx context.Context, payload *EvolutionWebhookPayload) error {
@@ -181,11 +175,6 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	lastMsgJSON, _ := json.Marshal(lastMsg)
 	_ = s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, 0)
 
-	if s.notifier != nil {
-		s.notifier.Notify(tenantID, "message:new", msg)
-		s.notifier.Notify(tenantID, "conversation:updated", conv)
-	}
-
 	return nil
 }
 
@@ -236,7 +225,7 @@ func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *Ev
 	}
 
 	newStatus := "DISCONNECTED"
-	if data.Instance.State == "open" {
+	if data.State == "open" {
 		newStatus = "CONNECTED"
 	}
 
@@ -246,10 +235,6 @@ func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *Ev
 	}
 
 	s.logger.Info("device %s status updated to %s via webhook", payload.Instance, newStatus)
-
-	if s.notifier != nil {
-		s.notifier.Notify(device.TenantID, "device:updated", device)
-	}
 
 	return nil
 }
@@ -455,12 +440,7 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 			lastMsgJSON, _ := json.Marshal(lastMsg)
 			_ = s.convRepo.UpdateLastMessage(ctx, s.db, t.ID, conv.ID, lastMsgJSON, 0)
 
-			if s.notifier != nil {
-				s.notifier.Notify(t.ID, "message:new", msgRecord)
-				s.notifier.Notify(t.ID, "conversation:updated", conv)
-			}
-
-			s.logger.Info("meta webhook: tenant=%d, channel=%s, sender=%s, text=%s, msg_id=%s",
+				s.logger.Info("meta webhook: tenant=%d, channel=%s, sender=%s, text=%s, msg_id=%s",
 				t.ID, channelType, externalID, text, msg.Message.MID)
 		}
 	}

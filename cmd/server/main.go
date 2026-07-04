@@ -26,7 +26,6 @@ import (
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
 	"centrachannel/internal/src/whatsapp_device"
-	"centrachannel/internal/event"
 )
 
 func main() {
@@ -49,15 +48,12 @@ func main() {
 	app.Use(middleware.CORSMiddleware())
 	app.Use(middleware.LogMiddleware(c.Logger, cfg.Env))
 
-	broker := event.NewSSEBroker()
-	broker.StartHeartbeat()
-
-	obsHandler := observability.NewObservabilityHandler(broker)
+	obsHandler := observability.NewObservabilityHandler()
 	observability.RegisterRoutes(app, obsHandler)
 
 	docs.RegisterRoutes(app)
 
-	webhookHandler := webhook.NewWebhookHandler(c, cfg, broker)
+	webhookHandler := webhook.NewWebhookHandler(c, cfg)
 	webhook.RegisterRoutes(app, webhookHandler)
 
 	regHandler := registration.NewRegistrationHandler(c)
@@ -67,19 +63,16 @@ func main() {
 
 	// Tenant Source
 	app.Use(middleware.TenantMiddleware(c.Redis, c.DB))
-	
+
 	authHandler := auth.NewAuthHandler(c)
 	auth.RegisterRoutes(app, authHandler)
 
 	authMw := middleware.AuthMiddleware(cfg, c.Redis)
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
-	
-	sseHandler := event.NewHandler(broker)
-	app.Get("/api/event", authMw, middleware.Tenant(sseHandler.Handle))
 
 	userGroup := app.Group("/api/user", authMw, adminOrAbove)
-	userHandler := user.NewUserHandler(c, broker)
+	userHandler := user.NewUserHandler(c)
 	user.RegisterRoutesByGroup(userGroup, userHandler)
 
 	campaignGroup := app.Group("/api/campaigns", authMw, agentOrAbove)
@@ -95,10 +88,10 @@ func main() {
 	contact.RegisterRoutes(contactGroup, contactHandler)
 
 	convGroup := app.Group("/api/conversations", authMw, agentOrAbove)
-	conversationHandler := conversation.NewConversationHandler(c, broker)
+	conversationHandler := conversation.NewConversationHandler(c)
 	conversation.RegisterRoutes(convGroup, conversationHandler)
 
-	messageHandler := message.NewMessageHandler(c, broker)
+	messageHandler := message.NewMessageHandler(c)
 	message.RegisterConversationRoutes(convGroup, messageHandler)
 	msgGroup := app.Group("/api/messages", authMw, agentOrAbove)
 	message.RegisterRoutes(msgGroup, messageHandler)

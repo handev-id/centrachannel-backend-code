@@ -15,7 +15,6 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/event"
 )
 
 // ---- mock repositories ----
@@ -131,14 +130,6 @@ func (m *mockMsgRepo) UpdateStatusByWebhookID(ctx context.Context, q message.DBT
 func (m *mockMsgRepo) ListCursor(ctx context.Context, q message.DBTX, conversationID int, limit int, lastID int) ([]*message.Message, error) { return nil, nil }
 func (m *mockMsgRepo) UpdateWebhookID(ctx context.Context, q message.DBTX, id int, webhookMessageID string) error { return nil }
 
-type mockNotifier struct {
-	notifyFunc func(tenantID int, event string, data interface{})
-}
-
-func (m *mockNotifier) Notify(tenantID int, event string, data interface{}) {
-	if m.notifyFunc != nil { m.notifyFunc(tenantID, event, data) }
-}
-
 // ---- test helpers ----
 
 type mockMetaTenantRepo struct{}
@@ -158,10 +149,6 @@ func (m *mockMetaTenantRepo) GetByMetaInstagramBusinessID(ctx context.Context, q
 
 func newTestService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository) WebhookService {
 	return NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"))
-}
-
-func newTestServiceWithNotifier(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, notifier event.Notifier) WebhookService {
-	return NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), notifier)
 }
 
 // ---- tests ----
@@ -328,54 +315,6 @@ func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
 	}
 }
 
-func TestHandleMessageUpsert_NotifierCalled(t *testing.T) {
-	var notified bool
-	notifier := &mockNotifier{
-		notifyFunc: func(tenantID int, event string, data interface{}) { notified = true },
-	}
-
-	deviceRepo := &mockDeviceRepo{
-		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1}, nil
-		},
-	}
-	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) { return nil, sql.ErrNoRows },
-		createFunc:     func(ctx context.Context, q contact.DBTX, c *contact.Contact) (int, error) { return 100, nil },
-	}
-	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) { return nil, sql.ErrNoRows },
-		createFunc:                      func(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) { return 200, nil },
-	}
-	channelRepo := &mockChannelRepo{
-		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
-		},
-	}
-	convRepo := &mockConvRepo{
-		listFunc:   func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) { return nil, 0, nil },
-		createFunc: func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error) { return 300, nil },
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error { return nil },
-	}
-	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
-	}
-
-	svc := newTestServiceWithNotifier(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, notifier)
-
-	text := "Hello"
-	data, _ := json.Marshal(EvolutionMessageUpsert{
-		Key:     EvolutionMessageKey{RemoteJid: "5511999999999@s.whatsapp.net", FromMe: false, ID: "msg_003"},
-		Message: EvolutionMessage{Conversation: &text},
-	})
-
-	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{
-		Event: "messages.upsert", Instance: "instance_test", Data: data,
-	})
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
-	if !notified { t.Error("expected notifier to be called") }
-}
-
 func TestHandleMessageUpdate_Delivered(t *testing.T) {
 	var capturedID, capturedStatus string
 	msgRepo := &mockMsgRepo{
@@ -449,7 +388,7 @@ func TestHandleConnectionUpdate_Open(t *testing.T) {
 	}
 	svc := newTestService(deviceRepo, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 
-	data, _ := json.Marshal(EvolutionConnectionUpdate{Instance: struct{ State string `json:"state"` }{State: "open"}})
+	data, _ := json.Marshal(EvolutionConnectionUpdate{Instance: "instance_test", State: "open"})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "connection.update", Instance: "instance_test", Data: data})
 	if err != nil { t.Fatalf("unexpected error: %v", err) }
 	if updatedDevice == nil || updatedDevice.Status != "CONNECTED" {
@@ -469,7 +408,7 @@ func TestHandleConnectionUpdate_Disconnected(t *testing.T) {
 	}
 	svc := newTestService(deviceRepo, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 
-	data, _ := json.Marshal(EvolutionConnectionUpdate{Instance: struct{ State string `json:"state"` }{State: "close"}})
+	data, _ := json.Marshal(EvolutionConnectionUpdate{Instance: "instance_test", State: "close"})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "connection.update", Instance: "instance_test", Data: data})
 	if err != nil { t.Fatalf("unexpected error: %v", err) }
 	if updatedDevice == nil || updatedDevice.Status != "DISCONNECTED" {

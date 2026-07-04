@@ -47,9 +47,9 @@ type EvolutionMessageUpsert struct {
 }
 
 type EvolutionConnectionUpdate struct {
-	Instance struct {
-		State string `json:"state"`
-	} `json:"instance"`
+	Instance    string `json:"instance"`
+	State       string `json:"state"`
+	StatusReason int   `json:"statusReason,omitempty"`
 }
 
 type EvolutionMessageUpdate struct {

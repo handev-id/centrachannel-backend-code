@@ -9,7 +9,7 @@
 | Database | PostgreSQL 16 |
 | Cache | Redis 7 |
 | Migrations | golang-migrate |
-| Realtime Events | SSE (Server-Sent Events, built-in) |
+| Realtime Events | _(not yet implemented, planned: WebSocket)_ |
 | Auth | JWT (golang-jwt) |
 | DI | Manual (container pattern) |
 
@@ -161,10 +161,6 @@ centrachannel/
 │   │   ├── evolution.go         # EvolutionSender (wa/wa_business via Evolution API)
 │   │   ├── mock.go              # MockSender (fallback)
 │   │   └── dispatcher.go        # NewSender factory
-│   ├── ws/
-│   │   ├── sse_broker.go       # SSE broker (tenant-scoped rooms, online user tracking)
-│   │   ├── sse_handler.go      # SSE endpoint handler
-│   │   └── notifier.go         # Notifier interface
 │   └── di/
 │       └── container.go
 ├── test/
@@ -214,31 +210,6 @@ All repository methods accept `DBTX` (interface matching both `*sql.DB` and `*sq
 ### File Upload
 
 Files are uploaded to `https://storage.solodevs.my.id` via multipart POST. The returned `public_url` is stored in the message's `attachment` JSONB field.
-
-### SSE (Server-Sent Events)
-
-Real-time events use SSE (`GET /event`, auth + tenant required). The `SSEBroker` maintains tenant-scoped rooms and reference-counted online user tracking. Events are pushed via standard SSE format:
-
-```text
-event: message:new
-data: {"id":1,"text":"Hello","sender_type":"contact",...}
-
-event: conversation:updated
-data: {"id":1,"action":"assign","agent_id":2}
-
-event: user:online
-data: {"id":5}
-```
-
-The `Notifier` interface (`ws.Notifier`) decouples senders (services/webhooks) from the broker. Services call `notifier.Notify(tenantID, event, data)` to broadcast to all connected clients in that tenant.
-
-**Events emitted by services:**
-| Sender | Events |
-|--------|--------|
-| Webhook service | `message:new`, `conversation:updated`, `device:updated` |
-| Conversation service | `conversation:updated` (assign/unassign/resolve/reopen) |
-| Message service | `message:new` |
-| SSE broker | `user:online`, `user:offline` (auto on connect/disconnect) |
 
 ### Avatar Generation
 

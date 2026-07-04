@@ -244,16 +244,6 @@
           "200": { "description": "Webhook received" }
         }
       }
-    },
-    "/event": {
-      "get": {
-        "summary": "SSE event stream",
-        "tags": ["SSE"],
-        "security": [{ "bearerAuth": [] }],
-        "responses": {
-          "200": { "description": "SSE event stream (text/event-stream)" }
-        }
-      }
     }
   },
   "components": {

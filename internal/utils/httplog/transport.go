@@ -92,6 +92,7 @@ func (t *LoggingRoundTripper) RoundTrip(req *http.Request) (*http.Response, erro
 		"service":      t.name,
 		"method":       req.Method,
 		"url":          req.URL.String(),
+		"endpoint":     req.URL.Path,
 		"status":       respStatus,
 		"responseTime": fmt.Sprintf("%dms", elapsed.Milliseconds()),
 	}

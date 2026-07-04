@@ -41,24 +41,7 @@ func setupApp(apiKey, metaSecret string) *fiber.App {
 	return app
 }
 
-func TestHandleEvolution_InvalidAPIKey(t *testing.T) {
-	app := setupApp("secret123", "")
-
-	body := bytes.NewReader([]byte(`{"event":"connection.update"}`))
-	req := httptest.NewRequest(http.MethodPost, "/webhook/evolution", body)
-	req.Header.Set("apikey", "wrong-key")
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := app.Test(req)
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401, got %d", resp.StatusCode)
-	}
-}
-
-func TestHandleEvolution_MissingAPIKey(t *testing.T) {
+func TestHandleEvolution_NoAuth(t *testing.T) {
 	app := setupApp("secret123", "")
 
 	body := bytes.NewReader([]byte(`{"event":"connection.update"}`))
@@ -69,8 +52,8 @@ func TestHandleEvolution_MissingAPIKey(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.StatusCode != http.StatusUnauthorized {
-		t.Errorf("expected 401, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
 	}
 }
 

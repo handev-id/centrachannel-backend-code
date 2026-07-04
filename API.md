@@ -47,8 +47,6 @@ For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 tim
 | GET | `/health` | Health status |
 | GET | `/ping` | Returns `pong` |
 | GET | `/version` | Version info |
-| GET | `/sse-test-ping` | Send test ping via SSE to a tenant. Query: `tenant_id` (required) |
-
 ## Webhooks (Public)
 
 | Method | Path | Description |
@@ -56,58 +54,6 @@ For conversations, `meta_pagination` also includes `last_activity` (ISO 8601 tim
 | POST | `/webhook/evolution` | Evolution API webhook |
 | GET | `/webhook/meta` | Meta webhook verification |
 | POST | `/webhook/meta` | Meta webhook handler |
-
-## SSE (Server-Sent Events)
-
-| Method | Path | Description |
-|--------|------|-------------|
-| GET | `/api/event` | SSE event stream (auth required, use `?token=` query param) |
-
-### Events
-
-The SSE endpoint pushes real-time events in standard SSE format. A **heartbeat ping** is sent every 5 seconds so the client can verify connectivity:
-
-```text
-event: connected
-data: {"user_id":5}
-
-event: ping
-data: {}
-
-event: user:online
-data: {"id":3}
-
-event: user:offline
-data: {"id":3}
-
-event: message:new
-data: {"id":1,"text":"Hello","sender_type":"contact",...}
-
-event: conversation:updated
-data: {"id":1,"action":"assign","agent_id":2}
-```
-
-| Event | Description |
-|-------|-------------|
-| `connected` | Initial connection confirmation with `user_id` |
-| `ping` | Heartbeat every 5s. FE can listen to this to detect stale connections |
-| `user:online` | Broadcast to **all** connected clients (including sender) when a user comes online |
-| `user:offline` | Broadcast to remaining clients when a user disconnects |
-| `message:new` | New message in a conversation |
-| `conversation:updated` | Conversation status change (assign/unassign/resolve/reopen) |
-
-**Initial presence state:** Fetch via `GET /api/user` — response includes `is_online` field for each user.
-
-Client usage (JavaScript):
-```js
-const evtSource = new EventSource('/api/event?token=...');
-evtSource.addEventListener('message:new', (e) => {
-  const msg = JSON.parse(e.data);
-  // update UI
-});
-```
-
----
 
 ## Auth (Public — No Tenant Required)
 

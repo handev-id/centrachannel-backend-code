@@ -46,7 +46,9 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 			rawBody := c.Body()
 			if len(rawBody) > 0 {
 				ct := string(c.Request().Header.ContentType())
-				if strings.Contains(ct, "json") || strings.Contains(ct, "text") || strings.Contains(ct, "form-urlencoded") {
+				if strings.Contains(ct, "json") {
+					reqBody = truncate(prettifyJSON(string(rawBody)), 2000)
+				} else if strings.Contains(ct, "text") || strings.Contains(ct, "form-urlencoded") {
 					reqBody = truncate(string(rawBody), 2000)
 				} else {
 					reqBody = fmt.Sprintf("[%s %d bytes]", ct, len(rawBody))
@@ -121,7 +123,7 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 			if query != "" {
 				fmt.Fprintf(os.Stdout, "  \033[90mQuery\033[0m         %s\n", query)
 			}
-			fmt.Fprintf(os.Stdout, "  \033[90mDuration\033[0m     %s %s\n", elapsed.Round(time.Millisecond), "\033[90mms\033[0m")
+			fmt.Fprintf(os.Stdout, "  \033[90mDuration\033[0m     %dms\n", elapsed.Milliseconds())
 			fmt.Fprintf(os.Stdout, "  \033[90mRemote IP\033[0m    %s\n", remoteIP)
 			if userID > 0 {
 				fmt.Fprintf(os.Stdout, "  \033[90mUser ID\033[0m      %d\n", userID)
@@ -137,6 +139,16 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 			}
 			if reqBody != "" {
 				fmt.Fprintf(os.Stdout, "  \033[90mRequest Body\033[0m %s\n", reqBody)
+			}
+			if env == "development" || status >= 500 {
+				respBodyStr := string(respBody)
+				if len(respBodyStr) > 0 {
+					ct := string(c.Response().Header.ContentType())
+					if strings.Contains(ct, "json") {
+						respBodyStr = prettifyJSON(respBodyStr)
+					}
+					fmt.Fprintf(os.Stdout, "  \033[90mResponse Body\033[0m %s\n", truncate(respBodyStr, 2000))
+				}
 			}
 			fmt.Fprintf(os.Stdout, "\n")
 		}
@@ -160,6 +172,38 @@ func colorStatusFn(status int) string {
 		return "\033[36m" + code + "\033[0m"
 	default:
 		return "\033[32m" + code + "\033[0m"
+	}
+}
+
+func prettifyJSON(s string) string {
+	var v interface{}
+	if json.Unmarshal([]byte(s), &v) == nil {
+		truncateStrings(v)
+		b, _ := json.MarshalIndent(v, "  ", "  ")
+		if len(b) > 0 {
+			return string(b)
+		}
+	}
+	return s
+}
+
+func truncateStrings(v interface{}) {
+	switch ref := v.(type) {
+	case map[string]interface{}:
+		for k, val := range ref {
+			switch s := val.(type) {
+			case string:
+				if len(s) > 100 {
+					ref[k] = fmt.Sprintf("[base64 %d chars]", len(s))
+				}
+			default:
+				truncateStrings(val)
+			}
+		}
+	case []interface{}:
+		for _, val := range ref {
+			truncateStrings(val)
+		}
 	}
 }
 

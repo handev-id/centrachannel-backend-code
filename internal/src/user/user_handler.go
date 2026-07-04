@@ -6,7 +6,6 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
-	"centrachannel/internal/event"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
@@ -15,12 +14,9 @@ type UserHandler struct {
 	service UserService
 }
 
-func NewUserHandler(container *di.Container, broker ...*event.SSEBroker) *UserHandler {
+func NewUserHandler(container *di.Container) *UserHandler {
 	repo := NewUserRepository()
 	service := NewUserService(repo, container.DB, container.Config, container.Logger)
-	if len(broker) > 0 {
-		service = NewUserService(repo, container.DB, container.Config, container.Logger, broker[0])
-	}
 	return &UserHandler{service: service}
 }
 

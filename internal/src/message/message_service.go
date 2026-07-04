@@ -15,7 +15,6 @@ import (
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
-	"centrachannel/internal/event"
 )
 
 type MessageService interface {
@@ -34,15 +33,10 @@ type messageService struct {
 	db           *sql.DB
 	cfg          *config.Config
 	logger       *logger.Logger
-	notifier     event.Notifier
 }
 
-func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...event.Notifier) MessageService {
-	svc := &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger}
-	if len(notifier) > 0 {
-		svc.notifier = notifier[0]
-	}
-	return svc
+func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) MessageService {
+	return &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger}
 }
 
 func (s *messageService) List(ctx context.Context, conversationID int, q ListMessageQuery) (*PaginatedResponse, error) {
@@ -156,10 +150,6 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 		}()
 		s.deliverToExternal(tenantID, conversationID, msg)
 	}()
-
-	if s.notifier != nil {
-		s.notifier.Notify(tenantID, "message:new", msg)
-	}
 
 	return msg, nil
 }
