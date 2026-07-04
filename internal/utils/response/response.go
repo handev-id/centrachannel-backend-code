@@ -8,10 +8,14 @@ import (
 var validate = validator.New()
 
 func Validate(c fiber.Ctx, req interface{}) error {
-    if err := validate.Struct(req); err != nil {
-        return BadRequest(c, "Validation failed", formatValidationErrors(err))
-    }
-    return nil
+	if err := validate.Struct(req); err != nil {
+		return UnprocessableEntity(c, "Validation failed", formatValidationErrors(err))
+	}
+	return nil
+}
+
+func UnprocessableEntity(c fiber.Ctx, message string, errors interface{}) error {
+	return Error(c, fiber.StatusUnprocessableEntity, message, errors)
 }
 
 func formatValidationErrors(err error) map[string]string {

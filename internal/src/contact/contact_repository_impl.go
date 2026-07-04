@@ -57,7 +57,7 @@ func scanContact(row interface{ Scan(dest ...interface{}) error }) (*Contact, er
 	return &c, nil
 }
 
-func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error) {
+func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
 	var conditions []string
 	var args []interface{}
 	argIdx := 1
@@ -68,21 +68,75 @@ func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID int, limi
 
 	conditions = append(conditions, "c.deleted_at IS NULL")
 
-	if search != "" {
+	if f.Search != "" {
 		conditions = append(conditions, fmt.Sprintf("(LOWER(c.first_name) LIKE LOWER($%d) OR LOWER(c.last_name) LIKE LOWER($%d) OR LOWER(c.email) LIKE LOWER($%d) OR LOWER(c.phone) LIKE LOWER($%d))", argIdx, argIdx, argIdx, argIdx))
-		args = append(args, "%"+search+"%")
+		args = append(args, "%"+f.Search+"%")
 		argIdx++
 	}
 
-	if status != "" {
+	if f.Status != "" {
 		conditions = append(conditions, fmt.Sprintf("c.status = $%d", argIdx))
-		args = append(args, status)
+		args = append(args, f.Status)
 		argIdx++
 	}
 
-	if channelID > 0 {
+	if f.ChannelID > 0 {
 		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM profiles p WHERE p.contact_id = c.id AND p.channel_id = $%d)", argIdx))
-		args = append(args, channelID)
+		args = append(args, f.ChannelID)
+		argIdx++
+	}
+
+	if f.ChannelType != "" {
+		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM profiles p INNER JOIN channels ch ON ch.id = p.channel_id WHERE p.contact_id = c.id AND ch.type = $%d)", argIdx))
+		args = append(args, f.ChannelType)
+		argIdx++
+	}
+
+	if f.Category != "" {
+		conditions = append(conditions, fmt.Sprintf("c.category = $%d", argIdx))
+		args = append(args, f.Category)
+		argIdx++
+	}
+
+	if f.Country != "" {
+		conditions = append(conditions, fmt.Sprintf("c.country = $%d", argIdx))
+		args = append(args, f.Country)
+		argIdx++
+	}
+
+	if f.Province != "" {
+		conditions = append(conditions, fmt.Sprintf("c.province_of_origin = $%d", argIdx))
+		args = append(args, f.Province)
+		argIdx++
+	}
+
+	if f.IsMerged == "true" {
+		conditions = append(conditions, "c.merged_to_id IS NOT NULL")
+	} else if f.IsMerged == "false" {
+		conditions = append(conditions, "c.merged_to_id IS NULL")
+	}
+
+	if f.AgentID > 0 {
+		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM conversations cv WHERE cv.tenant_id = c.tenant_id AND cv.agent_id = $%d AND EXISTS (SELECT 1 FROM profiles p WHERE p.id = cv.profile_id AND p.contact_id = c.id))", argIdx))
+		args = append(args, f.AgentID)
+		argIdx++
+	}
+
+	if f.HasConversation == "true" {
+		conditions = append(conditions, "EXISTS (SELECT 1 FROM conversations cv INNER JOIN profiles p ON p.id = cv.profile_id WHERE p.contact_id = c.id AND cv.tenant_id = c.tenant_id)")
+	} else if f.HasConversation == "false" {
+		conditions = append(conditions, "NOT EXISTS (SELECT 1 FROM conversations cv INNER JOIN profiles p ON p.id = cv.profile_id WHERE p.contact_id = c.id AND cv.tenant_id = c.tenant_id)")
+	}
+
+	if f.LastActivityFrom != "" {
+		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM conversations cv INNER JOIN profiles p ON p.id = cv.profile_id WHERE p.contact_id = c.id AND cv.tenant_id = c.tenant_id AND cv.last_activity >= $%d)", argIdx))
+		args = append(args, f.LastActivityFrom)
+		argIdx++
+	}
+
+	if f.LastActivityTo != "" {
+		conditions = append(conditions, fmt.Sprintf("EXISTS (SELECT 1 FROM conversations cv INNER JOIN profiles p ON p.id = cv.profile_id WHERE p.contact_id = c.id AND cv.tenant_id = c.tenant_id AND cv.last_activity <= $%d)", argIdx))
+		args = append(args, f.LastActivityTo)
 		argIdx++
 	}
 
@@ -97,8 +151,18 @@ func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID int, limi
 		return []*Contact{}, 0, nil
 	}
 
+	orderBy := "c.created_at DESC"
+	if f.SortBy != "" {
+		switch f.SortBy {
+		case "first_name", "last_name", "email", "phone", "created_at", "updated_at":
+			orderBy = "c." + f.SortBy + " ASC"
+		case "-first_name", "-last_name", "-email", "-phone", "-created_at", "-updated_at":
+			orderBy = "c." + f.SortBy[1:] + " DESC"
+		}
+	}
+
 	cols := `c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at`
-	dataQuery := fmt.Sprintf(`SELECT %s FROM contacts c WHERE %s ORDER BY c.created_at DESC LIMIT $%d OFFSET $%d`, cols, where, argIdx, argIdx+1)
+	dataQuery := fmt.Sprintf(`SELECT %s FROM contacts c WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`, cols, where, orderBy, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
 	rows, err := q.QueryContext(ctx, dataQuery, args...)

@@ -3,12 +3,21 @@ package contact
 import "encoding/json"
 
 type ListContactQuery struct {
-	Page    int    `query:"page"`
-	Limit   int    `query:"limit"`
-	Search  string `query:"search"`
-	Status  string `query:"status"`
-	ChannelID int  `query:"channel_id"`
-	SortBy  string `query:"sort_by"`
+	Page             int     `query:"page"`
+	Limit            int     `query:"limit"`
+	Search           string  `query:"search"`
+	Status           string  `query:"status"`
+	ChannelID        int     `query:"channel_id"`
+	ChannelType      string  `query:"channel_type"`
+	Category         string  `query:"category"`
+	Country          string  `query:"country"`
+	Province         string  `query:"province"`
+	AgentID          int     `query:"agent_id"`
+	IsMerged         string  `query:"is_merged"`
+	HasConversation  string  `query:"has_conversation"`
+	LastActivityFrom string  `query:"last_activity_from"`
+	LastActivityTo   string  `query:"last_activity_to"`
+	SortBy           string  `query:"sort_by"`
 }
 
 type CreateContactRequest struct {

@@ -42,7 +42,7 @@ type mockContactRepo struct {
 	createFunc     func(ctx context.Context, q contact.DBTX, c *contact.Contact) (int, error)
 }
 
-func (m *mockContactRepo) List(ctx context.Context, q contact.DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*contact.Contact, int, error) { return nil, 0, nil }
+func (m *mockContactRepo) List(ctx context.Context, q contact.DBTX, tenantID int, limit, offset int, f contact.ListContactQuery) ([]*contact.Contact, int, error) { return nil, 0, nil }
 func (m *mockContactRepo) GetByID(ctx context.Context, q contact.DBTX, tenantID int, id int) (*contact.Contact, error) { return nil, nil }
 func (m *mockContactRepo) GetByPhone(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
 	if m.getByPhoneFunc != nil { return m.getByPhoneFunc(ctx, q, tenantID, phone) }
@@ -72,6 +72,7 @@ func (m *mockProfileRepo) Create(ctx context.Context, q profile.DBTX, p *profile
 }
 func (m *mockProfileRepo) Update(ctx context.Context, q profile.DBTX, id int, p *profile.Profile) error { return nil }
 func (m *mockProfileRepo) GetByContactID(ctx context.Context, q profile.DBTX, contactID int) ([]profile.Profile, error) { return nil, nil }
+func (m *mockProfileRepo) GetByContactIDs(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error) { return map[int][]profile.Profile{}, nil }
 
 type mockChannelRepo struct {
 	getByTypeFunc func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error)

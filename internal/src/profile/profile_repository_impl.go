@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"strings"
 	"time"
 
 	"centrachannel/internal/utils"
@@ -127,6 +128,40 @@ func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, contactI
 		profiles = append(profiles, *p)
 	}
 	return profiles, rows.Err()
+}
+
+func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, contactIDs []int) (map[int][]Profile, error) {
+	if len(contactIDs) == 0 {
+		return map[int][]Profile{}, nil
+	}
+
+	placeholders := make([]string, len(contactIDs))
+	args := make([]interface{}, len(contactIDs))
+	for i, id := range contactIDs {
+		placeholders[i] = fmt.Sprintf("$%d", i+1)
+		args[i] = id
+	}
+
+	query := fmt.Sprintf(`SELECT id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE contact_id IN (%s) AND deleted_at IS NULL ORDER BY id`, strings.Join(placeholders, ","))
+	rows, err := q.QueryContext(ctx, query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	result := make(map[int][]Profile)
+	for rows.Next() {
+		p, err := scanProfile(rows)
+		if err != nil {
+			return nil, err
+		}
+		result[p.ContactID] = append(result[p.ContactID], *p)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+
+	return result, nil
 }
 
 func joinStrings(strs []string, sep string) string {

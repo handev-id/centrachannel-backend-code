@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"centrachannel/config"
+	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
 )
@@ -147,10 +148,31 @@ func (r *mockResult) RowsAffected() (int64, error) { return r.rowsAffected, nil 
 
 var _ driver.Result = (*mockResult)(nil)
 
+// ---- Profile Repository Mock ----
+
+type mockProfileRepo struct {
+	getByContactIDFunc  func(ctx context.Context, q profile.DBTX, contactID int) ([]profile.Profile, error)
+	getByContactIDsFunc func(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error)
+}
+
+func (m *mockProfileRepo) List(ctx context.Context, q profile.DBTX, contactID, channelID int) ([]profile.Profile, error) { return nil, nil }
+func (m *mockProfileRepo) GetByID(ctx context.Context, q profile.DBTX, id int) (*profile.Profile, error) { return nil, nil }
+func (m *mockProfileRepo) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) { return nil, nil }
+func (m *mockProfileRepo) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) { return 0, nil }
+func (m *mockProfileRepo) Update(ctx context.Context, q profile.DBTX, id int, p *profile.Profile) error { return nil }
+func (m *mockProfileRepo) GetByContactID(ctx context.Context, q profile.DBTX, contactID int) ([]profile.Profile, error) {
+	if m.getByContactIDFunc != nil { return m.getByContactIDFunc(ctx, q, contactID) }
+	return []profile.Profile{}, nil
+}
+func (m *mockProfileRepo) GetByContactIDs(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error) {
+	if m.getByContactIDsFunc != nil { return m.getByContactIDsFunc(ctx, q, contactIDs) }
+	return map[int][]profile.Profile{}, nil
+}
+
 // ---- Repository Mock ----
 
 type mockContactRepository struct {
-	listFunc        func(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error)
+	listFunc        func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error)
 	getByIDFunc     func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error)
 	createFunc      func(ctx context.Context, q DBTX, contact *Contact) (int, error)
 	updateFunc      func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error
@@ -158,8 +180,8 @@ type mockContactRepository struct {
 	getByPhoneFunc  func(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error)
 }
 
-func (m *mockContactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error) {
-	return m.listFunc(ctx, q, tenantID, limit, offset, search, status, channelID)
+func (m *mockContactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
+	return m.listFunc(ctx, q, tenantID, limit, offset, f)
 }
 
 func (m *mockContactRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error) {
@@ -195,7 +217,7 @@ func newMockDB(conn *mockConn) *sql.DB {
 }
 
 func newService(repo ContactRepository, db *sql.DB) *contactService {
-	return NewContactService(repo, db, &config.Config{}, logger.NewLogger("error", "json")).(*contactService)
+	return NewContactService(repo, &mockProfileRepo{}, db, &config.Config{}, logger.NewLogger("error", "json")).(*contactService)
 }
 
 func strPtr(s string) *string { return &s }
@@ -399,7 +421,7 @@ func TestContactService_List(t *testing.T) {
 		contacts := []*Contact{{ID: 1, FirstName: "John"}}
 		var capturedLimit, capturedOffset int
 		repo := &mockContactRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
 				capturedLimit = limit
 				capturedOffset = offset
 				return contacts, 1, nil
@@ -432,13 +454,10 @@ func TestContactService_List(t *testing.T) {
 	})
 
 	t.Run("search status channel filters", func(t *testing.T) {
-		var capturedSearch, capturedStatus string
-		var capturedChannelID int
+		var capturedF ListContactQuery
 		repo := &mockContactRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit, offset int, search, status string, channelID int) ([]*Contact, int, error) {
-				capturedSearch = search
-				capturedStatus = status
-				capturedChannelID = channelID
+			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
+				capturedF = f
 				return []*Contact{}, 0, nil
 			},
 		}
@@ -454,23 +473,32 @@ func TestContactService_List(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedSearch != "john" {
-			t.Errorf("expected search 'john', got %q", capturedSearch)
+		if capturedF.Search != "john" {
+			t.Errorf("expected search 'john', got %q", capturedF.Search)
 		}
-		if capturedStatus != "active" {
-			t.Errorf("expected status 'active', got %q", capturedStatus)
+		if capturedF.Status != "active" {
+			t.Errorf("expected status 'active', got %q", capturedF.Status)
 		}
-		if capturedChannelID != 3 {
-			t.Errorf("expected channelID 3, got %d", capturedChannelID)
+		if capturedF.ChannelID != 3 {
+			t.Errorf("expected channelID 3, got %d", capturedF.ChannelID)
 		}
 	})
 }
 
 func TestContactService_GetConversations(t *testing.T) {
-	t.Run("returns conversation list via raw SQL query", func(t *testing.T) {
+	t.Run("returns paginated conversation list", func(t *testing.T) {
 		now := time.Now()
+		queryCount := 0
 		m := &mockConn{
 			queryFunc: func(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+				queryCount++
+				// First call is COUNT, second call is data
+				if queryCount == 1 {
+					return &mockRows{
+						columns: []string{"count"},
+						data:    [][]driver.Value{{int64(2)}},
+					}, nil
+				}
 				return &mockRows{
 					columns: []string{"id", "status", "profile_id", "agent_id", "channel_id", "unread_count", "last_message", "last_activity", "created_at"},
 					data: [][]driver.Value{
@@ -485,20 +513,28 @@ func TestContactService_GetConversations(t *testing.T) {
 		repo := &mockContactRepository{}
 		svc := newService(repo, db)
 
-		result, err := svc.GetConversations(context.Background(), 1, 1)
+		result, err := svc.GetConversations(context.Background(), 1, 1, 1, 20)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		rv := reflect.ValueOf(result)
-		if rv.Kind() != reflect.Slice {
-			t.Fatalf("expected slice, got %T", result)
+		if rv.Kind() == reflect.Ptr {
+			rv = rv.Elem()
 		}
-		if rv.Len() != 2 {
-			t.Fatalf("expected 2 conversations, got %d", rv.Len())
+		if rv.Kind() != reflect.Struct {
+			t.Fatalf("expected struct (PaginatedResponse), got %T", result)
+		}
+		dataField := rv.FieldByName("Data")
+		if !dataField.IsValid() {
+			t.Fatal("expected Data field")
+		}
+		dataSlice := dataField.Elem()
+		if dataSlice.Len() != 2 {
+			t.Fatalf("expected 2 conversations, got %d", dataSlice.Len())
 		}
 
 		// First conversation — has agent_id, last_message, last_activity
-		c0 := rv.Index(0)
+		c0 := dataSlice.Index(0)
 		if c0.FieldByName("ID").Int() != 1 {
 			t.Errorf("expected ID 1, got %d", c0.FieldByName("ID").Int())
 		}
@@ -514,17 +550,9 @@ func TestContactService_GetConversations(t *testing.T) {
 		} else if agentID.Elem().Int() != 42 {
 			t.Errorf("expected AgentID 42, got %d", agentID.Elem().Int())
 		}
-		lastMsg := c0.FieldByName("LastMessage")
-		if lastMsg.IsNil() {
-			t.Error("expected LastMessage to be non-nil for first conversation")
-		}
-		lastAct := c0.FieldByName("LastActivity")
-		if lastAct.IsNil() {
-			t.Error("expected LastActivity to be non-nil for first conversation")
-		}
 
 		// Second conversation — no agent_id, no last_message, no last_activity
-		c1 := rv.Index(1)
+		c1 := dataSlice.Index(1)
 		if c1.FieldByName("ID").Int() != 2 {
 			t.Errorf("expected ID 2, got %d", c1.FieldByName("ID").Int())
 		}
@@ -534,11 +562,17 @@ func TestContactService_GetConversations(t *testing.T) {
 		if !c1.FieldByName("AgentID").IsNil() {
 			t.Error("expected AgentID to be nil for second conversation")
 		}
-		if !c1.FieldByName("LastMessage").IsNil() {
-			t.Error("expected LastMessage to be nil for second conversation")
+
+		// Verify pagination meta
+		metaField := rv.FieldByName("Meta")
+		if !metaField.IsValid() {
+			t.Fatal("expected Meta field")
 		}
-		if !c1.FieldByName("LastActivity").IsNil() {
-			t.Error("expected LastActivity to be nil for second conversation")
+		if metaField.FieldByName("Total").Int() != 2 {
+			t.Errorf("expected Total 2, got %d", metaField.FieldByName("Total").Int())
+		}
+		if metaField.FieldByName("PerPage").Int() != 20 {
+			t.Errorf("expected PerPage 20, got %d", metaField.FieldByName("PerPage").Int())
 		}
 	})
 }

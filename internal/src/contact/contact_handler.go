@@ -9,6 +9,7 @@ import (
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
+	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
@@ -19,7 +20,8 @@ type ContactHandler struct {
 
 func NewContactHandler(c *di.Container) *ContactHandler {
 	repo := NewContactRepository()
-	service := NewContactService(repo, c.DB, c.Config, c.Logger)
+	profileRepo := profile.NewProfileRepository()
+	service := NewContactService(repo, profileRepo, c.DB, c.Config, c.Logger)
 	return &ContactHandler{service: service}
 }
 
@@ -32,14 +34,24 @@ func (h *ContactHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	channelID, _ := strconv.Atoi(c.Query("channel_id"))
+	agentID, _ := strconv.Atoi(c.Query("agent_id"))
 
 	q := ListContactQuery{
-		Page:      page,
-		Limit:     limit,
-		Search:    c.Query("search"),
-		Status:    c.Query("status"),
-		ChannelID: channelID,
-		SortBy:    c.Query("sort_by"),
+		Page:             page,
+		Limit:            limit,
+		Search:           c.Query("search"),
+		Status:           c.Query("status"),
+		ChannelID:        channelID,
+		ChannelType:      c.Query("channel_type"),
+		Category:         c.Query("category"),
+		Country:          c.Query("country"),
+		Province:         c.Query("province"),
+		AgentID:          agentID,
+		IsMerged:         c.Query("is_merged"),
+		HasConversation:  c.Query("has_conversation"),
+		LastActivityFrom: c.Query("last_activity_from"),
+		LastActivityTo:   c.Query("last_activity_to"),
+		SortBy:           c.Query("sort_by"),
 	}
 
 	result, err := h.service.List(c.Context(), q, t)
@@ -110,7 +122,7 @@ func (h *ContactHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 	}
 
 	if err := h.service.Delete(c.Context(), t.ID, id); err != nil {
-		return response.BadRequest(c, err.Error(), nil)
+		return response.NotFound(c, err.Error())
 	}
 	return response.OK(c, "Contact deleted", nil)
 }
@@ -156,7 +168,10 @@ func (h *ContactHandler) Conversations(c fiber.Ctx, t *tenant.Tenant) error {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
-	convs, err := h.service.GetConversations(c.Context(), t.ID, id)
+	page, _ := strconv.Atoi(c.Query("page", "1"))
+	limit, _ := strconv.Atoi(c.Query("limit", "20"))
+
+	convs, err := h.service.GetConversations(c.Context(), t.ID, id, page, limit)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
@@ -164,7 +179,7 @@ func (h *ContactHandler) Conversations(c fiber.Ctx, t *tenant.Tenant) error {
 }
 
 func (h *ContactHandler) ExportCSV(c fiber.Ctx, t *tenant.Tenant) error {
-	csvData, err := h.service.ExportCSV(c.Context(), t.ID)
+	csvData, err := h.service.ExportCSV(c.Context(), t.ID, c.Query("search"), c.Query("status"))
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
@@ -212,5 +227,5 @@ func (h *ContactHandler) ImportCSV(c fiber.Ctx, t *tenant.Tenant) error {
 		return response.InternalServerError(c, err.Error())
 	}
 
-	return response.Created(c, "CSV import completed", result)
+	return response.OK(c, "CSV import completed", result)
 }

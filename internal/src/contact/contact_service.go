@@ -3,15 +3,15 @@ package contact
 import (
 	"context"
 	"database/sql"
+	"encoding/csv"
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
-	"encoding/csv"
-	"strings"
-
 	"centrachannel/config"
+	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
 )
@@ -24,20 +24,55 @@ type ContactService interface {
 	Delete(ctx context.Context, tenantID int, id int) error
 	Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error
 	Unmerge(ctx context.Context, tenantID int, id int) error
-	GetConversations(ctx context.Context, tenantID int, contactID int) (interface{}, error)
+	GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) (interface{}, error)
 	ImportCSV(ctx context.Context, tenantID int, records [][]string) (*CSVImportResult, error)
-	ExportCSV(ctx context.Context, tenantID int) (string, error)
+	ExportCSV(ctx context.Context, tenantID int, search, status string) (string, error)
 }
 
 type contactService struct {
-	repo   ContactRepository
-	db     *sql.DB
-	cfg    *config.Config
-	logger *logger.Logger
+	repo        ContactRepository
+	profileRepo profile.ProfileRepository
+	db          *sql.DB
+	cfg         *config.Config
+	logger      *logger.Logger
 }
 
-func NewContactService(repo ContactRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) ContactService {
-	return &contactService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewContactService(repo ContactRepository, profileRepo profile.ProfileRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) ContactService {
+	return &contactService{repo: repo, profileRepo: profileRepo, db: db, cfg: cfg, logger: logger}
+}
+
+func (s *contactService) loadProfiles(ctx context.Context, contacts []*Contact) error {
+	if len(contacts) == 0 {
+		return nil
+	}
+	ids := make([]int, len(contacts))
+	for i, c := range contacts {
+		ids[i] = c.ID
+	}
+	profileMap, err := s.profileRepo.GetByContactIDs(ctx, s.db, ids)
+	if err != nil {
+		return err
+	}
+	for _, c := range contacts {
+		if profiles, ok := profileMap[c.ID]; ok {
+			if c.Profiles == nil {
+				c.Profiles = profiles
+			}
+		}
+	}
+	return nil
+}
+
+func (s *contactService) loadProfile(ctx context.Context, contact *Contact) error {
+	if contact == nil {
+		return nil
+	}
+	profiles, err := s.profileRepo.GetByContactID(ctx, s.db, contact.ID)
+	if err != nil {
+		return err
+	}
+	contact.Profiles = profiles
+	return nil
 }
 
 func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
@@ -49,8 +84,12 @@ func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant
 	}
 	offset := (q.Page - 1) * q.Limit
 
-	contacts, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q.Search, q.Status, q.ChannelID)
+	contacts, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q)
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.loadProfiles(ctx, contacts); err != nil {
 		return nil, err
 	}
 
@@ -73,7 +112,14 @@ func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant
 }
 
 func (s *contactService) GetByID(ctx context.Context, tenantID int, id int) (*Contact, error) {
-	return s.repo.GetByID(ctx, s.db, tenantID, id)
+	contact, err := s.repo.GetByID(ctx, s.db, tenantID, id)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.loadProfile(ctx, contact); err != nil {
+		return nil, err
+	}
+	return contact, nil
 }
 
 func (s *contactService) Create(ctx context.Context, req CreateContactRequest, t *tenant.Tenant) (*Contact, error) {
@@ -123,6 +169,11 @@ func (s *contactService) Create(ctx context.Context, req CreateContactRequest, t
 	contact.ID = id
 	contact.CreatedAt = time.Now()
 	contact.UpdatedAt = time.Now()
+
+	if err := s.loadProfile(ctx, contact); err != nil {
+		return nil, err
+	}
+
 	return contact, nil
 }
 
@@ -162,6 +213,10 @@ func (s *contactService) Update(ctx context.Context, tenantID int, id int, req U
 		return nil, err
 	}
 
+	if err := s.loadProfile(ctx, existing); err != nil {
+		return nil, err
+	}
+
 	return existing, nil
 }
 
@@ -169,17 +224,36 @@ func (s *contactService) Delete(ctx context.Context, tenantID int, id int) error
 	return s.repo.SoftDelete(ctx, s.db, tenantID, id)
 }
 
-func (s *contactService) GetConversations(ctx context.Context, tenantID int, contactID int) (interface{}, error) {
+func (s *contactService) GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) (interface{}, error) {
+	if page < 1 {
+		page = 1
+	}
+	if limit < 1 || limit > 100 {
+		limit = 20
+	}
+	offset := (page - 1) * limit
+
 	type convBrief struct {
-		ID          int              `json:"id"`
-		Status      string           `json:"status"`
-		ProfileID   int              `json:"profile_id"`
-		AgentID     *int             `json:"agent_id,omitempty"`
-		ChannelID   int              `json:"channel_id"`
-		UnreadCount int              `json:"unread_count"`
-		LastMessage json.RawMessage  `json:"last_message,omitempty"`
-		LastActivity *time.Time      `json:"last_activity,omitempty"`
-		CreatedAt   time.Time        `json:"created_at"`
+		ID           int              `json:"id"`
+		Status       string           `json:"status"`
+		ProfileID    int              `json:"profile_id"`
+		AgentID      *int             `json:"agent_id,omitempty"`
+		ChannelID    int              `json:"channel_id"`
+		UnreadCount  int              `json:"unread_count"`
+		LastMessage  json.RawMessage  `json:"last_message,omitempty"`
+		LastActivity *time.Time       `json:"last_activity,omitempty"`
+		CreatedAt    time.Time        `json:"created_at"`
+	}
+
+	var total int
+	err := s.db.QueryRowContext(ctx, `
+		SELECT COUNT(*)
+		FROM conversations c
+		INNER JOIN profiles p ON p.id = c.profile_id
+		WHERE p.contact_id = $1 AND c.tenant_id = $2
+	`, contactID, tenantID).Scan(&total)
+	if err != nil {
+		return nil, err
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
@@ -189,7 +263,8 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		INNER JOIN profiles p ON p.id = c.profile_id
 		WHERE p.contact_id = $1 AND c.tenant_id = $2
 		ORDER BY c.last_activity DESC NULLS LAST
-	`, contactID, tenantID)
+		LIMIT $3 OFFSET $4
+	`, contactID, tenantID, limit, offset)
 	if err != nil {
 		return nil, err
 	}
@@ -215,7 +290,17 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		return nil, err
 	}
 
-	return convs, nil
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	from := offset + 1
+	to := offset + len(convs)
+	if to > total { to = total }
+	if total == 0 { from = 0; to = 0 }
+
+	meta := PaginationMeta{
+		Total: total, PerPage: limit, CurrentPage: page,
+		LastPage: lastPage, From: from, To: to,
+	}
+	return &PaginatedResponse{Meta: meta, Data: convs}, nil
 }
 
 func (s *contactService) Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error {
@@ -293,7 +378,7 @@ func (s *contactService) ImportCSV(ctx context.Context, tenantID int, records []
 			X:               optionalStr(getCol(row, colMap, "x")),
 			Tiktok:          optionalStr(getCol(row, colMap, "tiktok")),
 			InstitutionName: optionalStr(getCol(row, colMap, "institution_name")),
-			Status:          "active",
+			Status:          "individual",
 		}
 
 		if _, err := s.repo.Create(ctx, s.db, contact); err != nil {
@@ -307,8 +392,9 @@ func (s *contactService) ImportCSV(ctx context.Context, tenantID int, records []
 	return result, nil
 }
 
-func (s *contactService) ExportCSV(ctx context.Context, tenantID int) (string, error) {
-	contacts, _, err := s.repo.List(ctx, s.db, tenantID, 0, 0, "", "", 0)
+func (s *contactService) ExportCSV(ctx context.Context, tenantID int, search, status string) (string, error) {
+	f := ListContactQuery{Search: search, Status: status}
+	contacts, _, err := s.repo.List(ctx, s.db, tenantID, 0, 0, f)
 	if err != nil {
 		return "", err
 	}

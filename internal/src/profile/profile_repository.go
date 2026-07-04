@@ -18,4 +18,5 @@ type ProfileRepository interface {
 	Create(ctx context.Context, q DBTX, profile *Profile) (int, error)
 	Update(ctx context.Context, q DBTX, id int, profile *Profile) error
 	GetByContactID(ctx context.Context, q DBTX, contactID int) ([]Profile, error)
+	GetByContactIDs(ctx context.Context, q DBTX, contactIDs []int) (map[int][]Profile, error)
 }

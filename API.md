@@ -232,7 +232,7 @@ Trigger sending campaign.
 
 | Method | Path | Description |
 |--------|------|-------------|
-| GET | `/api/contacts` | List contacts (paginated). Query: `page`, `limit`, `search`, `channel_id`, `status` |
+| GET | `/api/contacts` | List contacts (paginated). Query: `page`, `limit`, `search`, `status`, `channel_id`, `channel_type`, `category`, `country`, `province`, `agent_id`, `is_merged`, `has_conversation`, `last_activity_from`, `last_activity_to`, `sort_by` |
 | POST | `/api/contacts` | Create contact |
 | GET | `/api/contacts/{id}` | Get contact with profiles |
 | PUT | `/api/contacts/{id}` | Update contact |

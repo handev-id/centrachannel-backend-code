@@ -140,6 +140,9 @@ type mockProfileRepository struct {
 	createFunc                      func(ctx context.Context, q profile.DBTX, profile *profile.Profile) (int, error)
 }
 
+func (m *mockProfileRepository) GetByContactIDs(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error) {
+	return map[int][]profile.Profile{}, nil
+}
 func (m *mockProfileRepository) List(ctx context.Context, q profile.DBTX, contactID, channelID int) ([]profile.Profile, error) {
 	panic("unexpected call")
 }
