@@ -146,6 +146,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	if err != nil {
 		p = &profile.Profile{
 			ExternalID:             phone,
+			Username:               &phone,
 			DisplayName:            &displayName,
 			IsMain:                 true,
 			LinkedDeviceWhatsappID: &payload.Instance,
@@ -330,6 +331,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	if err != nil {
 		p = &profile.Profile{
 			ExternalID:             phone,
+			Username:               &phone,
 			DisplayName:            &displayName,
 			IsMain:                 true,
 			LinkedDeviceWhatsappID: &payload.Instance,
