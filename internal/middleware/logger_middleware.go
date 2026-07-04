@@ -21,7 +21,13 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 		elapsed := time.Since(start)
 		status := c.Response().StatusCode()
 		method := c.Method()
-		url := string(c.Request().URI().PathOriginal())
+		path := string(c.Request().URI().PathOriginal())
+		host := string(c.Request().Header.Host())
+		scheme := "http"
+		if c.Protocol() == "https" || string(c.Request().Header.Peek("X-Forwarded-Proto")) == "https" {
+			scheme = "https"
+		}
+		url := scheme + "://" + host + path
 		remoteIP := c.IP()
 		query := string(c.Request().URI().QueryString())
 

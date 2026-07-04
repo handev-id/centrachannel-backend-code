@@ -8,6 +8,8 @@ import (
 	"math"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"centrachannel/config"
 	"centrachannel/internal/messenger"
 	"centrachannel/internal/src/channel"
@@ -33,10 +35,11 @@ type messageService struct {
 	db           *sql.DB
 	cfg          *config.Config
 	logger       *logger.Logger
+	rdb          *redis.Client
 }
 
-func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) MessageService {
-	return &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger}
+func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, rdb *redis.Client) MessageService {
+	return &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger, rdb: rdb}
 }
 
 func (s *messageService) List(ctx context.Context, conversationID int, q ListMessageQuery) (*PaginatedResponse, error) {
@@ -257,6 +260,10 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 
 	if extID != "sent" {
 		_ = s.repo.UpdateWebhookID(ctx, s.db, msg.ID, extID)
+
+		if s.rdb != nil {
+			s.rdb.Set(ctx, "webhook_dedup:"+extID, 1, 60*time.Second)
+		}
 	}
 }
 

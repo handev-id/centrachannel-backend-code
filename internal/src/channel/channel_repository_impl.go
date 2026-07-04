@@ -2,6 +2,8 @@ package channel
 
 import (
 	"context"
+	"database/sql"
+	"encoding/json"
 	"fmt"
 )
 
@@ -14,9 +16,13 @@ func NewChannelRepository() ChannelRepository {
 func (r *channelRepository) GetByID(ctx context.Context, q DBTX, id int) (*Channel, error) {
 	query := `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE id = $1`
 	var c Channel
-	err := q.QueryRowContext(ctx, query, id).Scan(&c.ID, &c.Name, &c.Type, &c.Logo, &c.CreatedAt, &c.UpdatedAt)
+	var logo sql.NullString
+	err := q.QueryRowContext(ctx, query, id).Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
+	}
+	if logo.Valid {
+		c.Logo = json.RawMessage(logo.String)
 	}
 	return &c, nil
 }
@@ -24,9 +30,13 @@ func (r *channelRepository) GetByID(ctx context.Context, q DBTX, id int) (*Chann
 func (r *channelRepository) GetByType(ctx context.Context, q DBTX, channelType string) (*Channel, error) {
 	query := `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE type = $1`
 	var c Channel
-	err := q.QueryRowContext(ctx, query, channelType).Scan(&c.ID, &c.Name, &c.Type, &c.Logo, &c.CreatedAt, &c.UpdatedAt)
+	var logo sql.NullString
+	err := q.QueryRowContext(ctx, query, channelType).Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
+	}
+	if logo.Valid {
+		c.Logo = json.RawMessage(logo.String)
 	}
 	return &c, nil
 }
@@ -41,8 +51,12 @@ func (r *channelRepository) List(ctx context.Context, q DBTX) ([]Channel, error)
 	var channels []Channel
 	for rows.Next() {
 		var c Channel
-		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &c.Logo, &c.CreatedAt, &c.UpdatedAt); err != nil {
+		var logo sql.NullString
+		if err := rows.Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt); err != nil {
 			return nil, err
+		}
+		if logo.Valid {
+			c.Logo = json.RawMessage(logo.String)
 		}
 		channels = append(channels, c)
 	}

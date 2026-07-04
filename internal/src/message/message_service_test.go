@@ -250,7 +250,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		req := SendMessageRequest{
 			Text:       strPtr("hello"),
 			SenderID:   42,
@@ -301,7 +301,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		req := SendMessageRequest{
 			Text:       strPtr("hello"),
 			SenderID:   99,
@@ -331,7 +331,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		req := SendMessageRequest{
 			Text:       strPtr("with attachment"),
 			Attachment: json.RawMessage(`{"url":"http://example.com/file.pdf","type":"pdf"}`),
@@ -378,7 +378,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		req := SendMessageRequest{
 			Text:       strPtr("no attachment"),
 			Attachment: nil,
@@ -425,7 +425,7 @@ func TestMessageService_List(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		result, err := svc.List(ctx, 1, ListMessageQuery{Page: 0, Limit: 0})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -471,7 +471,7 @@ func TestMessageService_List(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		_, err := svc.List(ctx, 1, ListMessageQuery{Page: 1, Limit: 200})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
@@ -508,7 +508,7 @@ func TestMessageService_UpdateStatus(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		if err := svc.UpdateStatus(ctx, 5, "read"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

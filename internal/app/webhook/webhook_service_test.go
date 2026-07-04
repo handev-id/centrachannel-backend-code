@@ -148,7 +148,7 @@ func (m *mockMetaTenantRepo) GetByMetaInstagramBusinessID(ctx context.Context, q
 }
 
 func newTestService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository) WebhookService {
-	return NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"))
+	return NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil)
 }
 
 // ---- tests ----
@@ -169,18 +169,53 @@ func TestProcessEvolutionEvent_NilData(t *testing.T) {
 	}
 }
 
-func TestProcessEvolutionEvent_FromMe(t *testing.T) {
+func TestProcessEvolutionEvent_FromMe_Sync(t *testing.T) {
+	deviceRepo := &mockDeviceRepo{
+		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
+			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+		},
+	}
+	contactRepo := &mockContactRepo{
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Contact", Whatsapp: &phone}, nil
+		},
+	}
+	profileRepo := &mockProfileRepo{
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		},
+	}
+	channelRepo := &mockChannelRepo{
+		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
+			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+		},
+	}
+	convRepo := &mockConvRepo{
+		listFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
+			return []*conversation.Conversation{{ID: 30, ProfileID: 20, Status: "unassigned"}}, 1, nil
+		},
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error { return nil },
+	}
+	msgRepo := &mockMsgRepo{
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+	}
+
+	svc := newTestService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo)
+
+	text := "Outgoing from phone"
 	data, _ := json.Marshal(EvolutionMessageUpsert{
-		Key: EvolutionMessageKey{RemoteJid: "5511999999999@s.whatsapp.net", FromMe: true, ID: "abc123"},
+		Key:         EvolutionMessageKey{RemoteJid: "5511999999999@s.whatsapp.net", FromMe: true, ID: "from_phone_001"},
+		PushName:    "Test Contact",
+		MessageType: "conversation",
+		Message:     EvolutionMessage{Conversation: &text},
 	})
-	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{
 		Event:    "messages.upsert",
 		Instance: "instance_test",
 		Data:     data,
 	})
 	if err != nil {
-		t.Fatalf("expected nil error for fromMe, got: %v", err)
+		t.Fatalf("unexpected error: %v", err)
 	}
 }
 
@@ -263,7 +298,7 @@ func TestHandleMessageUpsert_NewConversation(t *testing.T) {
 	if createdMsg.Text == nil || *createdMsg.Text != "Hello, this is a test" {
 		t.Errorf("expected text 'Hello, this is a test', got %v", createdMsg.Text)
 	}
-	if createdMsg.Status != "received" { t.Errorf("expected status 'received', got %s", createdMsg.Status) }
+	if createdMsg.Status != "unread" { t.Errorf("expected status 'unread', got %s", createdMsg.Status) }
 }
 
 func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {

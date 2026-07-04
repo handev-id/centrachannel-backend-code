@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/redis/go-redis/v9"
+
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/conversation"
@@ -35,9 +37,10 @@ type webhookService struct {
 	db          *sql.DB
 	logger      *logger.Logger
 	notifier    ws.Notifier
+	rdb         *redis.Client
 }
 
-func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, notifier ...ws.Notifier) WebhookService {
+func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, rdb *redis.Client, notifier ...ws.Notifier) WebhookService {
 	svc := &webhookService{
 		deviceRepo:  deviceRepo,
 		contactRepo: contactRepo,
@@ -48,6 +51,7 @@ func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, cont
 		tenantRepo:  tenantRepo,
 		db:          db,
 		logger:      logger,
+		rdb:         rdb,
 	}
 	if len(notifier) > 0 {
 		svc.notifier = notifier[0]
@@ -80,7 +84,14 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	}
 
 	if data.Key.FromMe {
-		return nil
+		if s.rdb != nil {
+			exists, _ := s.rdb.Exists(ctx, "webhook_dedup:"+data.Key.ID).Result()
+			if exists > 0 {
+				s.logger.Debug("skip FromMe message %s: already sent from system", data.Key.ID)
+				return nil
+			}
+		}
+		return s.handleOutgoingMessageSync(ctx, payload, &data)
 	}
 
 	device, err := s.deviceRepo.GetByWhatsappID(ctx, s.db, payload.Instance)
@@ -111,7 +122,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 			TenantID:  tenantID,
 			FirstName: displayName,
 			Whatsapp:  &phone,
-			Status:    "active",
+			Status:    "individual",
 		}
 		cid, err := s.contactRepo.Create(ctx, s.db, c)
 		if err != nil {
@@ -158,7 +169,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		TenantID:         tenantID,
 		Text:             text,
 		Attachment:       attachment,
-		Status:           "received",
+		Status:           "unread",
 		SenderID:         0,
 		SenderType:       "contact",
 		WebhookMessageID: &data.Key.ID,
@@ -252,6 +263,109 @@ func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *Ev
 		})
 	}
 
+	return nil
+}
+
+func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload *EvolutionWebhookPayload, data *EvolutionMessageUpsert) error {
+	device, err := s.deviceRepo.GetByWhatsappID(ctx, s.db, payload.Instance)
+	if err != nil {
+		return fmt.Errorf("device not found for instance %s: %w", payload.Instance, err)
+	}
+
+	tenantID := device.TenantID
+
+	phone := extractPhoneFromJID(data.Key.RemoteJid)
+	if phone == "" {
+		return fmt.Errorf("invalid remote jid: %s", data.Key.RemoteJid)
+	}
+
+	ch, err := s.channelRepo.GetByType(ctx, s.db, "whatsapp")
+	if err != nil {
+		return fmt.Errorf("whatsapp channel not found: %w", err)
+	}
+
+	displayName := data.PushName
+	if displayName == "" {
+		displayName = phone
+	}
+
+	c, err := s.contactRepo.GetByPhone(ctx, s.db, tenantID, phone)
+	if err != nil {
+		c = &contact.Contact{
+			TenantID:  tenantID,
+			FirstName: displayName,
+			Whatsapp:  &phone,
+			Status:    "individual",
+		}
+		cid, err := s.contactRepo.Create(ctx, s.db, c)
+		if err != nil {
+			return fmt.Errorf("failed to create contact: %w", err)
+		}
+		c.ID = cid
+	}
+
+	p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, phone, ch.ID)
+	if err != nil {
+		p = &profile.Profile{
+			ExternalID:             phone,
+			DisplayName:            &displayName,
+			IsMain:                 true,
+			LinkedDeviceWhatsappID: &payload.Instance,
+			ContactID:              c.ID,
+			ChannelID:              ch.ID,
+		}
+		pid, err := s.profileRepo.Create(ctx, s.db, p)
+		if err != nil {
+			return fmt.Errorf("failed to create profile: %w", err)
+		}
+		p.ID = pid
+	}
+
+	conv, err := s.findConversation(ctx, tenantID, p.ID, ch.ID)
+	if err != nil {
+		conv = &conversation.Conversation{
+			TenantID:  tenantID,
+			Status:    "unassigned",
+			ProfileID: p.ID,
+			ChannelID: ch.ID,
+		}
+		cid, err := s.convRepo.Create(ctx, s.db, conv)
+		if err != nil {
+			return fmt.Errorf("failed to create conversation: %w", err)
+		}
+		conv.ID = cid
+	}
+
+	text, attachment := s.extractMessageContent(data.Message, data.MessageType)
+
+	msg := &message.Message{
+		TenantID:         tenantID,
+		Text:             text,
+		Attachment:       attachment,
+		Status:           "sent",
+		SenderID:         0,
+		SenderType:       "user",
+		WebhookMessageID: &data.Key.ID,
+		ConversationID:   conv.ID,
+	}
+
+	mid, err := s.msgRepo.Create(ctx, s.db, msg)
+	if err != nil {
+		return fmt.Errorf("failed to create message: %w", err)
+	}
+	msg.ID = mid
+	msg.CreatedAt = time.Now()
+	msg.UpdatedAt = time.Now()
+
+	lastMsg := map[string]interface{}{
+		"text":        text,
+		"sender_type": "user",
+		"created_at":  time.Now(),
+	}
+	lastMsgJSON, _ := json.Marshal(lastMsg)
+	_ = s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, 0)
+
+	s.logger.Info("synced outgoing message from phone: device=%s, contact=%s, msg_id=%s", payload.Instance, phone, data.Key.ID)
 	return nil
 }
 
@@ -375,7 +489,7 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 				c = &contact.Contact{
 					TenantID:  t.ID,
 					FirstName: displayName,
-					Status:    "active",
+					Status:    "individual",
 				}
 				if channelType == "facebook" {
 					c.Facebook = &externalID
@@ -432,7 +546,7 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 			msgRecord := &message.Message{
 				TenantID:         t.ID,
 				Text:             msgText,
-				Status:           "received",
+				Status:           "unread",
 				SenderID:         0,
 				SenderType:       "contact",
 				WebhookMessageID: &msg.Message.MID,

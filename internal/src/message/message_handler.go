@@ -23,7 +23,7 @@ func NewMessageHandler(c *di.Container) *MessageHandler {
 	profileRepo := profile.NewProfileRepository()
 	channelRepo := channel.NewChannelRepository()
 	tenantRepo := tenant.NewTenantRepository()
-	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger)
+	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger, c.Redis)
 	return &MessageHandler{service: service}
 }
 

@@ -30,7 +30,7 @@ func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ws.Notifier
 	convRepo := conversation.NewConversationRepository()
 	msgRepo := message.NewMessageRepository()
 	tenantRepo := tenant.NewTenantRepository()
-	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, c.DB, c.Logger, notifier)
+	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, c.DB, c.Logger, c.Redis, notifier)
 	return &WebhookHandler{service: service, apiKey: cfg.EvolutionAPIKey, metaSecret: cfg.MetaWebhookSecret}
 }
 
