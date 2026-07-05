@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"testing"
 	"time"
 
@@ -86,9 +87,10 @@ func (m *mockChannelRepo) GetByType(ctx context.Context, q channel.DBTX, channel
 func (m *mockChannelRepo) List(ctx context.Context, q channel.DBTX) ([]channel.Channel, error) { return nil, nil }
 
 type mockConvRepo struct {
-	listFunc             func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error)
-	createFunc           func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error)
-	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error
+	listFunc                    func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error)
+	createFunc                  func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error)
+	updateLastMessageFunc       func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
+	findOpenByProfileAndChannelFunc func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error)
 }
 
 func (m *mockConvRepo) List(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
@@ -108,9 +110,13 @@ func (m *mockConvRepo) MarkRead(ctx context.Context, q conversation.DBTX, tenant
 func (m *mockConvRepo) ListCursor(ctx context.Context, q conversation.DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*conversation.Conversation, error) {
 	return nil, nil
 }
-func (m *mockConvRepo) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+func (m *mockConvRepo) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 	if m.updateLastMessageFunc != nil { return m.updateLastMessageFunc(ctx, q, tenantID, id, lastMessageJSON, lastAgentID) }
 	return nil
+}
+func (m *mockConvRepo) FindOpenByProfileAndChannel(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+	if m.findOpenByProfileAndChannelFunc != nil { return m.findOpenByProfileAndChannelFunc(ctx, q, tenantID, profileID, channelID) }
+	return nil, fmt.Errorf("not found")
 }
 
 type mockMsgRepo struct {
@@ -192,10 +198,10 @@ func TestProcessEvolutionEvent_FromMe_Sync(t *testing.T) {
 		},
 	}
 	convRepo := &mockConvRepo{
-		listFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
-			return []*conversation.Conversation{{ID: 30, ProfileID: 20, Status: "unassigned"}}, 1, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error { return nil },
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error { return nil },
 	}
 	msgRepo := &mockMsgRepo{
 		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
@@ -255,14 +261,14 @@ func TestHandleMessageUpsert_NewConversation(t *testing.T) {
 		},
 	}
 	convRepo := &mockConvRepo{
-		listFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
-			return nil, 0, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+			return nil, fmt.Errorf("not found")
 		},
 		createFunc: func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error) {
 			createdConv = conv
 			return 300, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 			return nil
 		},
 	}
@@ -324,10 +330,10 @@ func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
 		},
 	}
 	convRepo := &mockConvRepo{
-		listFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
-			return []*conversation.Conversation{{ID: 30, ProfileID: 20, Status: "unassigned"}}, 1, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error { return nil },
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error { return nil },
 	}
 	msgRepo := &mockMsgRepo{
 		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },

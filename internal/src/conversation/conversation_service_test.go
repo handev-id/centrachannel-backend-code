@@ -147,8 +147,12 @@ func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ int
 	return nil, nil
 }
 
-func (m *mockConversationRepository) UpdateLastMessage(_ context.Context, _ DBTX, _, _ int, _ []byte, _ int) error {
+func (m *mockConversationRepository) UpdateLastMessage(_ context.Context, _ DBTX, _, _ int, _ []byte, _ *int) error {
 	return nil
+}
+
+func (m *mockConversationRepository) FindOpenByProfileAndChannel(_ context.Context, _ DBTX, _, _, _ int) (*Conversation, error) {
+	return nil, nil
 }
 
 func testConfig() *config.Config {

@@ -127,9 +127,9 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	}
 	lastMsgJSON, _ = json.Marshal(lastMsg)
 
-	lastAgentID := 0
+	var lastAgentID *int
 	if req.SenderType == "user" {
-		lastAgentID = req.SenderID
+		lastAgentID = &req.SenderID
 	}
 
 	if err := s.convRepo.UpdateLastMessage(ctx, tx, tenantID, conversationID, lastMsgJSON, lastAgentID); err != nil {

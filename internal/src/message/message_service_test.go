@@ -91,7 +91,7 @@ func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id 
 }
 
 type mockConversationRepository struct {
-	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error
+	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
 }
 
 func (m *mockConversationRepository) List(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
@@ -130,8 +130,12 @@ func (m *mockConversationRepository) ListCursor(ctx context.Context, q conversat
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+func (m *mockConversationRepository) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 	return m.updateLastMessageFunc(ctx, q, tenantID, id, lastMessageJSON, lastAgentID)
+}
+
+func (m *mockConversationRepository) FindOpenByProfileAndChannel(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+	return nil, nil
 }
 
 // mockProfileRepository
@@ -238,7 +242,7 @@ func TestMessageService_Send(t *testing.T) {
 
 	t.Run("sender type user passes lastAgentID to UpdateLastMessage", func(t *testing.T) {
 		var capturedCreateMsg *Message
-		var capturedLastAgentID int
+		var capturedLastAgentID *int
 
 		msgRepo := &mockMessageRepository{
 			createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
@@ -247,7 +251,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				capturedLastAgentID = lastAgentID
 				return nil
 			},
@@ -284,13 +288,13 @@ func TestMessageService_Send(t *testing.T) {
 		if capturedCreateMsg.Status != "sent" {
 			t.Errorf("expected Status sent, got %s", capturedCreateMsg.Status)
 		}
-		if capturedLastAgentID != 42 {
-			t.Errorf("expected lastAgentID 42 for user sender, got %d", capturedLastAgentID)
+		if capturedLastAgentID == nil || *capturedLastAgentID != 42 {
+			t.Errorf("expected lastAgentID 42 for user sender, got %v", capturedLastAgentID)
 		}
 	})
 
-	t.Run("sender type contact passes 0 as lastAgentID", func(t *testing.T) {
-		var capturedLastAgentID int
+	t.Run("sender type contact passes nil as lastAgentID", func(t *testing.T) {
+		var capturedLastAgentID *int
 
 		msgRepo := &mockMessageRepository{
 			createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
@@ -298,7 +302,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				capturedLastAgentID = lastAgentID
 				return nil
 			},
@@ -314,8 +318,8 @@ func TestMessageService_Send(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedLastAgentID != 0 {
-			t.Errorf("expected lastAgentID 0 for contact sender, got %d", capturedLastAgentID)
+		if capturedLastAgentID != nil {
+			t.Errorf("expected nil lastAgentID for contact sender, got %d", *capturedLastAgentID)
 		}
 	})
 
@@ -328,7 +332,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				capturedLastMsgJSON = lastMessageJSON
 				return nil
 			},
@@ -375,7 +379,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				capturedLastMsgJSON = lastMessageJSON
 				return nil
 			},
@@ -423,7 +427,7 @@ func TestMessageService_List(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				return nil
 			},
 		}
@@ -469,7 +473,7 @@ func TestMessageService_List(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				return nil
 			},
 		}
@@ -506,7 +510,7 @@ func TestMessageService_UpdateStatus(t *testing.T) {
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 				return nil
 			},
 		}

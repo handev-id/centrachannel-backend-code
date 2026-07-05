@@ -160,6 +160,16 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		p.ID = pid
 	}
 
+	text, attachment := s.extractMessageContent(data.Message, data.MessageType)
+
+	now := time.Now()
+	lastMsg := map[string]interface{}{
+		"text":        text,
+		"sender_type": "contact",
+		"created_at":  now,
+	}
+	lastMsgJSON, _ := json.Marshal(lastMsg)
+
 	conv, err := s.findConversation(ctx, tenantID, p.ID, ch.ID)
 	if err != nil {
 		conv = &conversation.Conversation{
@@ -174,8 +184,9 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		}
 		conv.ID = cid
 	}
-
-	text, attachment := s.extractMessageContent(data.Message, data.MessageType)
+	if err := s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, nil); err != nil {
+		s.logger.Error("failed to update last_message: %v", err)
+	}
 
 	msg := &message.Message{
 		TenantID:         tenantID,
@@ -193,16 +204,8 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		return fmt.Errorf("failed to create message: %w", err)
 	}
 	msg.ID = mid
-	msg.CreatedAt = time.Now()
-	msg.UpdatedAt = time.Now()
-
-	lastMsg := map[string]interface{}{
-		"text":        text,
-		"sender_type": "contact",
-		"created_at":  time.Now(),
-	}
-	lastMsgJSON, _ := json.Marshal(lastMsg)
-	_ = s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, 0)
+	msg.CreatedAt = now
+	msg.UpdatedAt = now
 
 	return nil
 }
@@ -345,6 +348,16 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		p.ID = pid
 	}
 
+	text, attachment := s.extractMessageContent(data.Message, data.MessageType)
+
+	now := time.Now()
+	lastMsg := map[string]interface{}{
+		"text":        text,
+		"sender_type": "user",
+		"created_at":  now,
+	}
+	lastMsgJSON, _ := json.Marshal(lastMsg)
+
 	conv, err := s.findConversation(ctx, tenantID, p.ID, ch.ID)
 	if err != nil {
 		conv = &conversation.Conversation{
@@ -359,8 +372,9 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		}
 		conv.ID = cid
 	}
-
-	text, attachment := s.extractMessageContent(data.Message, data.MessageType)
+	if err := s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, nil); err != nil {
+		s.logger.Error("failed to update last_message on outgoing sync: %v", err)
+	}
 
 	msg := &message.Message{
 		TenantID:         tenantID,
@@ -378,32 +392,15 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		return fmt.Errorf("failed to create message: %w", err)
 	}
 	msg.ID = mid
-	msg.CreatedAt = time.Now()
-	msg.UpdatedAt = time.Now()
-
-	lastMsg := map[string]interface{}{
-		"text":        text,
-		"sender_type": "user",
-		"created_at":  time.Now(),
-	}
-	lastMsgJSON, _ := json.Marshal(lastMsg)
-	_ = s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, 0)
+	msg.CreatedAt = now
+	msg.UpdatedAt = now
 
 	s.logger.Info("synced outgoing message from phone: device=%s, contact=%s, msg_id=%s", payload.Instance, phone, data.Key.ID)
 	return nil
 }
 
 func (s *webhookService) findConversation(ctx context.Context, tenantID, profileID, channelID int) (*conversation.Conversation, error) {
-	convs, _, err := s.convRepo.List(ctx, s.db, tenantID, 1, 0, "", channelID, 0, "")
-	if err != nil {
-		return nil, err
-	}
-	for _, c := range convs {
-		if c.ProfileID == profileID && c.Status != "resolved" && c.Status != "closed" {
-			return c, nil
-		}
-	}
-	return nil, fmt.Errorf("no open conversation found")
+	return s.convRepo.FindOpenByProfileAndChannel(ctx, s.db, tenantID, profileID, channelID)
 }
 
 func (s *webhookService) extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, json.RawMessage) {
@@ -592,7 +589,7 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 				"created_at":  time.Now(),
 			}
 			lastMsgJSON, _ := json.Marshal(lastMsg)
-			_ = s.convRepo.UpdateLastMessage(ctx, s.db, t.ID, conv.ID, lastMsgJSON, 0)
+			_ = s.convRepo.UpdateLastMessage(ctx, s.db, t.ID, conv.ID, lastMsgJSON, nil)
 
 			s.logger.Info("meta webhook: tenant=%d, channel=%s, sender=%s, text=%s, msg_id=%s",
 				t.ID, channelType, externalID, text, msg.Message.MID)

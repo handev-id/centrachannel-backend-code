@@ -177,6 +177,11 @@ func (r *conversationRepository) GetByID(ctx context.Context, q DBTX, tenantID i
 	return scanConversation(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
+func (r *conversationRepository) FindOpenByProfileAndChannel(ctx context.Context, q DBTX, tenantID int, profileID int, channelID int) (*Conversation, error) {
+	query := `SELECT id, tenant_id, status, profile_id, agent_id, channel_id, last_agent_id, unread_count, last_message, last_activity, last_seen, created_at, updated_at FROM conversations WHERE tenant_id = $1 AND profile_id = $2 AND channel_id = $3 AND status != 'resolved' AND status != 'closed' ORDER BY last_activity DESC NULLS LAST LIMIT 1`
+	return scanConversation(q.QueryRowContext(ctx, query, tenantID, profileID, channelID))
+}
+
 func (r *conversationRepository) Create(ctx context.Context, q DBTX, conv *Conversation) (int, error) {
 	query := `INSERT INTO conversations (tenant_id, status, profile_id, agent_id, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`
 	var id int
@@ -241,7 +246,7 @@ func (r *conversationRepository) GetTotalUnread(ctx context.Context, q DBTX, ten
 	return total, err
 }
 
-func (r *conversationRepository) UpdateLastMessage(ctx context.Context, q DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID int) error {
+func (r *conversationRepository) UpdateLastMessage(ctx context.Context, q DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
 	result, err := q.ExecContext(ctx, `UPDATE conversations SET last_message=$1, last_activity=$2, unread_count=unread_count+1, last_agent_id=$3, updated_at=$4 WHERE id=$5 AND tenant_id=$6`, lastMessageJSON, time.Now(), lastAgentID, time.Now(), id, tenantID)
 	if err != nil {
 		return err
