@@ -4,6 +4,7 @@ import (
 	"encoding/csv"
 	"fmt"
 	"io"
+	"math"
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
@@ -54,11 +55,18 @@ func (h *ContactHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 		SortBy:           c.Query("sort_by"),
 	}
 
-	result, err := h.service.List(c.Context(), q, t)
+	contacts, total, err := h.service.List(c.Context(), q, t)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
-	return response.OK(c, "success", result)
+
+	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
+	from := (q.Page-1)*q.Limit + 1
+	to := (q.Page-1)*q.Limit + len(contacts)
+	if to > total { to = total }
+	if total == 0 { from = 0; to = 0 }
+
+	return response.Paginated(c, "success", contacts, total, q.Page, q.Limit, from, to, lastPage)
 }
 
 func (h *ContactHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
@@ -171,11 +179,18 @@ func (h *ContactHandler) Conversations(c fiber.Ctx, t *tenant.Tenant) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
-	convs, err := h.service.GetConversations(c.Context(), t.ID, id, page, limit)
+	convs, total, err := h.service.GetConversations(c.Context(), t.ID, id, page, limit)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
-	return response.OK(c, "success", convs)
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	from := (page-1)*limit + 1
+	to := (page-1)*limit + len(convs)
+	if to > total { to = total }
+	if total == 0 { from = 0; to = 0 }
+
+	return response.Paginated(c, "success", convs, total, page, limit, from, to, lastPage)
 }
 
 func (h *ContactHandler) ExportCSV(c fiber.Ctx, t *tenant.Tenant) error {

@@ -12,22 +12,22 @@ import (
 )
 
 type mockConversationService struct {
-	listFunc         func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.PaginatedResponse, error)
-	listCursorFunc   func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.CursorPaginatedResponse, error)
-	getByIDFunc      func(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error)
-	createFunc       func(ctx context.Context, req conversation.CreateConversationRequest, t *tenant.Tenant) (*conversation.Conversation, error)
-	assignFunc       func(ctx context.Context, tenantID int, id int, agentID int) error
-	unassignFunc     func(ctx context.Context, tenantID int, id int) error
-	resolveFunc      func(ctx context.Context, tenantID int, id int) error
-	reopenFunc       func(ctx context.Context, tenantID int, id int) error
-	markReadFunc     func(ctx context.Context, tenantID int, id int) error
-	getTotalUnreadFunc func(ctx context.Context, tenantID int) (int, error)
+	listFunc             func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, error)
+	listCursorFunc       func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error)
+	getByIDFunc          func(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error)
+	createFunc           func(ctx context.Context, req conversation.CreateConversationRequest, t *tenant.Tenant) (*conversation.Conversation, error)
+	assignFunc           func(ctx context.Context, tenantID int, id int, agentID int) error
+	unassignFunc         func(ctx context.Context, tenantID int, id int) error
+	resolveFunc          func(ctx context.Context, tenantID int, id int) error
+	reopenFunc           func(ctx context.Context, tenantID int, id int) error
+	markReadFunc         func(ctx context.Context, tenantID int, id int) error
+	getTotalUnreadFunc   func(ctx context.Context, tenantID int) (int, error)
 }
 
-func (m *mockConversationService) List(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.PaginatedResponse, error) {
+func (m *mockConversationService) List(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, error) {
 	return m.listFunc(ctx, q, t)
 }
-func (m *mockConversationService) ListCursor(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.CursorPaginatedResponse, error) {
+func (m *mockConversationService) ListCursor(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error) {
 	return m.listCursorFunc(ctx, q, t)
 }
 func (m *mockConversationService) GetByID(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error) {
@@ -55,38 +55,15 @@ func (m *mockConversationService) GetTotalUnread(ctx context.Context, tenantID i
 	return m.getTotalUnreadFunc(ctx, tenantID)
 }
 
-type apiResponse struct {
-	Meta struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"meta"`
-	Data json.RawMessage `json:"data"`
-}
-
-func readBody(t *testing.T, resp *http.Response, v interface{}) {
-	t.Helper()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-	if err := json.Unmarshal(body, v); err != nil {
-		t.Fatalf("unmarshal error: %v\nbody: %s", err, string(body))
-	}
-}
-
 func intPtr(i int) *int { return &i }
 
 func TestConversationList_Success(t *testing.T) {
 	mock := &mockConversationService{
-		listFunc: func(_ context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) (*conversation.PaginatedResponse, error) {
-			return &conversation.PaginatedResponse{
-				Meta: conversation.PaginationMeta{Total: 2, PerPage: 20, CurrentPage: 1, LastPage: 1, From: 1, To: 2},
-				Data: []*conversation.Conversation{
-					{ID: 1, TenantID: 1, Status: "unassigned", ProfileID: 1, ChannelID: 1},
-					{ID: 2, TenantID: 1, Status: "assigned", ProfileID: 2, ChannelID: 1, AgentID: intPtr(1)},
-				},
-			}, nil
+		listFunc: func(_ context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, error) {
+			return []*conversation.Conversation{
+				{ID: 1, TenantID: 1, Status: "unassigned", ProfileID: 1, ChannelID: 1},
+				{ID: 2, TenantID: 1, Status: "assigned", ProfileID: 2, ChannelID: 1, AgentID: intPtr(1)},
+			}, 2, nil
 		},
 	}
 
@@ -106,36 +83,32 @@ func TestConversationList_Success(t *testing.T) {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
 	}
 
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 200 {
-		t.Errorf("expected meta.code 200, got %d", env.Meta.Code)
+	var result struct {
+		Data        json.RawMessage `json:"data"`
+		Total       int             `json:"total"`
+		PerPage     int             `json:"per_page"`
+		CurrentPage int             `json:"current_page"`
 	}
-	if env.Meta.Message != "success" {
-		t.Errorf("expected meta.message 'success', got %q", env.Meta.Message)
-	}
-
-	var paginated struct {
-		Meta conversation.PaginationMeta `json:"meta"`
-		Data json.RawMessage             `json:"data"`
-	}
-	if err := json.Unmarshal(env.Data, &paginated); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		t.Fatal(err)
 	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal error: %v\nbody: %s", err, string(body))
+	}
 
-	if paginated.Meta.Total != 2 {
-		t.Errorf("expected total 2, got %d", paginated.Meta.Total)
+	if result.Total != 2 {
+		t.Errorf("expected total 2, got %d", result.Total)
 	}
-	if paginated.Meta.PerPage != 20 {
-		t.Errorf("expected per_page 20, got %d", paginated.Meta.PerPage)
+	if result.PerPage != 20 {
+		t.Errorf("expected per_page 20, got %d", result.PerPage)
 	}
-	if paginated.Meta.CurrentPage != 1 {
-		t.Errorf("expected current_page 1, got %d", paginated.Meta.CurrentPage)
+	if result.CurrentPage != 1 {
+		t.Errorf("expected current_page 1, got %d", result.CurrentPage)
 	}
 
 	var items []*conversation.Conversation
-	if err := json.Unmarshal(paginated.Data, &items); err != nil {
+	if err := json.Unmarshal(result.Data, &items); err != nil {
 		t.Fatal(err)
 	}
 	if len(items) != 2 {
@@ -177,18 +150,8 @@ func TestConversationCreate_Success(t *testing.T) {
 		t.Errorf("expected status 201, got %d", resp.StatusCode)
 	}
 
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 201 {
-		t.Errorf("expected meta.code 201, got %d", env.Meta.Code)
-	}
-	if env.Meta.Message != "Conversation created" {
-		t.Errorf("expected meta.message 'Conversation created', got %q", env.Meta.Message)
-	}
-
 	var conv conversation.Conversation
-	if err := json.Unmarshal(env.Data, &conv); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&conv); err != nil {
 		t.Fatal(err)
 	}
 
@@ -235,15 +198,8 @@ func TestConversationShow_Success(t *testing.T) {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
 	}
 
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 200 {
-		t.Errorf("expected meta.code 200, got %d", env.Meta.Code)
-	}
-
 	var conv conversation.Conversation
-	if err := json.Unmarshal(env.Data, &conv); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&conv); err != nil {
 		t.Fatal(err)
 	}
 
@@ -280,16 +236,6 @@ func TestConversationAssign_Success(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
 	}
-
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 200 {
-		t.Errorf("expected meta.code 200, got %d", env.Meta.Code)
-	}
-	if env.Meta.Message != "Conversation assigned" {
-		t.Errorf("expected meta.message 'Conversation assigned', got %q", env.Meta.Message)
-	}
 }
 
 func TestConversationResolve_Success(t *testing.T) {
@@ -313,15 +259,5 @@ func TestConversationResolve_Success(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
-	}
-
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 200 {
-		t.Errorf("expected meta.code 200, got %d", env.Meta.Code)
-	}
-	if env.Meta.Message != "Conversation resolved" {
-		t.Errorf("expected meta.message 'Conversation resolved', got %q", env.Meta.Message)
 	}
 }

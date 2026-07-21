@@ -491,7 +491,7 @@ func TestList(t *testing.T) {
 		}
 
 		query := ListUserQuery{Page: 0, Limit: 0}
-		result, err := svc.List(context.Background(), query, testTenant)
+		result, total, err := svc.List(context.Background(), query, testTenant)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -505,14 +505,11 @@ func TestList(t *testing.T) {
 		if repo.listOffset != 0 {
 			t.Fatalf("expected offset 0, got %d", repo.listOffset)
 		}
-		if result.Meta.CurrentPage != 1 {
-			t.Fatalf("expected CurrentPage 1, got %d", result.Meta.CurrentPage)
+		if total != 0 {
+			t.Fatalf("expected total 0, got %d", total)
 		}
-		if result.Meta.PerPage != 20 {
-			t.Fatalf("expected PerPage 20, got %d", result.Meta.PerPage)
-		}
-		if result.Meta.From != 0 || result.Meta.To != 0 {
-			t.Fatalf("expected From/To 0 for empty result, got %d/%d", result.Meta.From, result.Meta.To)
+		if len(result) != 0 {
+			t.Fatalf("expected 0 users, got %d", len(result))
 		}
 	})
 
@@ -524,7 +521,7 @@ func TestList(t *testing.T) {
 			return nil, 0, nil
 		}
 
-		_, err := svc.List(context.Background(), ListUserQuery{Page: 1, Limit: 200}, testTenant)
+		_, _, err := svc.List(context.Background(), ListUserQuery{Page: 1, Limit: 200}, testTenant)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -552,8 +549,7 @@ func TestList(t *testing.T) {
 		repo.getRolesByUserIDsFunc = func(_ context.Context, _ DBTX, _ int, userIDs []int) (map[int][]Role, error) {
 			return roleMap, nil
 		}
-
-		result, err := svc.List(context.Background(), ListUserQuery{Page: 1, Limit: 20}, testTenant)
+		result, total, err := svc.List(context.Background(), ListUserQuery{Page: 1, Limit: 20}, testTenant)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -563,27 +559,21 @@ func TestList(t *testing.T) {
 		}
 		if len(repo.getRolesByUserIDs) != 2 {
 			t.Fatalf("expected 2 user IDs, got %d", len(repo.getRolesByUserIDs))
+
 		}
 
-		data := result.Data.([]*User)
-		if len(data) != 2 {
-			t.Fatalf("expected 2 users, got %d", len(data))
+		if len(result) != 2 {
+			t.Fatalf("expected 2 users, got %d", len(result))
 		}
-		if len(data[0].Roles) == 0 || data[0].Roles[0].Name != "Admin" {
+		if len(result[0].Roles) == 0 || result[0].Roles[0].Name != "Admin" {
 			t.Fatal("Alice should have Admin role")
 		}
-		if len(data[1].Roles) == 0 || data[1].Roles[0].Name != "Editor" {
+		if len(result[1].Roles) == 0 || result[1].Roles[0].Name != "Editor" {
 			t.Fatal("Bob should have Editor role")
 		}
 
-		if result.Meta.Total != 2 {
-			t.Fatalf("expected Total 2, got %d", result.Meta.Total)
-		}
-		if result.Meta.LastPage != 1 {
-			t.Fatalf("expected LastPage 1, got %d", result.Meta.LastPage)
-		}
-		if result.Meta.From != 1 || result.Meta.To != 2 {
-			t.Fatalf("expected From 1 To 2, got %d %d", result.Meta.From, result.Meta.To)
+		if total != 2 {
+			t.Fatalf("expected total 2, got %d", total)
 		}
 	})
 
@@ -603,7 +593,7 @@ func TestList(t *testing.T) {
 			return map[int][]Role{}, nil
 		}
 
-		result, err := svc.List(context.Background(), ListUserQuery{Page: 3, Limit: 10}, testTenant)
+		result, total, err := svc.List(context.Background(), ListUserQuery{Page: 3, Limit: 10}, testTenant)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -614,20 +604,11 @@ func TestList(t *testing.T) {
 		if repo.listOffset != 20 {
 			t.Fatalf("expected offset 20 for page 3, got %d", repo.listOffset)
 		}
-		if result.Meta.CurrentPage != 3 {
-			t.Fatalf("expected CurrentPage 3, got %d", result.Meta.CurrentPage)
+		if total != 25 {
+			t.Fatalf("expected total 25, got %d", total)
 		}
-		if result.Meta.PerPage != 10 {
-			t.Fatalf("expected PerPage 10, got %d", result.Meta.PerPage)
-		}
-		if result.Meta.Total != 25 {
-			t.Fatalf("expected Total 25, got %d", result.Meta.Total)
-		}
-		if result.Meta.LastPage != 3 {
-			t.Fatalf("expected LastPage 3, got %d", result.Meta.LastPage)
-		}
-		if result.Meta.From != 21 || result.Meta.To != 25 {
-			t.Fatalf("expected From 21 To 25, got %d %d", result.Meta.From, result.Meta.To)
+		if len(result) != 5 {
+			t.Fatalf("expected 5 users, got %d", len(result))
 		}
 	})
 }

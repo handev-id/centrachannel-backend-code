@@ -3,6 +3,7 @@ package integration
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"testing"
 
@@ -10,16 +11,16 @@ import (
 )
 
 type mockMessageService struct {
-	listFunc         func(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.PaginatedResponse, error)
-	listCursorFunc   func(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.CursorPaginatedResponse, error)
+	listFunc         func(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, error)
+	listCursorFunc   func(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error)
 	sendFunc         func(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error)
 	updateStatusFunc func(ctx context.Context, id int, status string) error
 }
 
-func (m *mockMessageService) List(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.PaginatedResponse, error) {
+func (m *mockMessageService) List(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, error) {
 	return m.listFunc(ctx, conversationID, q)
 }
-func (m *mockMessageService) ListCursor(ctx context.Context, conversationID int, q message.ListMessageQuery) (*message.CursorPaginatedResponse, error) {
+func (m *mockMessageService) ListCursor(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
 	return m.listCursorFunc(ctx, conversationID, q)
 }
 func (m *mockMessageService) Send(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error) {
@@ -32,16 +33,13 @@ func (m *mockMessageService) UpdateStatus(ctx context.Context, id int, status st
 func TestMessageList_Success(t *testing.T) {
 	text := "Hello, world!"
 	mock := &mockMessageService{
-		listFunc: func(_ context.Context, conversationID int, q message.ListMessageQuery) (*message.PaginatedResponse, error) {
-			return &message.PaginatedResponse{
-				Meta: message.PaginationMeta{Total: 1, PerPage: 50, CurrentPage: 1, LastPage: 1, From: 1, To: 1},
-				Data: []*message.Message{
-					{
-						ID: 1, TenantID: 1, ConversationID: conversationID,
-						Text: &text, Status: "sent", SenderID: 1, SenderType: "user",
-					},
+		listFunc: func(_ context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, error) {
+			return []*message.Message{
+				{
+					ID: 1, TenantID: 1, ConversationID: conversationID,
+					Text: &text, Status: "sent", SenderID: 1, SenderType: "user",
 				},
-			}, nil
+			}, 1, nil
 		},
 	}
 
@@ -61,36 +59,32 @@ func TestMessageList_Success(t *testing.T) {
 		t.Errorf("expected status 200, got %d", resp.StatusCode)
 	}
 
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 200 {
-		t.Errorf("expected meta.code 200, got %d", env.Meta.Code)
+	var result struct {
+		Data        json.RawMessage `json:"data"`
+		Total       int             `json:"total"`
+		PerPage     int             `json:"per_page"`
+		CurrentPage int             `json:"current_page"`
 	}
-	if env.Meta.Message != "success" {
-		t.Errorf("expected meta.message 'success', got %q", env.Meta.Message)
-	}
-
-	var paginated struct {
-		Meta message.PaginationMeta `json:"meta"`
-		Data json.RawMessage        `json:"data"`
-	}
-	if err := json.Unmarshal(env.Data, &paginated); err != nil {
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
 		t.Fatal(err)
 	}
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatalf("unmarshal error: %v\nbody: %s", err, string(body))
+	}
 
-	if paginated.Meta.Total != 1 {
-		t.Errorf("expected total 1, got %d", paginated.Meta.Total)
+	if result.Total != 1 {
+		t.Errorf("expected total 1, got %d", result.Total)
 	}
-	if paginated.Meta.PerPage != 50 {
-		t.Errorf("expected per_page 50, got %d", paginated.Meta.PerPage)
+	if result.PerPage != 50 {
+		t.Errorf("expected per_page 50, got %d", result.PerPage)
 	}
-	if paginated.Meta.CurrentPage != 1 {
-		t.Errorf("expected current_page 1, got %d", paginated.Meta.CurrentPage)
+	if result.CurrentPage != 1 {
+		t.Errorf("expected current_page 1, got %d", result.CurrentPage)
 	}
 
 	var items []*message.Message
-	if err := json.Unmarshal(paginated.Data, &items); err != nil {
+	if err := json.Unmarshal(result.Data, &items); err != nil {
 		t.Fatal(err)
 	}
 	if len(items) != 1 {
@@ -138,18 +132,8 @@ func TestMessageSend_Success(t *testing.T) {
 		t.Errorf("expected status 201, got %d", resp.StatusCode)
 	}
 
-	var env apiResponse
-	readBody(t, resp, &env)
-
-	if env.Meta.Code != 201 {
-		t.Errorf("expected meta.code 201, got %d", env.Meta.Code)
-	}
-	if env.Meta.Message != "Message sent" {
-		t.Errorf("expected meta.message 'Message sent', got %q", env.Meta.Message)
-	}
-
 	var msg message.Message
-	if err := json.Unmarshal(env.Data, &msg); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&msg); err != nil {
 		t.Fatal(err)
 	}
 

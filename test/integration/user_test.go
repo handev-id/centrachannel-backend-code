@@ -16,14 +16,14 @@ import (
 )
 
 type mockUserService struct {
-	listFn    func(context.Context, user.ListUserQuery, *tenant.Tenant) (*user.PaginatedResponse, error)
+	listFn    func(context.Context, user.ListUserQuery, *tenant.Tenant) ([]*user.User, int, error)
 	getByIDFn func(context.Context, int, int) (*user.User, error)
 	createFn  func(context.Context, user.CreateUserRequest, *tenant.Tenant) (*user.User, error)
 	updateFn  func(context.Context, int, int, user.UpdateUserRequest) (*user.User, error)
 	deleteFn  func(context.Context, int, int) error
 }
 
-func (m *mockUserService) List(ctx context.Context, q user.ListUserQuery, t *tenant.Tenant) (*user.PaginatedResponse, error) {
+func (m *mockUserService) List(ctx context.Context, q user.ListUserQuery, t *tenant.Tenant) ([]*user.User, int, error) {
 	return m.listFn(ctx, q, t)
 }
 
@@ -43,15 +43,6 @@ func (m *mockUserService) Delete(ctx context.Context, tenantID, id int) error {
 	return m.deleteFn(ctx, tenantID, id)
 }
 
-type testResp struct {
-	Meta struct {
-		Code    int    `json:"code"`
-		Message string `json:"message"`
-	} `json:"meta"`
-	Data   json.RawMessage `json:"data,omitempty"`
-	Errors json.RawMessage `json:"errors,omitempty"`
-}
-
 func newUserApp(svc user.UserService) *fiber.App {
 	app := NewTestApp()
 	h := user.NewUserHandlerWithService(svc)
@@ -63,26 +54,14 @@ func newUserApp(svc user.UserService) *fiber.App {
 	return app
 }
 
-func decodeResp(t *testing.T, resp *http.Response) testResp {
-	t.Helper()
-	var r testResp
-	if err := json.NewDecoder(resp.Body).Decode(&r); err != nil {
-		t.Fatal(err)
-	}
-	return r
-}
-
 func TestUserList(t *testing.T) {
 	now := time.Now()
 	mock := &mockUserService{
-		listFn: func(_ context.Context, _ user.ListUserQuery, _ *tenant.Tenant) (*user.PaginatedResponse, error) {
-			return &user.PaginatedResponse{
-				Meta: user.PaginationMeta{Total: 2, PerPage: 20, CurrentPage: 1, LastPage: 1, From: 1, To: 2},
-				Data: []user.User{
-					{ID: 1, FirstName: "John", Username: "john", Email: "john@test.com", CreatedAt: now, UpdatedAt: now},
-					{ID: 2, FirstName: "Jane", Username: "jane", Email: "jane@test.com", CreatedAt: now, UpdatedAt: now},
-				},
-			}, nil
+		listFn: func(_ context.Context, _ user.ListUserQuery, _ *tenant.Tenant) ([]*user.User, int, error) {
+			return []*user.User{
+				{ID: 1, FirstName: "John", Username: "john", Email: "john@test.com", CreatedAt: now, UpdatedAt: now},
+				{ID: 2, FirstName: "Jane", Username: "jane", Email: "jane@test.com", CreatedAt: now, UpdatedAt: now},
+			}, 2, nil
 		},
 	}
 
@@ -99,11 +78,19 @@ func TestUserList(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	r := decodeResp(t, resp)
-	if r.Meta.Code != 200 || r.Meta.Message != "success" {
-		t.Errorf("unexpected meta: code=%d message=%s", r.Meta.Code, r.Meta.Message)
+	var result struct {
+		Data        json.RawMessage `json:"data"`
+		Total       int             `json:"total"`
+		PerPage     int             `json:"per_page"`
+		CurrentPage int             `json:"current_page"`
 	}
-	if len(r.Data) == 0 {
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 2 {
+		t.Errorf("expected total 2, got %d", result.Total)
+	}
+	if len(result.Data) == 0 {
 		t.Error("expected non-empty data")
 	}
 }
@@ -140,9 +127,12 @@ func TestUserCreate(t *testing.T) {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
 
-	r := decodeResp(t, resp)
-	if r.Meta.Code != 201 || r.Meta.Message != "User created" {
-		t.Errorf("unexpected meta: code=%d message=%s", r.Meta.Code, r.Meta.Message)
+	var u user.User
+	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
+		t.Fatal(err)
+	}
+	if u.FirstName != "New" {
+		t.Errorf("expected FirstName 'New', got %q", u.FirstName)
 	}
 }
 
@@ -172,9 +162,12 @@ func TestUserShow(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	r := decodeResp(t, resp)
-	if r.Meta.Code != 200 || r.Meta.Message != "success" {
-		t.Errorf("unexpected meta: code=%d message=%s", r.Meta.Code, r.Meta.Message)
+	var u user.User
+	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
+		t.Fatal(err)
+	}
+	if u.ID != 1 || u.FirstName != "John" {
+		t.Errorf("unexpected user: ID=%d, Name=%s", u.ID, u.FirstName)
 	}
 }
 
@@ -210,9 +203,12 @@ func TestUserUpdate(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	r := decodeResp(t, resp)
-	if r.Meta.Code != 200 || r.Meta.Message != "User updated" {
-		t.Errorf("unexpected meta: code=%d message=%s", r.Meta.Code, r.Meta.Message)
+	var u user.User
+	if err := json.NewDecoder(resp.Body).Decode(&u); err != nil {
+		t.Fatal(err)
+	}
+	if u.FirstName != "Updated" {
+		t.Errorf("expected FirstName 'Updated', got %q", u.FirstName)
 	}
 }
 
@@ -236,9 +232,14 @@ func TestUserDelete_SuperAdmin(t *testing.T) {
 		t.Fatalf("expected 403, got %d", resp.StatusCode)
 	}
 
-	r := decodeResp(t, resp)
-	if r.Meta.Code != 403 || r.Meta.Message != "forbidden: you can not delete super admin" {
-		t.Errorf("unexpected meta: code=%d message=%s", r.Meta.Code, r.Meta.Message)
+	var body struct {
+		Message string `json:"message"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&body); err != nil {
+		t.Fatal(err)
+	}
+	if body.Message != "forbidden: you can not delete super admin" {
+		t.Errorf("unexpected message: %q", body.Message)
 	}
 }
 
@@ -260,10 +261,5 @@ func TestUserDelete_NormalUser(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-
-	r := decodeResp(t, resp)
-	if r.Meta.Code != 200 || r.Meta.Message != "User deleted successfully" {
-		t.Errorf("unexpected meta: code=%d message=%s", r.Meta.Code, r.Meta.Message)
 	}
 }

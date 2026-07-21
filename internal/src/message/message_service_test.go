@@ -436,7 +436,7 @@ func TestMessageService_List(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		result, err := svc.List(ctx, 1, ListMessageQuery{Page: 0, Limit: 0})
+		result, total, err := svc.List(ctx, 1, ListMessageQuery{Page: 0, Limit: 0})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -446,23 +446,11 @@ func TestMessageService_List(t *testing.T) {
 		if capturedOffset != 0 {
 			t.Errorf("expected offset 0, got %d", capturedOffset)
 		}
-		if result.Meta.PerPage != 50 {
-			t.Errorf("expected PerPage 50, got %d", result.Meta.PerPage)
+		if total != 0 {
+			t.Errorf("expected total 0, got %d", total)
 		}
-		if result.Meta.CurrentPage != 1 {
-			t.Errorf("expected CurrentPage 1, got %d", result.Meta.CurrentPage)
-		}
-		if result.Meta.Total != 0 {
-			t.Errorf("expected Total 0, got %d", result.Meta.Total)
-		}
-		if result.Meta.LastPage != 0 {
-			t.Errorf("expected LastPage 0, got %d", result.Meta.LastPage)
-		}
-		if result.Meta.From != 0 {
-			t.Errorf("expected From 0, got %d", result.Meta.From)
-		}
-		if result.Meta.To != 0 {
-			t.Errorf("expected To 0, got %d", result.Meta.To)
+		if len(result) != 0 {
+			t.Errorf("expected 0 messages, got %d", len(result))
 		}
 	})
 
@@ -482,7 +470,7 @@ func TestMessageService_List(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		_, err := svc.List(ctx, 1, ListMessageQuery{Page: 1, Limit: 200})
+		_, _, err := svc.List(ctx, 1, ListMessageQuery{Page: 1, Limit: 200})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

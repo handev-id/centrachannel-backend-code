@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"time"
 
 	"centrachannel/config"
@@ -18,7 +17,7 @@ type OnlineChecker interface {
 }
 
 type UserService interface {
-	List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) (*PaginatedResponse, error)
+	List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) ([]*User, int, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*User, error)
 	Create(ctx context.Context, req CreateUserRequest, t *tenant.Tenant) (*User, error)
 	Update(ctx context.Context, tenantID int, id int, req UpdateUserRequest) (*User, error)
@@ -41,7 +40,7 @@ func NewUserService(repo UserRepository, db *sql.DB, cfg *config.Config, logger 
 	return s
 }
 
-func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
+func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) ([]*User, int, error) {
 	if q.Page < 1 {
 		q.Page = 1
 	}
@@ -53,7 +52,7 @@ func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenan
 
 	users, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q.Search, q.RoleID)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	if len(users) > 0 {
@@ -70,27 +69,7 @@ func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenan
 		}
 	}
 
-	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
-	from := offset + 1
-	to := offset + len(users)
-	if to > total {
-		to = total
-	}
-	if total == 0 {
-		from = 0
-		to = 0
-	}
-
-	meta := PaginationMeta{
-		Total:       total,
-		PerPage:     q.Limit,
-		CurrentPage: q.Page,
-		LastPage:    lastPage,
-		From:        from,
-		To:          to,
-	}
-
-	return &PaginatedResponse{Meta: meta, Data: users}, nil
+	return users, total, nil
 }
 
 func (s *userService) GetByID(ctx context.Context, tenantID int, id int) (*User, error) {

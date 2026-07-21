@@ -12,7 +12,7 @@ type DBTX interface {
 }
 
 type CampaignRepository interface {
-	List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error)
+	List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error)
 	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
 	Create(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
 	Update(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error

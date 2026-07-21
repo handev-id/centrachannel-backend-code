@@ -4,9 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/csv"
-	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -17,14 +15,14 @@ import (
 )
 
 type ContactService interface {
-	List(ctx context.Context, q ListContactQuery, t *tenant.Tenant) (*PaginatedResponse, error)
+	List(ctx context.Context, q ListContactQuery, t *tenant.Tenant) ([]*Contact, int, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*Contact, error)
 	Create(ctx context.Context, req CreateContactRequest, t *tenant.Tenant) (*Contact, error)
 	Update(ctx context.Context, tenantID int, id int, req UpdateContactRequest) (*Contact, error)
 	Delete(ctx context.Context, tenantID int, id int) error
 	Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error
 	Unmerge(ctx context.Context, tenantID int, id int) error
-	GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) (interface{}, error)
+	GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) ([]ConversationBrief, int, error)
 	ImportCSV(ctx context.Context, tenantID int, records [][]string) (*CSVImportResult, error)
 	ExportCSV(ctx context.Context, tenantID int, search, status string) (string, error)
 }
@@ -75,7 +73,7 @@ func (s *contactService) loadProfile(ctx context.Context, contact *Contact) erro
 	return nil
 }
 
-func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
+func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant.Tenant) ([]*Contact, int, error) {
 	if q.Page < 1 {
 		q.Page = 1
 	}
@@ -86,29 +84,14 @@ func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant
 
 	contacts, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	if err := s.loadProfiles(ctx, contacts); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
-	from := offset + 1
-	to := offset + len(contacts)
-	if to > total {
-		to = total
-	}
-	if total == 0 {
-		from = 0
-		to = 0
-	}
-
-	meta := PaginationMeta{
-		Total: total, PerPage: q.Limit, CurrentPage: q.Page,
-		LastPage: lastPage, From: from, To: to,
-	}
-	return &PaginatedResponse{Meta: meta, Data: contacts}, nil
+	return contacts, total, nil
 }
 
 func (s *contactService) GetByID(ctx context.Context, tenantID int, id int) (*Contact, error) {
@@ -224,7 +207,7 @@ func (s *contactService) Delete(ctx context.Context, tenantID int, id int) error
 	return s.repo.SoftDelete(ctx, s.db, tenantID, id)
 }
 
-func (s *contactService) GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) (interface{}, error) {
+func (s *contactService) GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) ([]ConversationBrief, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -232,18 +215,6 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		limit = 20
 	}
 	offset := (page - 1) * limit
-
-	type convBrief struct {
-		ID           int              `json:"id"`
-		Status       string           `json:"status"`
-		ProfileID    int              `json:"profile_id"`
-		AgentID      *int             `json:"agent_id,omitempty"`
-		ChannelID    int              `json:"channel_id"`
-		UnreadCount  int              `json:"unread_count"`
-		LastMessage  json.RawMessage  `json:"last_message,omitempty"`
-		LastActivity *time.Time       `json:"last_activity,omitempty"`
-		CreatedAt    time.Time        `json:"created_at"`
-	}
 
 	var total int
 	err := s.db.QueryRowContext(ctx, `
@@ -253,7 +224,7 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		WHERE p.contact_id = $1 AND c.tenant_id = $2
 	`, contactID, tenantID).Scan(&total)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	rows, err := s.db.QueryContext(ctx, `
@@ -266,19 +237,19 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		LIMIT $3 OFFSET $4
 	`, contactID, tenantID, limit, offset)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 	defer rows.Close()
 
-	var convs []convBrief
+	var convs []ConversationBrief
 	for rows.Next() {
-		var conv convBrief
+		var conv ConversationBrief
 		var agentID sql.NullInt64
 		var lastMessage sql.NullString
 		var lastActivity sql.NullTime
 
 		if err := rows.Scan(&conv.ID, &conv.Status, &conv.ProfileID, &agentID, &conv.ChannelID, &conv.UnreadCount, &lastMessage, &lastActivity, &conv.CreatedAt); err != nil {
-			return nil, err
+			return nil, 0, err
 		}
 		if agentID.Valid { id := int(agentID.Int64); conv.AgentID = &id }
 		if lastMessage.Valid { conv.LastMessage = []byte(lastMessage.String) }
@@ -287,20 +258,10 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		convs = append(convs, conv)
 	}
 	if err := rows.Err(); err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	lastPage := int(math.Ceil(float64(total) / float64(limit)))
-	from := offset + 1
-	to := offset + len(convs)
-	if to > total { to = total }
-	if total == 0 { from = 0; to = 0 }
-
-	meta := PaginationMeta{
-		Total: total, PerPage: limit, CurrentPage: page,
-		LastPage: lastPage, From: from, To: to,
-	}
-	return &PaginatedResponse{Meta: meta, Data: convs}, nil
+	return convs, total, nil
 }
 
 func (s *contactService) Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error {

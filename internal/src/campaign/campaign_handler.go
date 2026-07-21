@@ -1,6 +1,7 @@
 package campaign
 
 import (
+	"math"
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
@@ -34,9 +35,16 @@ func (h *CampaignHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
-	result, err := h.service.List(c.Context(), ListCampaignQuery{Page: page, Limit: limit, Search: c.Query("search")}, t)
+	campaigns, total, err := h.service.List(c.Context(), ListCampaignQuery{Page: page, Limit: limit, Search: c.Query("search")}, t)
 	if err != nil { return response.InternalServerError(c, err.Error()) }
-	return response.OK(c, "success", result)
+
+	lastPage := int(math.Ceil(float64(total) / float64(limit)))
+	if lastPage < 1 { lastPage = 1 }
+	from := (page-1)*limit + 1
+	to := (page-1)*limit + len(campaigns)
+	if total == 0 { from = 0; to = 0 }
+
+	return response.Paginated(c, "success", campaigns, total, page, limit, from, to, lastPage)
 }
 
 func (h *CampaignHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {

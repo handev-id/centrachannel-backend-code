@@ -127,7 +127,7 @@ func scanRecipientContact(row interface{ Scan(dest ...interface{}) error }) (*Ca
 	return &c, nil
 }
 
-func (r *campaignRepository) List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error) {
+func (r *campaignRepository) List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error) {
 	countQuery := `SELECT COUNT(*) FROM campaigns WHERE tenant_id = $1 AND ($2 = '' OR name ILIKE '%' || $2 || '%')`
 	var total int
 	err := q.QueryRowContext(ctx, countQuery, tenantID, search).Scan(&total)
@@ -142,11 +142,11 @@ func (r *campaignRepository) List(ctx context.Context, q DBTX, tenantID int, lim
 	}
 	defer rows.Close()
 
-	var campaigns []Campaign
+	var campaigns []*Campaign
 	for rows.Next() {
 		c, err := scanCampaign(rows)
 		if err != nil { return nil, 0, err }
-		if c != nil { campaigns = append(campaigns, *c) }
+		if c != nil { campaigns = append(campaigns, c) }
 	}
 	return campaigns, total, rows.Err()
 }

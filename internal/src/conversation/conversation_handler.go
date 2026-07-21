@@ -1,6 +1,7 @@
 package conversation
 
 import (
+	"math"
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
@@ -48,18 +49,25 @@ func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	}
 
 	if q.LastID > 0 {
-		result, err := h.service.ListCursor(c.Context(), q, t)
+		convs, lastID, lastActivity, hasMore, err := h.service.ListCursor(c.Context(), q, t)
 		if err != nil {
 			return response.InternalServerError(c, err.Error())
 		}
-		return response.OK(c, "success", result)
+		return response.CursorPaginated(c, "success", convs, lastID, hasMore, lastActivity)
 	}
 
-	result, err := h.service.List(c.Context(), q, t)
+	convs, total, err := h.service.List(c.Context(), q, t)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
-	return response.OK(c, "success", result)
+
+	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
+	from := (q.Page-1)*q.Limit + 1
+	to := (q.Page-1)*q.Limit + len(convs)
+	if to > total { to = total }
+	if total == 0 { from = 0; to = 0 }
+
+	return response.Paginated(c, "success", convs, total, q.Page, q.Limit, from, to, lastPage)
 }
 
 func (h *ConversationHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {

@@ -129,7 +129,7 @@ func (m *mockChannelRepository) List(ctx context.Context, q channel.DBTX) ([]cha
 }
 
 type mockCampaignRepository struct {
-	listFunc                   func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error)
+	listFunc                   func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error)
 	getByIDFunc                func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
 	createFunc                 func(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
 	updateFunc                 func(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error
@@ -154,7 +154,7 @@ type mockCampaignRepository struct {
 	deleteRecipientContactFunc func(ctx context.Context, q DBTX, id int) error
 }
 
-func (m *mockCampaignRepository) List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error) {
+func (m *mockCampaignRepository) List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error) {
 	if m.listFunc != nil {
 		return m.listFunc(ctx, q, tenantID, limit, offset, search)
 	}
@@ -341,16 +341,16 @@ func TestCampaignService(t *testing.T) {
 	t.Run("List defaults pagination", func(t *testing.T) {
 		var capturedLimit, capturedOffset, capturedTenantID int
 		repo := &mockCampaignRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error) {
 				capturedLimit = limit
 				capturedOffset = offset
 				capturedTenantID = tenantID
-				return []Campaign{{ID: 1, Name: "Campaign 1"}}, 1, nil
+				return []*Campaign{{ID: 1, Name: "Campaign 1"}}, 1, nil
 			},
 		}
 		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		result, err := svc.List(context.Background(), ListCampaignQuery{}, testTenant())
+		result, total, err := svc.List(context.Background(), ListCampaignQuery{}, testTenant())
 		if err != nil {
 			t.Fatalf("List returned error: %v", err)
 		}
@@ -363,38 +363,26 @@ func TestCampaignService(t *testing.T) {
 		if capturedTenantID != 1 {
 			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
 		}
-		if result.Meta.CurrentPage != 1 {
-			t.Errorf("expected CurrentPage 1, got %d", result.Meta.CurrentPage)
+		if total != 1 {
+			t.Errorf("expected total 1, got %d", total)
 		}
-		if result.Meta.PerPage != 20 {
-			t.Errorf("expected PerPage 20, got %d", result.Meta.PerPage)
-		}
-		if result.Meta.Total != 1 {
-			t.Errorf("expected Total 1, got %d", result.Meta.Total)
-		}
-		if result.Meta.LastPage != 1 {
-			t.Errorf("expected LastPage 1, got %d", result.Meta.LastPage)
-		}
-		if result.Meta.From != 1 {
-			t.Errorf("expected From 1, got %d", result.Meta.From)
-		}
-		if result.Meta.To != 1 {
-			t.Errorf("expected To 1, got %d", result.Meta.To)
+		if len(result) != 1 {
+			t.Errorf("expected 1 campaign, got %d", len(result))
 		}
 	})
 
 	t.Run("List custom pagination", func(t *testing.T) {
 		var capturedLimit, capturedOffset int
 		repo := &mockCampaignRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error) {
 				capturedLimit = limit
 				capturedOffset = offset
-				return []Campaign{{ID: 1, Name: "A"}, {ID: 2, Name: "B"}}, 10, nil
+				return []*Campaign{{ID: 1, Name: "A"}, {ID: 2, Name: "B"}}, 10, nil
 			},
 		}
 		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		result, err := svc.List(context.Background(), ListCampaignQuery{Page: 2, Limit: 5}, testTenant())
+		result, total, err := svc.List(context.Background(), ListCampaignQuery{Page: 2, Limit: 5}, testTenant())
 		if err != nil {
 			t.Fatalf("List returned error: %v", err)
 		}
@@ -404,34 +392,25 @@ func TestCampaignService(t *testing.T) {
 		if capturedOffset != 5 {
 			t.Errorf("expected offset 5, got %d", capturedOffset)
 		}
-		if result.Meta.CurrentPage != 2 {
-			t.Errorf("expected CurrentPage 2, got %d", result.Meta.CurrentPage)
+		if total != 10 {
+			t.Errorf("expected total 10, got %d", total)
 		}
-		if result.Meta.PerPage != 5 {
-			t.Errorf("expected PerPage 5, got %d", result.Meta.PerPage)
-		}
-		if result.Meta.LastPage != 2 {
-			t.Errorf("expected LastPage 2, got %d", result.Meta.LastPage)
-		}
-		if result.Meta.From != 6 {
-			t.Errorf("expected From 6, got %d", result.Meta.From)
-		}
-		if result.Meta.To != 7 {
-			t.Errorf("expected To 7, got %d", result.Meta.To)
+		if len(result) != 2 {
+			t.Errorf("expected 2 campaigns, got %d", len(result))
 		}
 	})
 
 	t.Run("List clamps limit to 100", func(t *testing.T) {
 		var capturedLimit int
 		repo := &mockCampaignRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]Campaign, int, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error) {
 				capturedLimit = limit
 				return nil, 0, nil
 			},
 		}
 		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		_, err := svc.List(context.Background(), ListCampaignQuery{Page: 1, Limit: 200}, testTenant())
+		_, _, err := svc.List(context.Background(), ListCampaignQuery{Page: 1, Limit: 200}, testTenant())
 		if err != nil {
 			t.Fatalf("List returned error: %v", err)
 		}

@@ -36,18 +36,11 @@ func (m *mockAuthService) CheckToken(ctx context.Context, token string, t *tenan
 	return m.checkTokenFn(ctx, token, t)
 }
 
-type metaJSON struct {
-	Code    int    `json:"code"`
+type errBody struct {
 	Message string `json:"message"`
 }
 
-type apiJSON struct {
-	Meta   metaJSON    `json:"meta"`
-	Data   interface{} `json:"data,omitempty"`
-	Errors interface{} `json:"errors,omitempty"`
-}
-
-func readResponse(t *testing.T, resp *http.Response, v interface{}) {
+func readBody(t *testing.T, resp *http.Response, v interface{}) {
 	t.Helper()
 	body, err := io.ReadAll(resp.Body)
 	resp.Body.Close()
@@ -95,31 +88,16 @@ func TestAuthRegister_Success(t *testing.T) {
 		t.Fatalf("expected 201 Created, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiJSON
-	readResponse(t, resp, &apiResp)
-
-	if apiResp.Meta.Code != 201 {
-		t.Errorf("meta.code = %d, want 201", apiResp.Meta.Code)
+	var u auth.User
+	readBody(t, resp, &u)
+	if u.ID != 1 {
+		t.Errorf("user.id = %d, want 1", u.ID)
 	}
-	if apiResp.Meta.Message != "User registered" {
-		t.Errorf("meta.message = %q, want %q", apiResp.Meta.Message, "User registered")
+	if u.Username != "john_doe" {
+		t.Errorf("user.username = %q, want john_doe", u.Username)
 	}
-	if apiResp.Data == nil {
-		t.Error("data is nil, expected user object")
-	}
-
-	data, ok := apiResp.Data.(map[string]interface{})
-	if !ok {
-		t.Fatalf("data type = %T, want map[string]interface{}", apiResp.Data)
-	}
-	if data["id"].(float64) != 1 {
-		t.Errorf("data.id = %v, want 1", data["id"])
-	}
-	if data["username"] != "john_doe" {
-		t.Errorf("data.username = %v, want john_doe", data["username"])
-	}
-	if data["email"] != "john@test.com" {
-		t.Errorf("data.email = %v, want john@test.com", data["email"])
+	if u.Email != "john@test.com" {
+		t.Errorf("user.email = %q, want john@test.com", u.Email)
 	}
 }
 
@@ -152,11 +130,10 @@ func TestAuthRegister_DuplicateEmail(t *testing.T) {
 		t.Fatalf("expected 400 Bad Request, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiJSON
-	readResponse(t, resp, &apiResp)
-
-	if apiResp.Meta.Code != 400 {
-		t.Errorf("meta.code = %d, want 400", apiResp.Meta.Code)
+	var eb errBody
+	readBody(t, resp, &eb)
+	if eb.Message != "email already registered" {
+		t.Errorf("message = %q, want %q", eb.Message, "email already registered")
 	}
 }
 
@@ -185,20 +162,6 @@ func TestAuthLogin_Success(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
-	}
-
-	var apiResp apiJSON
-	readResponse(t, resp, &apiResp)
-
-	if apiResp.Meta.Code != 200 {
-		t.Errorf("meta.code = %d, want 200", apiResp.Meta.Code)
-	}
-	if apiResp.Meta.Message != "Login successful" {
-		t.Errorf("meta.message = %q, want %q", apiResp.Meta.Message, "Login successful")
-	}
-
-	if apiResp.Data != nil {
-		t.Errorf("data = %v, want nil (token removed from response body)", apiResp.Data)
 	}
 }
 
@@ -229,14 +192,10 @@ func TestAuthLogin_InvalidCredentials(t *testing.T) {
 		t.Fatalf("expected 401 Unauthorized, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiJSON
-	readResponse(t, resp, &apiResp)
-
-	if apiResp.Meta.Code != 401 {
-		t.Errorf("meta.code = %d, want 401", apiResp.Meta.Code)
-	}
-	if apiResp.Meta.Message != "invalid credentials" {
-		t.Errorf("meta.message = %q, want %q", apiResp.Meta.Message, "invalid credentials")
+	var eb errBody
+	readBody(t, resp, &eb)
+	if eb.Message != "invalid credentials" {
+		t.Errorf("message = %q, want %q", eb.Message, "invalid credentials")
 	}
 }
 
@@ -270,24 +229,12 @@ func TestAuthCheckToken_Valid(t *testing.T) {
 		t.Fatalf("expected 200 OK, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiJSON
-	readResponse(t, resp, &apiResp)
-
-	if apiResp.Meta.Code != 200 {
-		t.Errorf("meta.code = %d, want 200", apiResp.Meta.Code)
+	var u auth.User
+	readBody(t, resp, &u)
+	if u.ID != 1 {
+		t.Errorf("user.id = %d, want 1", u.ID)
 	}
-	if apiResp.Meta.Message != "Token valid" {
-		t.Errorf("meta.message = %q, want %q", apiResp.Meta.Message, "Token valid")
-	}
-
-	data, ok := apiResp.Data.(map[string]interface{})
-	if !ok {
-		t.Fatalf("data type = %T, want map[string]interface{}", apiResp.Data)
-	}
-	if data["id"].(float64) != 1 {
-		t.Errorf("data.id = %v, want 1", data["id"])
-	}
-	if data["username"] != "john_doe" {
-		t.Errorf("data.username = %v, want john_doe", data["username"])
+	if u.Username != "john_doe" {
+		t.Errorf("user.username = %q, want john_doe", u.Username)
 	}
 }

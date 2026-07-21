@@ -28,43 +28,77 @@ func formatValidationErrors(err error) map[string]string {
     return errors
 }
 
+type ErrorBody struct {
+    Message string      `json:"message,omitempty"`
+    Errors  interface{} `json:"errors,omitempty"`
+}
+
 type ResponseMeta struct {
-    Code    int    `json:"code"`
-    Message string `json:"message"`
+    Message     string `json:"message"`
+    Total       *int   `json:"total,omitempty"`
+    PerPage     *int   `json:"per_page,omitempty"`
+    CurrentPage *int   `json:"current_page,omitempty"`
+    LastPage    *int   `json:"last_page,omitempty"`
+    From        *int   `json:"from,omitempty"`
+    To          *int   `json:"to,omitempty"`
+    LastID      *int   `json:"last_id,omitempty"`
+    LastActivity string `json:"last_activity,omitempty"`
+    HasMore     *bool  `json:"has_more,omitempty"`
 }
 
 type Response struct {
-    Meta   ResponseMeta `json:"meta"`
-    Data   interface{}  `json:"data,omitempty"`
-    Errors interface{}  `json:"errors,omitempty"`
+    Meta ResponseMeta `json:"meta"`
+    Data interface{}  `json:"data"`
 }
 
-func Success(c fiber.Ctx, statusCode int, message string, data interface{}) error {
-    return c.Status(statusCode).JSON(Response{
+func Paginated(c fiber.Ctx, message string, data interface{}, total, page, limit, from, to, lastPage int) error {
+    t, p, l, f, t2, lp := total, page, limit, from, to, lastPage
+    return c.Status(fiber.StatusOK).JSON(Response{
         Meta: ResponseMeta{
-            Code:    statusCode,
-            Message: message,
+            Message:     message,
+            Total:       &t,
+            PerPage:     &p,
+            CurrentPage: &l,
+            LastPage:    &lp,
+            From:        &f,
+            To:          &t2,
         },
         Data: data,
     })
 }
 
-func Error(c fiber.Ctx, statusCode int, message string, errors interface{}) error {
-    return c.Status(statusCode).JSON(Response{
-        Meta: ResponseMeta{
-            Code:    statusCode,
-            Message: message,
-        },
-        Errors: errors,
+func CursorPaginated(c fiber.Ctx, message string, data interface{}, lastID int, hasMore bool, lastActivity ...string) error {
+    li := lastID
+    hm := hasMore
+    m := ResponseMeta{Message: message, LastID: &li, HasMore: &hm}
+    if len(lastActivity) > 0 {
+        m.LastActivity = lastActivity[0]
+    }
+    return c.Status(fiber.StatusOK).JSON(Response{
+        Meta: m,
+        Data: data,
+    })
+}
+
+func OK(c fiber.Ctx, message string, data interface{}) error {
+    return c.Status(fiber.StatusOK).JSON(Response{
+        Meta: ResponseMeta{Message: message},
+        Data: data,
     })
 }
 
 func Created(c fiber.Ctx, message string, data interface{}) error {
-    return Success(c, fiber.StatusCreated, message, data)
+    return c.Status(fiber.StatusCreated).JSON(Response{
+        Meta: ResponseMeta{Message: message},
+        Data: data,
+    })
 }
 
-func OK(c fiber.Ctx, message string, data interface{}) error {
-    return Success(c, fiber.StatusOK, message, data)
+func Error(c fiber.Ctx, statusCode int, message string, errors interface{}) error {
+    return c.Status(statusCode).JSON(ErrorBody{
+        Message: message,
+        Errors:  errors,
+    })
 }
 
 func BadRequest(c fiber.Ctx, message string, errors interface{}) error {

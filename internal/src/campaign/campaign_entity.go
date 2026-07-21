@@ -89,16 +89,3 @@ type CampaignRecipient struct {
 	UpdatedAt         time.Time  `json:"updated_at"`
 }
 
-type PaginationMeta struct {
-	Total       int `json:"total"`
-	PerPage     int `json:"per_page"`
-	CurrentPage int `json:"current_page"`
-	LastPage    int `json:"last_page"`
-	From        int `json:"from"`
-	To          int `json:"to"`
-}
-
-type PaginatedResponse struct {
-	Meta PaginationMeta `json:"meta"`
-	Data interface{}    `json:"data"`
-}

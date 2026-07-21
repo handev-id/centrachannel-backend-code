@@ -18,27 +18,4 @@ type CreateConversationRequest struct {
 	AgentID   int `json:"agent_id,omitempty"`
 }
 
-type PaginatedResponse struct {
-	Meta PaginationMeta `json:"meta"`
-	Data interface{}    `json:"data"`
-}
 
-type PaginationMeta struct {
-	Total       int `json:"total"`
-	PerPage     int `json:"per_page"`
-	CurrentPage int `json:"current_page"`
-	LastPage    int `json:"last_page"`
-	From        int `json:"from"`
-	To          int `json:"to"`
-}
-
-type CursorPaginationMeta struct {
-	LastID       int    `json:"last_id"`
-	LastActivity string `json:"last_activity,omitempty"`
-	HasMore      bool   `json:"has_more"`
-}
-
-type CursorPaginatedResponse struct {
-	Meta CursorPaginationMeta `json:"meta_pagination"`
-	Data interface{}         `json:"data"`
-}

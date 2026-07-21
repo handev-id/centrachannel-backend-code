@@ -5,7 +5,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"math"
 	"strings"
 	"time"
 
@@ -18,7 +17,7 @@ import (
 )
 
 type CampaignService interface {
-	List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) (*PaginatedResponse, error)
+	List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) ([]*Campaign, int, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*Campaign, error)
 	Create(ctx context.Context, req CreateCampaignRequest, t *tenant.Tenant, userID int) (*Campaign, error)
 	Update(ctx context.Context, tenantID int, id int, req UpdateCampaignRequest) (*Campaign, error)
@@ -52,26 +51,17 @@ func NewCampaignService(repo CampaignRepository, deviceRepo whatsapp_device.What
 	return &campaignService{repo: repo, deviceRepo: deviceRepo, channelRepo: channelRepo, db: db, cfg: cfg, logger: logger}
 }
 
-func (s *campaignService) List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
+func (s *campaignService) List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) ([]*Campaign, int, error) {
 	if q.Page < 1 { q.Page = 1 }
 	if q.Limit < 1 || q.Limit > 100 { q.Limit = 20 }
 	offset := (q.Page - 1) * q.Limit
 
 	campaigns, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q.Search)
 	if err != nil {
-		return nil, fmt.Errorf("failed to list campaigns: %w", err)
+		return nil, 0, fmt.Errorf("failed to list campaigns: %w", err)
 	}
 
-	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
-	if lastPage < 1 { lastPage = 1 }
-	from := offset + 1
-	to := offset + len(campaigns)
-	if total == 0 { from = 0; to = 0 }
-
-	return &PaginatedResponse{
-		Meta: PaginationMeta{Total: total, PerPage: q.Limit, CurrentPage: q.Page, LastPage: lastPage, From: from, To: to},
-		Data: campaigns,
-	}, nil
+	return campaigns, total, nil
 }
 
 func (s *campaignService) GetByID(ctx context.Context, tenantID int, id int) (*Campaign, error) {

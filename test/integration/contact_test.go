@@ -15,19 +15,19 @@ import (
 )
 
 type mockContactService struct {
-	listFunc             func(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) (*contact.PaginatedResponse, error)
+	listFunc             func(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) ([]*contact.Contact, int, error)
 	getByIDFunc          func(ctx context.Context, tenantID int, id int) (*contact.Contact, error)
 	createFunc           func(ctx context.Context, req contact.CreateContactRequest, t *tenant.Tenant) (*contact.Contact, error)
 	updateFunc           func(ctx context.Context, tenantID int, id int, req contact.UpdateContactRequest) (*contact.Contact, error)
 	deleteFunc           func(ctx context.Context, tenantID int, id int) error
-	getConversationsFunc func(ctx context.Context, tenantID int, contactID int) (interface{}, error)
+	getConversationsFunc func(ctx context.Context, tenantID int, contactID int, page, limit int) ([]contact.ConversationBrief, int, error)
 	mergeFunc            func(ctx context.Context, tenantID int, sourceID int, targetID int) error
 	unmergeFunc          func(ctx context.Context, tenantID int, id int) error
 	importCSVFunc        func(ctx context.Context, tenantID int, records [][]string) (*contact.CSVImportResult, error)
-	exportCSVFunc        func(ctx context.Context, tenantID int) (string, error)
+	exportCSVFunc        func(ctx context.Context, tenantID int, search, status string) (string, error)
 }
 
-func (m *mockContactService) List(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) (*contact.PaginatedResponse, error) {
+func (m *mockContactService) List(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) ([]*contact.Contact, int, error) {
 	return m.listFunc(ctx, q, t)
 }
 
@@ -47,8 +47,8 @@ func (m *mockContactService) Delete(ctx context.Context, tenantID int, id int) e
 	return m.deleteFunc(ctx, tenantID, id)
 }
 
-func (m *mockContactService) GetConversations(ctx context.Context, tenantID int, contactID int) (interface{}, error) {
-	return m.getConversationsFunc(ctx, tenantID, contactID)
+func (m *mockContactService) GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) ([]contact.ConversationBrief, int, error) {
+	return m.getConversationsFunc(ctx, tenantID, contactID, page, limit)
 }
 
 func (m *mockContactService) Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error {
@@ -64,9 +64,9 @@ func (m *mockContactService) Unmerge(ctx context.Context, tenantID int, id int) 
 	}
 	return nil
 }
-func (m *mockContactService) ExportCSV(ctx context.Context, tenantID int) (string, error) {
+func (m *mockContactService) ExportCSV(ctx context.Context, tenantID int, search, status string) (string, error) {
 	if m.exportCSVFunc != nil {
-		return m.exportCSVFunc(ctx, tenantID)
+		return m.exportCSVFunc(ctx, tenantID, search, status)
 	}
 	return "", nil
 }
@@ -80,25 +80,10 @@ func (m *mockContactService) ImportCSV(ctx context.Context, tenantID int, record
 
 func strPtr(s string) *string { return &s }
 
-func parseResp(t *testing.T, resp *http.Response, v interface{}) {
-	t.Helper()
-	body, err := io.ReadAll(resp.Body)
-	if err != nil {
-		t.Fatal(err)
-	}
-	resp.Body.Close()
-	if err := json.Unmarshal(body, v); err != nil {
-		t.Fatalf("unmarshal error: %v\nbody: %s", err, string(body))
-	}
-}
-
 func TestContactList_200(t *testing.T) {
 	mockSvc := &mockContactService{
-		listFunc: func(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) (*contact.PaginatedResponse, error) {
-			return &contact.PaginatedResponse{
-				Meta: contact.PaginationMeta{Total: 1, PerPage: 20, CurrentPage: 1, LastPage: 1, From: 1, To: 1},
-				Data: []*contact.Contact{{ID: 1, FirstName: "John", Status: "individual"}},
-			}, nil
+		listFunc: func(ctx context.Context, q contact.ListContactQuery, t *tenant.Tenant) ([]*contact.Contact, int, error) {
+			return []*contact.Contact{{ID: 1, FirstName: "John", Status: "individual"}}, 1, nil
 		},
 	}
 
@@ -117,10 +102,16 @@ func TestContactList_200(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiResponse
-	parseResp(t, resp, &apiResp)
-	if apiResp.Meta.Message != "success" {
-		t.Errorf("expected message 'success', got %q", apiResp.Meta.Message)
+	var result struct {
+		Data  json.RawMessage `json:"data"`
+		Total int             `json:"total"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected total 1, got %d", result.Total)
 	}
 }
 
@@ -152,14 +143,8 @@ func TestContactCreate_201(t *testing.T) {
 		t.Fatalf("expected 201, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiResponse
-	parseResp(t, resp, &apiResp)
-	if apiResp.Meta.Message != "Contact created" {
-		t.Errorf("expected message 'Contact created', got %q", apiResp.Meta.Message)
-	}
-
 	var c contact.Contact
-	if err := json.Unmarshal(apiResp.Data, &c); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&c); err != nil {
 		t.Fatal(err)
 	}
 	if c.FirstName != "John" {
@@ -189,14 +174,8 @@ func TestContactShow_200(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiResponse
-	parseResp(t, resp, &apiResp)
-	if apiResp.Meta.Message != "success" {
-		t.Errorf("expected message 'success', got %q", apiResp.Meta.Message)
-	}
-
 	var c contact.Contact
-	if err := json.Unmarshal(apiResp.Data, &c); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&c); err != nil {
 		t.Fatal(err)
 	}
 	if c.ID != 1 || c.FirstName != "John" {
@@ -230,14 +209,8 @@ func TestContactUpdate_200(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiResponse
-	parseResp(t, resp, &apiResp)
-	if apiResp.Meta.Message != "Contact updated" {
-		t.Errorf("expected message 'Contact updated', got %q", apiResp.Meta.Message)
-	}
-
 	var c contact.Contact
-	if err := json.Unmarshal(apiResp.Data, &c); err != nil {
+	if err := json.NewDecoder(resp.Body).Decode(&c); err != nil {
 		t.Fatal(err)
 	}
 	if c.FirstName != "Jane" {
@@ -266,20 +239,14 @@ func TestContactDelete_200(t *testing.T) {
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-
-	var apiResp apiResponse
-	parseResp(t, resp, &apiResp)
-	if apiResp.Meta.Message != "Contact deleted" {
-		t.Errorf("expected message 'Contact deleted', got %q", apiResp.Meta.Message)
-	}
 }
 
 func TestContactConversations_200(t *testing.T) {
 	mockSvc := &mockContactService{
-		getConversationsFunc: func(ctx context.Context, tenantID int, contactID int) (interface{}, error) {
-			return []map[string]interface{}{
-				{"id": float64(1), "status": "active", "profile_id": float64(10), "channel_id": float64(5), "unread_count": float64(3)},
-			}, nil
+		getConversationsFunc: func(ctx context.Context, tenantID int, contactID int, page, limit int) ([]contact.ConversationBrief, int, error) {
+			return []contact.ConversationBrief{
+				{ID: 1, Status: "active", ProfileID: 10, ChannelID: 5, UnreadCount: 3},
+			}, 1, nil
 		},
 	}
 
@@ -298,10 +265,16 @@ func TestContactConversations_200(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 
-	var apiResp apiResponse
-	parseResp(t, resp, &apiResp)
-	if apiResp.Meta.Message != "success" {
-		t.Errorf("expected message 'success', got %q", apiResp.Meta.Message)
+	var result struct {
+		Data  json.RawMessage `json:"data"`
+		Total int             `json:"total"`
+	}
+	body, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(body, &result); err != nil {
+		t.Fatal(err)
+	}
+	if result.Total != 1 {
+		t.Errorf("expected total 1, got %d", result.Total)
 	}
 }
 

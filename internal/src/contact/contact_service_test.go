@@ -6,7 +6,6 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"io"
-	"reflect"
 	"testing"
 	"time"
 
@@ -435,15 +434,15 @@ func TestContactService_List(t *testing.T) {
 		q := ListContactQuery{Page: 0, Limit: 0}
 		ten := &tenant.Tenant{ID: 1}
 
-		result, err := svc.List(context.Background(), q, ten)
+		result, total, err := svc.List(context.Background(), q, ten)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if result.Meta.CurrentPage != 1 {
-			t.Errorf("expected CurrentPage 1, got %d", result.Meta.CurrentPage)
+		if total != 0 {
+			t.Errorf("expected total 0, got %d", total)
 		}
-		if result.Meta.PerPage != 20 {
-			t.Errorf("expected PerPage 20, got %d", result.Meta.PerPage)
+		if len(result) != 0 {
+			t.Errorf("expected 0 contacts, got %d", len(result))
 		}
 		if capturedLimit != 20 {
 			t.Errorf("expected limit 20, got %d", capturedLimit)
@@ -469,7 +468,7 @@ func TestContactService_List(t *testing.T) {
 		q := ListContactQuery{Page: 1, Limit: 10, Search: "john", Status: "active", ChannelID: 3}
 		ten := &tenant.Tenant{ID: 1}
 
-		_, err := svc.List(context.Background(), q, ten)
+		_, _, err := svc.List(context.Background(), q, ten)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -513,66 +512,44 @@ func TestContactService_GetConversations(t *testing.T) {
 		repo := &mockContactRepository{}
 		svc := newService(repo, db)
 
-		result, err := svc.GetConversations(context.Background(), 1, 1, 1, 20)
+		convs, total, err := svc.GetConversations(context.Background(), 1, 1, 1, 20)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		rv := reflect.ValueOf(result)
-		if rv.Kind() == reflect.Ptr {
-			rv = rv.Elem()
+		if total != 2 {
+			t.Errorf("expected total 2, got %d", total)
 		}
-		if rv.Kind() != reflect.Struct {
-			t.Fatalf("expected struct (PaginatedResponse), got %T", result)
-		}
-		dataField := rv.FieldByName("Data")
-		if !dataField.IsValid() {
-			t.Fatal("expected Data field")
-		}
-		dataSlice := dataField.Elem()
-		if dataSlice.Len() != 2 {
-			t.Fatalf("expected 2 conversations, got %d", dataSlice.Len())
+		if len(convs) != 2 {
+			t.Fatalf("expected 2 conversations, got %d", len(convs))
 		}
 
 		// First conversation — has agent_id, last_message, last_activity
-		c0 := dataSlice.Index(0)
-		if c0.FieldByName("ID").Int() != 1 {
-			t.Errorf("expected ID 1, got %d", c0.FieldByName("ID").Int())
+		c0 := convs[0]
+		if c0.ID != 1 {
+			t.Errorf("expected ID 1, got %d", c0.ID)
 		}
-		if c0.FieldByName("Status").String() != "active" {
-			t.Errorf("expected Status 'active', got %q", c0.FieldByName("Status").String())
+		if c0.Status != "active" {
+			t.Errorf("expected Status 'active', got %q", c0.Status)
 		}
-		if c0.FieldByName("UnreadCount").Int() != 3 {
-			t.Errorf("expected UnreadCount 3, got %d", c0.FieldByName("UnreadCount").Int())
+		if c0.UnreadCount != 3 {
+			t.Errorf("expected UnreadCount 3, got %d", c0.UnreadCount)
 		}
-		agentID := c0.FieldByName("AgentID")
-		if agentID.IsNil() {
+		if c0.AgentID == nil {
 			t.Error("expected AgentID to be non-nil for first conversation")
-		} else if agentID.Elem().Int() != 42 {
-			t.Errorf("expected AgentID 42, got %d", agentID.Elem().Int())
+		} else if *c0.AgentID != 42 {
+			t.Errorf("expected AgentID 42, got %d", *c0.AgentID)
 		}
 
 		// Second conversation — no agent_id, no last_message, no last_activity
-		c1 := dataSlice.Index(1)
-		if c1.FieldByName("ID").Int() != 2 {
-			t.Errorf("expected ID 2, got %d", c1.FieldByName("ID").Int())
+		c1 := convs[1]
+		if c1.ID != 2 {
+			t.Errorf("expected ID 2, got %d", c1.ID)
 		}
-		if c1.FieldByName("Status").String() != "closed" {
-			t.Errorf("expected Status 'closed', got %q", c1.FieldByName("Status").String())
+		if c1.Status != "closed" {
+			t.Errorf("expected Status 'closed', got %q", c1.Status)
 		}
-		if !c1.FieldByName("AgentID").IsNil() {
+		if c1.AgentID != nil {
 			t.Error("expected AgentID to be nil for second conversation")
-		}
-
-		// Verify pagination meta
-		metaField := rv.FieldByName("Meta")
-		if !metaField.IsValid() {
-			t.Fatal("expected Meta field")
-		}
-		if metaField.FieldByName("Total").Int() != 2 {
-			t.Errorf("expected Total 2, got %d", metaField.FieldByName("Total").Int())
-		}
-		if metaField.FieldByName("PerPage").Int() != 20 {
-			t.Errorf("expected PerPage 20, got %d", metaField.FieldByName("PerPage").Int())
 		}
 	})
 }

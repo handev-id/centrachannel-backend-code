@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
-	"math"
 	"time"
 
 	"centrachannel/config"
@@ -13,8 +12,8 @@ import (
 )
 
 type ConversationService interface {
-	List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*PaginatedResponse, error)
-	ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*CursorPaginatedResponse, error)
+	List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, error)
+	ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error)
 	Create(ctx context.Context, req CreateConversationRequest, t *tenant.Tenant) (*Conversation, error)
 	Assign(ctx context.Context, tenantID int, id int, agentID int) error
@@ -36,27 +35,20 @@ func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config
 	return &conversationService{repo: repo, db: db, cfg: cfg, logger: logger}
 }
 
-func (s *conversationService) List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*PaginatedResponse, error) {
+func (s *conversationService) List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, error) {
 	if q.Page < 1 { q.Page = 1 }
 	if q.Limit < 1 || q.Limit > 100 { q.Limit = 20 }
 	offset := (q.Page - 1) * q.Limit
 
 	convs, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q.Status, q.ChannelID, q.AgentID, q.Search)
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
-	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
-	from := offset + 1
-	to := offset + len(convs)
-	if to > total { to = total }
-	if total == 0 { from = 0; to = 0 }
-
-	meta := PaginationMeta{Total: total, PerPage: q.Limit, CurrentPage: q.Page, LastPage: lastPage, From: from, To: to}
-	return &PaginatedResponse{Meta: meta, Data: convs}, nil
+	return convs, total, nil
 }
 
-func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) (*CursorPaginatedResponse, error) {
+func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error) {
 	if q.Limit < 1 || q.Limit > 100 {
 		q.Limit = 20
 	}
@@ -65,14 +57,14 @@ func (s *conversationService) ListCursor(ctx context.Context, q ListConversation
 	if q.LastActivity != "" {
 		parsed, err := time.Parse(time.RFC3339, q.LastActivity)
 		if err != nil {
-			return nil, fmt.Errorf("invalid last_activity: %w", err)
+			return nil, 0, "", false, fmt.Errorf("invalid last_activity: %w", err)
 		}
 		lastActivityTime = &parsed
 	}
 
 	convs, err := s.repo.ListCursor(ctx, s.db, t.ID, q.Limit+1, q.Status, q.ChannelID, q.AgentID, q.Search, lastActivityTime, q.LastID)
 	if err != nil {
-		return nil, err
+		return nil, 0, "", false, err
 	}
 
 	hasMore := len(convs) > q.Limit
@@ -90,8 +82,7 @@ func (s *conversationService) ListCursor(ctx context.Context, q ListConversation
 		}
 	}
 
-	meta := CursorPaginationMeta{LastID: lastID, LastActivity: lastActivityStr, HasMore: hasMore}
-	return &CursorPaginatedResponse{Meta: meta, Data: convs}, nil
+	return convs, lastID, lastActivityStr, hasMore, nil
 }
 
 func (s *conversationService) GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error) {

@@ -1,6 +1,9 @@
 package contact
 
-import "encoding/json"
+import (
+	"encoding/json"
+	"time"
+)
 
 type ListContactQuery struct {
 	Page             int     `query:"page"`
@@ -85,16 +88,14 @@ type MergeContactRequest struct {
 	TargetContactID int `json:"target_contact_id" validate:"required"`
 }
 
-type PaginatedResponse struct {
-	Meta PaginationMeta `json:"meta"`
-	Data interface{}    `json:"data"`
-}
-
-type PaginationMeta struct {
-	Total       int `json:"total"`
-	PerPage     int `json:"per_page"`
-	CurrentPage int `json:"current_page"`
-	LastPage    int `json:"last_page"`
-	From        int `json:"from"`
-	To          int `json:"to"`
+type ConversationBrief struct {
+	ID           int              `json:"id"`
+	Status       string           `json:"status"`
+	ProfileID    int              `json:"profile_id"`
+	AgentID      *int             `json:"agent_id,omitempty"`
+	ChannelID    int              `json:"channel_id"`
+	UnreadCount  int              `json:"unread_count"`
+	LastMessage  json.RawMessage  `json:"last_message,omitempty"`
+	LastActivity *time.Time       `json:"last_activity,omitempty"`
+	CreatedAt    time.Time        `json:"created_at"`
 }

@@ -175,7 +175,7 @@ func TestList(t *testing.T) {
 		}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		resp, err := svc.List(context.Background(), ListConversationQuery{}, testTenant())
+		result, total, err := svc.List(context.Background(), ListConversationQuery{}, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -190,23 +190,11 @@ func TestList(t *testing.T) {
 			t.Errorf("expected offset 0, got %d", mockRepo.listOffset)
 		}
 
-		if resp.Meta.Total != 1 {
-			t.Errorf("expected total 1, got %d", resp.Meta.Total)
+		if total != 1 {
+			t.Errorf("expected total 1, got %d", total)
 		}
-		if resp.Meta.PerPage != 20 {
-			t.Errorf("expected per_page 20, got %d", resp.Meta.PerPage)
-		}
-		if resp.Meta.CurrentPage != 1 {
-			t.Errorf("expected current_page 1, got %d", resp.Meta.CurrentPage)
-		}
-		if resp.Meta.LastPage != 1 {
-			t.Errorf("expected last_page 1, got %d", resp.Meta.LastPage)
-		}
-		if resp.Meta.From != 1 {
-			t.Errorf("expected from 1, got %d", resp.Meta.From)
-		}
-		if resp.Meta.To != 1 {
-			t.Errorf("expected to 1, got %d", resp.Meta.To)
+		if len(result) != 1 {
+			t.Errorf("expected 1 conversation, got %d", len(result))
 		}
 	})
 
@@ -218,7 +206,7 @@ func TestList(t *testing.T) {
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
 		q := ListConversationQuery{Page: 1, Limit: 10, Search: "john"}
-		_, err := svc.List(context.Background(), q, testTenant())
+		_, _, err := svc.List(context.Background(), q, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -236,7 +224,7 @@ func TestList(t *testing.T) {
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
 		q := ListConversationQuery{Page: 1, Limit: 10, Status: "active"}
-		_, err := svc.List(context.Background(), q, testTenant())
+		_, _, err := svc.List(context.Background(), q, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -254,7 +242,7 @@ func TestList(t *testing.T) {
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
 		q := ListConversationQuery{Page: 1, Limit: 10, ChannelID: 5}
-		_, err := svc.List(context.Background(), q, testTenant())
+		_, _, err := svc.List(context.Background(), q, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -272,7 +260,7 @@ func TestList(t *testing.T) {
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
 		q := ListConversationQuery{Page: 1, Limit: 10, AgentID: 3}
-		_, err := svc.List(context.Background(), q, testTenant())
+		_, _, err := svc.List(context.Background(), q, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}

@@ -32,16 +32,3 @@ type ListUserQuery struct {
 	SortBy string `query:"sort_by"`
 }
 
-type PaginatedResponse struct {
-	Meta PaginationMeta `json:"meta"`
-	Data interface{}    `json:"data"`
-}
-
-type PaginationMeta struct {
-	Total          int `json:"total"`
-	PerPage        int `json:"per_page"`
-	CurrentPage    int `json:"current_page"`
-	LastPage       int `json:"last_page"`
-	From           int `json:"from"`
-	To             int `json:"to"`
-}
