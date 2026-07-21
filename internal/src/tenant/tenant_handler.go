@@ -1,8 +1,6 @@
 package tenant
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
@@ -19,29 +17,56 @@ func NewTenantHandler(c *di.Container) *TenantHandler {
 	return &TenantHandler{service: service}
 }
 
-func (h *TenantHandler) List(c fiber.Ctx) error {
-	tenants, err := h.service.List(c.Context())
-	if err != nil {
-		return response.InternalServerError(c, err.Error())
+func (h *TenantHandler) Get(c fiber.Ctx) error {
+	t, ok := c.Locals("tenant").(*Tenant)
+	if !ok || t == nil {
+		return response.InternalServerError(c, "tenant context not found")
 	}
-
-	return response.OK(c, "Tenants retrieved successfully", tenants)
+	return response.OK(c, "Tenant retrieved successfully", t)
 }
 
-func (h *TenantHandler) Show(c fiber.Ctx) error {
-	idStr := c.Params("id")
-	id, err := strconv.Atoi(idStr)
-	if err != nil {
-		return response.BadRequest(c, "Invalid tenant ID", nil)
+func (h *TenantHandler) Update(c fiber.Ctx) error {
+	t, ok := c.Locals("tenant").(*Tenant)
+	if !ok || t == nil {
+		return response.InternalServerError(c, "tenant context not found")
 	}
 
-	tenant, err := h.service.GetByID(c.Context(), id)
-	if err != nil {
+	var req UpdateTenantRequest
+	if err := c.Bind().Body(&req); err != nil {
+		return response.BadRequest(c, "Invalid payload", nil)
+	}
+	if err := response.Validate(c, &req); err != nil {
+		return err
+	}
+
+	if req.Name != nil {
+		t.Name = *req.Name
+	}
+	if req.Domain != nil {
+		t.Domain = *req.Domain
+	}
+	if req.Logo != nil {
+		t.Logo = req.Logo
+	}
+	if req.Address != nil {
+		t.Address = req.Address
+	}
+	if req.Phone != nil {
+		t.Phone = req.Phone
+	}
+	if req.Email != nil {
+		t.Email = req.Email
+	}
+	if req.IsActive != nil {
+		t.IsActive = *req.IsActive
+	}
+	if req.Settings != nil {
+		t.Settings = req.Settings
+	}
+
+	if err := h.service.Update(c.Context(), t); err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
-	if tenant == nil {
-		return response.NotFound(c, "Tenant not found")
-	}
 
-	return response.OK(c, "Tenant retrieved successfully", tenant)
+	return response.OK(c, "Tenant updated successfully", t)
 }

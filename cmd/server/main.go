@@ -126,8 +126,8 @@ func main() {
 	dashHandler := dashboard.NewDashboardHandler(c)
 	dashboard.RegisterRoutes(dashGroup, dashHandler)
 
-	tenantGroup := app.Group("/api/tenants", authMw, adminOrAbove)
-	tenant.RegisterProtectedRoutes(tenantGroup, tenantHandler)
+	tenantGroup := app.Group("/api/tenant", authMw, adminOrAbove)
+	tenant.RegisterRoutes(tenantGroup, tenantHandler)
 
 	c.Logger.Info("Starting server on port %d", cfg.Port)
 

@@ -217,6 +217,9 @@ func (m *mockTenantRepository) GetByMetaPageID(ctx context.Context, q tenant.DBT
 func (m *mockTenantRepository) GetByMetaInstagramBusinessID(ctx context.Context, q tenant.DBTX, igID string) (*tenant.Tenant, error) {
 	panic("unexpected call")
 }
+func (m *mockTenantRepository) Update(ctx context.Context, q tenant.DBTX, tenant *tenant.Tenant) error {
+	panic("unexpected call")
+}
 
 // mockMessenger
 type mockMessenger struct{}

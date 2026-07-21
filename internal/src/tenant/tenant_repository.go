@@ -25,8 +25,8 @@ type TenantRepository interface {
 	CreateRole(ctx context.Context, q DBTX, tenantID int, name string) (int, error)
 	CreateUser(ctx context.Context, q DBTX, user *User) (int, error)
 	AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID int) error
-	List(ctx context.Context, q DBTX) ([]Tenant, error)
 	GetByID(ctx context.Context, q DBTX, id int) (*Tenant, error)
+	Update(ctx context.Context, q DBTX, tenant *Tenant) error
 	GetByMetaPageID(ctx context.Context, q DBTX, pageID string) (*Tenant, error)
 	GetByMetaInstagramBusinessID(ctx context.Context, q DBTX, igID string) (*Tenant, error)
 }

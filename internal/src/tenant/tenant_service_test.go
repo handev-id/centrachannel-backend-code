@@ -50,7 +50,8 @@ func (c *mockConnector) Connect(ctx context.Context) (driver.Conn, error) { retu
 func (c *mockConnector) Driver() driver.Driver                            { return &mockDriver{} }
 
 type mockTenantRepository struct {
-	listFn func(ctx context.Context, q DBTX) ([]Tenant, error)
+	getByIDFn func(ctx context.Context, q DBTX, id int) (*Tenant, error)
+	updateFn  func(ctx context.Context, q DBTX, tenant *Tenant) error
 }
 
 func (m *mockTenantRepository) Create(ctx context.Context, q DBTX, tenant *Tenant) (int, error) {
@@ -65,11 +66,11 @@ func (m *mockTenantRepository) CreateUser(ctx context.Context, q DBTX, user *Use
 func (m *mockTenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
 	return nil
 }
-func (m *mockTenantRepository) List(ctx context.Context, q DBTX) ([]Tenant, error) {
-	return m.listFn(ctx, q)
-}
 func (m *mockTenantRepository) GetByID(ctx context.Context, q DBTX, id int) (*Tenant, error) {
-	return &Tenant{}, nil
+	return m.getByIDFn(ctx, q, id)
+}
+func (m *mockTenantRepository) Update(ctx context.Context, q DBTX, tenant *Tenant) error {
+	return m.updateFn(ctx, q, tenant)
 }
 func (m *mockTenantRepository) GetByMetaPageID(ctx context.Context, q DBTX, pageID string) (*Tenant, error) {
 	return nil, nil
@@ -82,34 +83,50 @@ func newMockDB() *sql.DB {
 	return sql.OpenDB(&mockConnector{})
 }
 
-func TestList(t *testing.T) {
-	t.Run("returns all tenants", func(t *testing.T) {
-		expected := []Tenant{
-			{ID: 1, Name: "Alpha", Domain: "alpha.com", IsActive: true},
-			{ID: 2, Name: "Beta", Domain: "beta.com", IsActive: true},
-		}
+func TestGetByID(t *testing.T) {
+	t.Run("returns tenant by id", func(t *testing.T) {
+		expected := &Tenant{ID: 1, Name: "Alpha", Domain: "alpha.com", IsActive: true}
 
 		repo := &mockTenantRepository{
-			listFn: func(ctx context.Context, q DBTX) ([]Tenant, error) {
+			getByIDFn: func(ctx context.Context, q DBTX, id int) (*Tenant, error) {
 				return expected, nil
 			},
 		}
 
 		svc := NewTenantService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
-		tenants, err := svc.List(context.Background())
+		tenant, err := svc.GetByID(context.Background(), 1)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if len(tenants) != 2 {
-			t.Fatalf("expected 2 tenants, got %d", len(tenants))
+		if tenant.Name != "Alpha" {
+			t.Errorf("expected tenant name Alpha, got %s", tenant.Name)
 		}
-		if tenants[0].Name != "Alpha" {
-			t.Errorf("expected tenant name Alpha, got %s", tenants[0].Name)
+	})
+}
+
+func TestUpdate(t *testing.T) {
+	t.Run("updates tenant successfully", func(t *testing.T) {
+		var updatedTenant *Tenant
+
+		repo := &mockTenantRepository{
+			updateFn: func(ctx context.Context, q DBTX, tenant *Tenant) error {
+				updatedTenant = tenant
+				return nil
+			},
 		}
-		if tenants[1].Name != "Beta" {
-			t.Errorf("expected tenant name Beta, got %s", tenants[1].Name)
+
+		svc := NewTenantService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
+
+		tenant := &Tenant{ID: 1, Name: "Updated Name", Domain: "updated.com"}
+		err := svc.Update(context.Background(), tenant)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if updatedTenant == nil || updatedTenant.Name != "Updated Name" {
+			t.Errorf("expected tenant to be updated")
 		}
 	})
 }

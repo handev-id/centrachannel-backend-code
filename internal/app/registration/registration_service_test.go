@@ -81,6 +81,9 @@ func (m *mockTenantRepository) GetByMetaPageID(ctx context.Context, q tenant.DBT
 func (m *mockTenantRepository) GetByMetaInstagramBusinessID(ctx context.Context, q tenant.DBTX, igID string) (*tenant.Tenant, error) {
 	return nil, nil
 }
+func (m *mockTenantRepository) Update(ctx context.Context, q tenant.DBTX, tenant *tenant.Tenant) error {
+	return nil
+}
 
 func newMockDB() *sql.DB {
 	return sql.OpenDB(&mockConnector{})

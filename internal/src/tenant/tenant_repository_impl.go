@@ -87,47 +87,11 @@ func scanTenant(row interface{ Scan(dest ...interface{}) error }) (*Tenant, erro
 	return &t, nil
 }
 
-func (r *tenantRepository) List(ctx context.Context, q DBTX) ([]Tenant, error) {
-	query := `SELECT id, name, domain, logo, address, phone, email, is_active, settings, created_at, updated_at FROM tenants ORDER BY created_at DESC`
-	rows, err := q.QueryContext(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-
-	var tenants []Tenant
-	for rows.Next() {
-		var t Tenant
-		var logo, settings sql.NullString
-		var address, phone, email sql.NullString
-
-		err := rows.Scan(&t.ID, &t.Name, &t.Domain, &logo, &address, &phone, &email, &t.IsActive, &settings, &t.CreatedAt, &t.UpdatedAt)
-		if err != nil {
-			return nil, err
-		}
-
-		if logo.Valid {
-			t.Logo = json.RawMessage(logo.String)
-		}
-		if address.Valid {
-			t.Address = &address.String
-		}
-		if phone.Valid {
-			t.Phone = &phone.String
-		}
-		if email.Valid {
-			t.Email = &email.String
-		}
-		if settings.Valid {
-			t.Settings = json.RawMessage(settings.String)
-		}
-
-		tenants = append(tenants, t)
-	}
-
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-
-	return tenants, nil
+func (r *tenantRepository) Update(ctx context.Context, q DBTX, tenant *Tenant) error {
+	query := `UPDATE tenants SET name=$1, domain=$2, logo=$3, address=$4, phone=$5, email=$6, is_active=$7, settings=$8, updated_at=$9 WHERE id=$10`
+	_, err := q.ExecContext(ctx, query,
+		tenant.Name, tenant.Domain, tenant.Logo, tenant.Address, tenant.Phone, tenant.Email,
+		tenant.IsActive, tenant.Settings, time.Now(), tenant.ID,
+	)
+	return err
 }
