@@ -42,9 +42,6 @@ func (h *TenantHandler) Update(c fiber.Ctx) error {
 	if req.Name != nil {
 		t.Name = *req.Name
 	}
-	if req.Domain != nil {
-		t.Domain = *req.Domain
-	}
 	if req.Logo != nil {
 		t.Logo = req.Logo
 	}
