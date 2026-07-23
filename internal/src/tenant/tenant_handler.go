@@ -2,12 +2,14 @@ package tenant
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/utils/tenantutils"
 )
 
 type TenantHandler struct {
@@ -30,7 +32,14 @@ func (h *TenantHandler) Get(c fiber.Ctx) error {
 	if !ok || t == nil {
 		return response.InternalServerError(c, "tenant context not found")
 	}
-	return response.OK(c, "Tenant retrieved successfully", t)
+
+	resp, err := tenantutils.DeepCopyJSON(t)
+	if err != nil {
+		return response.InternalServerError(c, "Failed to copy tenant data")
+	}
+	resp.Settings = tenantutils.StripSettings(resp.Settings)
+
+	return response.OK(c, "Tenant retrieved successfully", resp)
 }
 
 func (h *TenantHandler) Update(c fiber.Ctx) error {
@@ -74,8 +83,14 @@ func (h *TenantHandler) Update(c fiber.Ctx) error {
 	}
 
 	// Invalidate Redis cache so the next request loads fresh data
-	cacheKey := "tenant:" + t.Domain
+	cacheKey := fmt.Sprintf("tenant:%s", t.Domain)
 	h.rdb.Del(c.Context(), cacheKey)
 
-	return response.OK(c, "Tenant updated successfully", t)
+	resp, err := tenantutils.DeepCopyJSON(t)
+	if err != nil {
+		return response.InternalServerError(c, "Failed to copy tenant data")
+	}
+	resp.Settings = tenantutils.StripSettings(resp.Settings)
+
+	return response.OK(c, "Tenant updated successfully", resp)
 }
