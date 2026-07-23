@@ -1,7 +1,10 @@
 package tenant
 
 import (
+	"context"
+
 	"github.com/gofiber/fiber/v3"
+	"github.com/redis/go-redis/v9"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/utils/response"
@@ -9,12 +12,17 @@ import (
 
 type TenantHandler struct {
 	service TenantService
+	rdb     RedisClient
+}
+
+type RedisClient interface {
+	Del(ctx context.Context, keys ...string) *redis.IntCmd
 }
 
 func NewTenantHandler(c *di.Container) *TenantHandler {
 	repo := NewTenantRepository()
 	service := NewTenantService(repo, c.DB, c.Config, c.Logger)
-	return &TenantHandler{service: service}
+	return &TenantHandler{service: service, rdb: c.Redis}
 }
 
 func (h *TenantHandler) Get(c fiber.Ctx) error {
@@ -64,6 +72,10 @@ func (h *TenantHandler) Update(c fiber.Ctx) error {
 	if err := h.service.Update(c.Context(), t); err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
+
+	// Invalidate Redis cache so the next request loads fresh data
+	cacheKey := "tenant:" + t.Domain
+	h.rdb.Del(c.Context(), cacheKey)
 
 	return response.OK(c, "Tenant updated successfully", t)
 }
