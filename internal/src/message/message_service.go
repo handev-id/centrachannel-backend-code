@@ -26,15 +26,15 @@ type MessageService interface {
 }
 
 type messageService struct {
-	repo         MessageRepository
-	convRepo     conversation.ConversationRepository
-	profileRepo  profile.ProfileRepository
-	channelRepo  channel.ChannelRepository
-	tenantRepo   tenant.TenantRepository
-	db           *sql.DB
-	cfg          *config.Config
-	logger       *logger.Logger
-	rdb          *redis.Client
+	repo        MessageRepository
+	convRepo    conversation.ConversationRepository
+	profileRepo profile.ProfileRepository
+	channelRepo channel.ChannelRepository
+	tenantRepo  tenant.TenantRepository
+	db          *sql.DB
+	cfg         *config.Config
+	logger      *logger.Logger
+	rdb         *redis.Client
 }
 
 func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, rdb *redis.Client) MessageService {
@@ -42,8 +42,12 @@ func NewMessageService(repo MessageRepository, convRepo conversation.Conversatio
 }
 
 func (s *messageService) List(ctx context.Context, conversationID int, q ListMessageQuery) ([]*Message, int, error) {
-	if q.Page < 1 { q.Page = 1 }
-	if q.Limit < 1 || q.Limit > 100 { q.Limit = 50 }
+	if q.Page < 1 {
+		q.Page = 1
+	}
+	if q.Limit < 1 || q.Limit > 100 {
+		q.Limit = 50
+	}
 	offset := (q.Page - 1) * q.Limit
 
 	msgs, total, err := s.repo.List(ctx, s.db, conversationID, q.Limit, offset)
@@ -107,8 +111,6 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	lastMsg := map[string]interface{}{
 		"text":        req.Text,
 		"sender_type": req.SenderType,
-		"sender_id":   req.SenderID,
-		"created_at":  time.Now(),
 	}
 	if len(req.Attachment) > 0 {
 		var att map[string]interface{}

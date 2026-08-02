@@ -166,7 +166,6 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	lastMsg := map[string]interface{}{
 		"text":        text,
 		"sender_type": "contact",
-		"created_at":  now,
 	}
 	lastMsgJSON, _ := json.Marshal(lastMsg)
 
@@ -354,7 +353,6 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	lastMsg := map[string]interface{}{
 		"text":        text,
 		"sender_type": "user",
-		"created_at":  now,
 	}
 	lastMsgJSON, _ := json.Marshal(lastMsg)
 
@@ -586,7 +584,6 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 			lastMsg := map[string]interface{}{
 				"text":        msgText,
 				"sender_type": "contact",
-				"created_at":  time.Now(),
 			}
 			lastMsgJSON, _ := json.Marshal(lastMsg)
 			_ = s.convRepo.UpdateLastMessage(ctx, s.db, t.ID, conv.ID, lastMsgJSON, nil)
