@@ -1,7 +1,6 @@
 package conversation
 
 type ListConversationQuery struct {
-	Page         int    `query:"page"`
 	Limit        int    `query:"limit"`
 	Status       string `query:"status"`
 	ChannelID    int    `query:"channel_id"`

@@ -39,23 +39,14 @@ func (m *mockDB) BeginTx(ctx context.Context, opts *sql.TxOptions) (*sql.Tx, err
 }
 
 type mockConversationRepository struct {
-	listCalled    bool
-	listTenantID  int
-	listLimit     int
-	listOffset    int
-	listStatus    string
-	listChannelID int
-	listAgentID   int
-	listSearch    string
-
 	getByIDCalled bool
 
 	createCalled bool
 	createConv   *Conversation
 
-	updateStatusCalled   bool
-	updateStatusID       int
-	updateStatusString   string
+	updateStatusCalled bool
+	updateStatusID     int
+	updateStatusString string
 
 	assignCalled   bool
 	assignTenantID int
@@ -70,9 +61,12 @@ type mockConversationRepository struct {
 	markReadTenantID int
 	markReadConvID   int
 
-	listConvs []*Conversation
-	listTotal int
-	listErr   error
+	listCursorCalled       bool
+	listCursorLimit        int
+	listCursorLastActivity *time.Time
+	listCursorLastID       int
+	listCursorConvs        []*Conversation
+	listCursorErr          error
 
 	getByIDConv *Conversation
 	getByIDErr  error
@@ -85,18 +79,6 @@ type mockConversationRepository struct {
 	assignErr   error
 	unassignErr error
 	markReadErr error
-}
-
-func (m *mockConversationRepository) List(_ context.Context, _ DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*Conversation, int, error) {
-	m.listCalled = true
-	m.listTenantID = tenantID
-	m.listLimit = limit
-	m.listOffset = offset
-	m.listStatus = status
-	m.listChannelID = channelID
-	m.listAgentID = agentID
-	m.listSearch = search
-	return m.listConvs, m.listTotal, m.listErr
 }
 
 func (m *mockConversationRepository) GetByID(_ context.Context, _ DBTX, _, _ int) (*Conversation, error) {
@@ -143,8 +125,12 @@ func (m *mockConversationRepository) MarkRead(_ context.Context, _ DBTX, tenantI
 	return m.markReadErr
 }
 
-func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ int, _ int, _ string, _, _ int, _ string, _ *time.Time, _ int) ([]*Conversation, error) {
-	return nil, nil
+func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ int, limit int, _ string, _, _ int, _ string, lastActivity *time.Time, lastID int) ([]*Conversation, error) {
+	m.listCursorCalled = true
+	m.listCursorLimit = limit
+	m.listCursorLastActivity = lastActivity
+	m.listCursorLastID = lastID
+	return m.listCursorConvs, m.listCursorErr
 }
 
 func (m *mockConversationRepository) UpdateLastMessage(_ context.Context, _ DBTX, _, _ int, _ []byte, _ *int) error {
@@ -167,106 +153,119 @@ func testTenant() *tenant.Tenant {
 	return &tenant.Tenant{ID: 1, Name: "Test Tenant"}
 }
 
-func TestList(t *testing.T) {
-	t.Run("defaults", func(t *testing.T) {
+func TestListCursor(t *testing.T) {
+	t.Run("defaults_and_passes_cursor", func(t *testing.T) {
+		activity := time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC)
 		mockRepo := &mockConversationRepository{
-			listConvs: []*Conversation{{ID: 1, TenantID: 1}},
-			listTotal: 1,
+			listCursorConvs: []*Conversation{
+				{ID: 20, TenantID: 1, LastActivity: &activity},
+				{ID: 19, TenantID: 1, LastActivity: &activity},
+			},
 		}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		result, total, err := svc.List(context.Background(), ListConversationQuery{}, testTenant())
+		q := ListConversationQuery{Limit: 0, LastID: 20, LastActivity: activity.Format(time.RFC3339)}
+		result, lastID, lastActivity, hasMore, err := svc.ListCursor(context.Background(), q, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if !mockRepo.listCalled {
-			t.Error("List was not called")
+		if !mockRepo.listCursorCalled {
+			t.Error("ListCursor was not called")
 		}
-		if mockRepo.listLimit != 20 {
-			t.Errorf("expected default limit 20, got %d", mockRepo.listLimit)
+		if mockRepo.listCursorLimit != 21 {
+			t.Errorf("expected limit+1 = 21, got %d", mockRepo.listCursorLimit)
 		}
-		if mockRepo.listOffset != 0 {
-			t.Errorf("expected offset 0, got %d", mockRepo.listOffset)
+		if mockRepo.listCursorLastID != 20 {
+			t.Errorf("expected lastID 20, got %d", mockRepo.listCursorLastID)
+		}
+		if mockRepo.listCursorLastActivity == nil || !mockRepo.listCursorLastActivity.Equal(activity) {
+			t.Errorf("expected lastActivity %v, got %v", activity, mockRepo.listCursorLastActivity)
 		}
 
-		if total != 1 {
-			t.Errorf("expected total 1, got %d", total)
+		if len(result) != 2 {
+			t.Errorf("expected 2 conversations, got %d", len(result))
 		}
-		if len(result) != 1 {
-			t.Errorf("expected 1 conversation, got %d", len(result))
+		if lastID != 19 {
+			t.Errorf("expected lastID 19, got %d", lastID)
+		}
+		if lastActivity != activity.Format(time.RFC3339) {
+			t.Errorf("expected lastActivity %s, got %s", activity.Format(time.RFC3339), lastActivity)
+		}
+		if hasMore {
+			t.Error("expected hasMore false")
 		}
 	})
 
-	t.Run("search_filter", func(t *testing.T) {
-		mockRepo := &mockConversationRepository{
-			listConvs: []*Conversation{},
-			listTotal: 0,
+	t.Run("has_more_trims_extra_item", func(t *testing.T) {
+		activity := time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC)
+		convs := make([]*Conversation, 0, 21)
+		for i := 40; i >= 20; i-- {
+			convs = append(convs, &Conversation{ID: i, TenantID: 1, LastActivity: &activity})
 		}
+		mockRepo := &mockConversationRepository{listCursorConvs: convs}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		q := ListConversationQuery{Page: 1, Limit: 10, Search: "john"}
-		_, _, err := svc.List(context.Background(), q, testTenant())
+		result, lastID, _, hasMore, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: 41, LastActivity: activity.Format(time.RFC3339)}, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
-
-		if mockRepo.listSearch != "john" {
-			t.Errorf("expected search 'john', got %q", mockRepo.listSearch)
+		if len(result) != 20 {
+			t.Errorf("expected 20 conversations, got %d", len(result))
+		}
+		if !hasMore {
+			t.Error("expected hasMore true")
+		}
+		if lastID != 21 {
+			t.Errorf("expected lastID 21 (last kept item), got %d", lastID)
 		}
 	})
 
-	t.Run("status_filter", func(t *testing.T) {
-		mockRepo := &mockConversationRepository{
-			listConvs: []*Conversation{},
-			listTotal: 0,
-		}
+	t.Run("invalid_last_activity", func(t *testing.T) {
+		mockRepo := &mockConversationRepository{}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		q := ListConversationQuery{Page: 1, Limit: 10, Status: "active"}
-		_, _, err := svc.List(context.Background(), q, testTenant())
-		if err != nil {
-			t.Fatal(err)
-		}
-
-		if mockRepo.listStatus != "active" {
-			t.Errorf("expected status 'active', got %q", mockRepo.listStatus)
+		_, _, _, _, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: 10, LastActivity: "not-a-time"}, testTenant())
+		if err == nil {
+			t.Error("expected error for invalid last_activity")
 		}
 	})
 
-	t.Run("channel_filter", func(t *testing.T) {
+	t.Run("null_activity_tail_passes_id_only", func(t *testing.T) {
 		mockRepo := &mockConversationRepository{
-			listConvs: []*Conversation{},
-			listTotal: 0,
+			listCursorConvs: []*Conversation{
+				{ID: 30, TenantID: 1}, // LastActivity nil
+				{ID: 29, TenantID: 1}, // LastActivity nil
+			},
 		}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		q := ListConversationQuery{Page: 1, Limit: 10, ChannelID: 5}
-		_, _, err := svc.List(context.Background(), q, testTenant())
+		result, lastID, lastActivity, hasMore, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: 31, LastActivity: ""}, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if mockRepo.listChannelID != 5 {
-			t.Errorf("expected channel_id 5, got %d", mockRepo.listChannelID)
+		if !mockRepo.listCursorCalled {
+			t.Error("ListCursor was not called")
 		}
-	})
-
-	t.Run("agent_filter", func(t *testing.T) {
-		mockRepo := &mockConversationRepository{
-			listConvs: []*Conversation{},
-			listTotal: 0,
+		if mockRepo.listCursorLastActivity != nil {
+			t.Errorf("expected nil lastActivity for null-activity tail, got %v", mockRepo.listCursorLastActivity)
 		}
-		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
-
-		q := ListConversationQuery{Page: 1, Limit: 10, AgentID: 3}
-		_, _, err := svc.List(context.Background(), q, testTenant())
-		if err != nil {
-			t.Fatal(err)
+		if mockRepo.listCursorLastID != 31 {
+			t.Errorf("expected lastID 31, got %d", mockRepo.listCursorLastID)
 		}
 
-		if mockRepo.listAgentID != 3 {
-			t.Errorf("expected agent_id 3, got %d", mockRepo.listAgentID)
+		if len(result) != 2 {
+			t.Errorf("expected 2 conversations, got %d", len(result))
+		}
+		if lastID != 29 {
+			t.Errorf("expected lastID 29, got %d", lastID)
+		}
+		if lastActivity != "" {
+			t.Errorf("expected empty lastActivity, got %q", lastActivity)
+		}
+		if hasMore {
+			t.Error("expected hasMore false")
 		}
 	})
 }

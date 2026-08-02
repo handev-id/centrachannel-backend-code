@@ -11,15 +11,11 @@ import (
 )
 
 type mockMessageService struct {
-	listFunc         func(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, error)
 	listCursorFunc   func(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error)
 	sendFunc         func(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error)
 	updateStatusFunc func(ctx context.Context, id int, status string) error
 }
 
-func (m *mockMessageService) List(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, error) {
-	return m.listFunc(ctx, conversationID, q)
-}
 func (m *mockMessageService) ListCursor(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
 	return m.listCursorFunc(ctx, conversationID, q)
 }
@@ -30,16 +26,13 @@ func (m *mockMessageService) UpdateStatus(ctx context.Context, id int, status st
 	return m.updateStatusFunc(ctx, id, status)
 }
 
-func TestMessageList_Success(t *testing.T) {
-	text := "Hello, world!"
+func TestMessageListCursor_Success(t *testing.T) {
+	text := "Older message"
 	mock := &mockMessageService{
-		listFunc: func(_ context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, error) {
+		listCursorFunc: func(_ context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
 			return []*message.Message{
-				{
-					ID: 1, TenantID: 1, ConversationID: conversationID,
-					Text: &text, Status: "sent", SenderID: 1, SenderType: "user",
-				},
-			}, 1, nil
+				{ID: 40, TenantID: 1, ConversationID: conversationID, Text: &text, Status: "sent", SenderID: 1, SenderType: "user"},
+			}, 40, true, nil
 		},
 	}
 
@@ -48,7 +41,7 @@ func TestMessageList_Success(t *testing.T) {
 	app.Use(TestAuthMiddleware())
 	message.RegisterConversationRoutes(app.Group("/api/v1/tenant/conversations"), handler)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/tenant/conversations/1/messages?page=1&limit=50", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/tenant/conversations/1/messages?last_id=50&limit=50", nil)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatal(err)
@@ -60,10 +53,11 @@ func TestMessageList_Success(t *testing.T) {
 	}
 
 	var result struct {
-		Data        json.RawMessage `json:"data"`
-		Total       int             `json:"total"`
-		PerPage     int             `json:"per_page"`
-		CurrentPage int             `json:"current_page"`
+		Meta struct {
+			LastID  int  `json:"last_id"`
+			HasMore bool `json:"has_more"`
+		} `json:"meta"`
+		Data json.RawMessage `json:"data"`
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -73,14 +67,11 @@ func TestMessageList_Success(t *testing.T) {
 		t.Fatalf("unmarshal error: %v\nbody: %s", err, string(body))
 	}
 
-	if result.Total != 1 {
-		t.Errorf("expected total 1, got %d", result.Total)
+	if result.Meta.LastID != 40 {
+		t.Errorf("expected last_id 40, got %d", result.Meta.LastID)
 	}
-	if result.PerPage != 50 {
-		t.Errorf("expected per_page 50, got %d", result.PerPage)
-	}
-	if result.CurrentPage != 1 {
-		t.Errorf("expected current_page 1, got %d", result.CurrentPage)
+	if !result.Meta.HasMore {
+		t.Error("expected has_more true")
 	}
 
 	var items []*message.Message
@@ -90,14 +81,8 @@ func TestMessageList_Success(t *testing.T) {
 	if len(items) != 1 {
 		t.Fatalf("expected 1 message, got %d", len(items))
 	}
-	if items[0].ID != 1 {
-		t.Errorf("expected message id 1, got %d", items[0].ID)
-	}
-	if items[0].ConversationID != 1 {
-		t.Errorf("expected conversation_id 1, got %d", items[0].ConversationID)
-	}
-	if items[0].SenderType != "user" {
-		t.Errorf("expected sender_type 'user', got %q", items[0].SenderType)
+	if items[0].ID != 40 {
+		t.Errorf("expected message id 40, got %d", items[0].ID)
 	}
 }
 

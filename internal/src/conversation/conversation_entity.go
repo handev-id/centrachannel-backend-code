@@ -19,4 +19,12 @@ type Conversation struct {
 	LastSeen    *time.Time       `json:"last_seen,omitempty"`
 	CreatedAt   time.Time        `json:"created_at"`
 	UpdatedAt   time.Time        `json:"updated_at"`
+	Contact     *ConversationContact `json:"contact,omitempty"`
+}
+
+type ConversationContact struct {
+	ID        int             `json:"id"`
+	FirstName string          `json:"first_name"`
+	LastName  *string         `json:"last_name,omitempty"`
+	Avatar    json.RawMessage `json:"avatar,omitempty"`
 }

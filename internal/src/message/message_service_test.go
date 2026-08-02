@@ -57,10 +57,9 @@ func (t *mockSQLTx) Rollback() error { return nil }
 // mock repositories
 
 type mockMessageRepository struct {
-	createFunc                 func(ctx context.Context, q DBTX, msg *Message) (int, error)
-	listFunc                   func(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error)
-	listCursorFunc             func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error)
-	updateStatusFunc           func(ctx context.Context, q DBTX, id int, status string) error
+	createFunc                  func(ctx context.Context, q DBTX, msg *Message) (int, error)
+	listCursorFunc              func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error)
+	updateStatusFunc            func(ctx context.Context, q DBTX, id int, status string) error
 	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, webhookMessageID string, status string) error
 }
 
@@ -68,9 +67,6 @@ func (m *mockMessageRepository) Create(ctx context.Context, q DBTX, msg *Message
 	return m.createFunc(ctx, q, msg)
 }
 
-func (m *mockMessageRepository) List(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error) {
-	return m.listFunc(ctx, q, conversationID, limit, offset)
-}
 func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
 	return m.listCursorFunc(ctx, q, conversationID, limit, lastID)
 }
@@ -92,10 +88,6 @@ func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id 
 
 type mockConversationRepository struct {
 	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
-}
-
-func (m *mockConversationRepository) List(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
-	panic("unexpected call")
 }
 
 func (m *mockConversationRepository) GetByID(ctx context.Context, q conversation.DBTX, tenantID int, id int) (*conversation.Conversation, error) {
@@ -410,7 +402,7 @@ func TestMessageService_Send(t *testing.T) {
 	})
 }
 
-func TestMessageService_List(t *testing.T) {
+func TestMessageService_ListCursor(t *testing.T) {
 	db, err := sql.Open("mock", "")
 	if err != nil {
 		t.Fatal(err)
@@ -419,14 +411,14 @@ func TestMessageService_List(t *testing.T) {
 	log := logger.NewLogger("debug", "text")
 	ctx := context.Background()
 
-	t.Run("pagination defaults when page and limit are zero", func(t *testing.T) {
-		var capturedLimit, capturedOffset int
+	t.Run("defaults_limit_and_passes_cursor", func(t *testing.T) {
+		var capturedLimit, capturedLastID int
 
 		msgRepo := &mockMessageRepository{
-			listFunc: func(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error) {
+			listCursorFunc: func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
 				capturedLimit = limit
-				capturedOffset = offset
-				return []*Message{}, 0, nil
+				capturedLastID = lastID
+				return []*Message{{ID: 50}, {ID: 49}, {ID: 48}}, nil
 			},
 		}
 		convRepo := &mockConversationRepository{
@@ -436,31 +428,42 @@ func TestMessageService_List(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		result, total, err := svc.List(ctx, 1, ListMessageQuery{Page: 0, Limit: 0})
+		result, lastID, hasMore, err := svc.ListCursor(ctx, 1, ListMessageQuery{Limit: 0, LastID: 55})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedLimit != 50 {
-			t.Errorf("expected default limit 50, got %d", capturedLimit)
+		if capturedLimit != 51 {
+			t.Errorf("expected limit+1 = 51, got %d", capturedLimit)
 		}
-		if capturedOffset != 0 {
-			t.Errorf("expected offset 0, got %d", capturedOffset)
+		if capturedLastID != 55 {
+			t.Errorf("expected lastID 55, got %d", capturedLastID)
 		}
-		if total != 0 {
-			t.Errorf("expected total 0, got %d", total)
+		if hasMore {
+			t.Error("expected hasMore false")
 		}
-		if len(result) != 0 {
-			t.Errorf("expected 0 messages, got %d", len(result))
+		// repo returns DESC (newest first); service reverses to ascending chronological order
+		if len(result) != 3 {
+			t.Fatalf("expected 3 messages, got %d", len(result))
+		}
+		if result[0].ID != 48 || result[1].ID != 49 || result[2].ID != 50 {
+			t.Errorf("expected reversed ascending order [48,49,50], got [%d,%d,%d]", result[0].ID, result[1].ID, result[2].ID)
+		}
+		if lastID != 48 {
+			t.Errorf("expected cursor lastID 48 (oldest kept), got %d", lastID)
 		}
 	})
 
-	t.Run("limit defaults to 50 when invalid value is given", func(t *testing.T) {
+	t.Run("has_more_trims_and_keeps_newest", func(t *testing.T) {
 		var capturedLimit int
+		msgs := make([]*Message, 0, 51)
+		for i := 51; i >= 1; i-- {
+			msgs = append(msgs, &Message{ID: i})
+		}
 
 		msgRepo := &mockMessageRepository{
-			listFunc: func(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error) {
+			listCursorFunc: func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
 				capturedLimit = limit
-				return []*Message{}, 0, nil
+				return msgs, nil
 			},
 		}
 		convRepo := &mockConversationRepository{
@@ -470,12 +473,24 @@ func TestMessageService_List(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		_, _, err := svc.List(ctx, 1, ListMessageQuery{Page: 1, Limit: 200})
+		result, lastID, hasMore, err := svc.ListCursor(ctx, 1, ListMessageQuery{Limit: 50, LastID: 60})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedLimit != 50 {
-			t.Errorf("expected default limit 50, got %d", capturedLimit)
+		if capturedLimit != 51 {
+			t.Errorf("expected limit+1 = 51, got %d", capturedLimit)
+		}
+		if !hasMore {
+			t.Error("expected hasMore true")
+		}
+		if len(result) != 50 {
+			t.Fatalf("expected 50 messages, got %d", len(result))
+		}
+		if result[0].ID != 2 || result[49].ID != 51 {
+			t.Errorf("expected ascending [2..51], got first=%d last=%d", result[0].ID, result[49].ID)
+		}
+		if lastID != 2 {
+			t.Errorf("expected cursor lastID 2 (oldest kept), got %d", lastID)
 		}
 	})
 }

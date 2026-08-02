@@ -87,16 +87,11 @@ func (m *mockChannelRepo) GetByType(ctx context.Context, q channel.DBTX, channel
 func (m *mockChannelRepo) List(ctx context.Context, q channel.DBTX) ([]channel.Channel, error) { return nil, nil }
 
 type mockConvRepo struct {
-	listFunc                    func(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error)
 	createFunc                  func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error)
 	updateLastMessageFunc       func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
 	findOpenByProfileAndChannelFunc func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error)
 }
 
-func (m *mockConvRepo) List(ctx context.Context, q conversation.DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*conversation.Conversation, int, error) {
-	if m.listFunc != nil { return m.listFunc(ctx, q, tenantID, limit, offset, status, channelID, agentID, search) }
-	return nil, 0, nil
-}
 func (m *mockConvRepo) GetByID(ctx context.Context, q conversation.DBTX, tenantID int, id int) (*conversation.Conversation, error) { return nil, nil }
 func (m *mockConvRepo) Create(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error) {
 	if m.createFunc != nil { return m.createFunc(ctx, q, conv) }
@@ -124,7 +119,6 @@ type mockMsgRepo struct {
 	updateStatusByWebhookIDFunc func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error
 }
 
-func (m *mockMsgRepo) List(ctx context.Context, q message.DBTX, conversationID int, limit, offset int) ([]*message.Message, int, error) { return nil, 0, nil }
 func (m *mockMsgRepo) Create(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) {
 	if m.createFunc != nil { return m.createFunc(ctx, q, msg) }
 	return 0, nil

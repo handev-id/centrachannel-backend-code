@@ -6,13 +6,13 @@ import (
 	"io"
 	"net/http"
 	"testing"
+	"time"
 
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/src/tenant"
 )
 
 type mockConversationService struct {
-	listFunc             func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, error)
 	listCursorFunc       func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error)
 	getByIDFunc          func(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error)
 	createFunc           func(ctx context.Context, req conversation.CreateConversationRequest, t *tenant.Tenant) (*conversation.Conversation, error)
@@ -24,9 +24,6 @@ type mockConversationService struct {
 	getTotalUnreadFunc   func(ctx context.Context, tenantID int) (int, error)
 }
 
-func (m *mockConversationService) List(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, error) {
-	return m.listFunc(ctx, q, t)
-}
 func (m *mockConversationService) ListCursor(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error) {
 	return m.listCursorFunc(ctx, q, t)
 }
@@ -55,15 +52,16 @@ func (m *mockConversationService) GetTotalUnread(ctx context.Context, tenantID i
 	return m.getTotalUnreadFunc(ctx, tenantID)
 }
 
-func intPtr(i int) *int { return &i }
-
-func TestConversationList_Success(t *testing.T) {
+func TestConversationListCursor_Success(t *testing.T) {
+	activity := time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC)
+	lastName := "Santoso"
 	mock := &mockConversationService{
-		listFunc: func(_ context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, error) {
+		listCursorFunc: func(_ context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error) {
 			return []*conversation.Conversation{
-				{ID: 1, TenantID: 1, Status: "unassigned", ProfileID: 1, ChannelID: 1},
-				{ID: 2, TenantID: 1, Status: "assigned", ProfileID: 2, ChannelID: 1, AgentID: intPtr(1)},
-			}, 2, nil
+				{ID: 12, TenantID: 1, Status: "assigned", ProfileID: 1, ChannelID: 1, LastActivity: &activity,
+					Contact: &conversation.ConversationContact{ID: 7, FirstName: "Budi", LastName: &lastName, Avatar: json.RawMessage(`{"url":"https://cdn.example.com/avatar.png"}`)}},
+				{ID: 11, TenantID: 1, Status: "unassigned", ProfileID: 2, ChannelID: 1, LastActivity: &activity},
+			}, 11, activity.Format(time.RFC3339), true, nil
 		},
 	}
 
@@ -72,7 +70,7 @@ func TestConversationList_Success(t *testing.T) {
 	app.Use(TestAuthMiddleware())
 	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
 
-	req, _ := http.NewRequest(http.MethodGet, "/api/v1/tenant/conversations?page=1&limit=20", nil)
+	req, _ := http.NewRequest(http.MethodGet, "/api/v1/tenant/conversations?last_id=13&last_activity=2026-08-02T11:00:00Z", nil)
 	resp, err := app.Test(req)
 	if err != nil {
 		t.Fatal(err)
@@ -84,10 +82,12 @@ func TestConversationList_Success(t *testing.T) {
 	}
 
 	var result struct {
-		Data        json.RawMessage `json:"data"`
-		Total       int             `json:"total"`
-		PerPage     int             `json:"per_page"`
-		CurrentPage int             `json:"current_page"`
+		Meta struct {
+			LastID       int    `json:"last_id"`
+			LastActivity string `json:"last_activity"`
+			HasMore      bool   `json:"has_more"`
+		} `json:"meta"`
+		Data json.RawMessage `json:"data"`
 	}
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
@@ -97,14 +97,14 @@ func TestConversationList_Success(t *testing.T) {
 		t.Fatalf("unmarshal error: %v\nbody: %s", err, string(body))
 	}
 
-	if result.Total != 2 {
-		t.Errorf("expected total 2, got %d", result.Total)
+	if result.Meta.LastID != 11 {
+		t.Errorf("expected last_id 11, got %d", result.Meta.LastID)
 	}
-	if result.PerPage != 20 {
-		t.Errorf("expected per_page 20, got %d", result.PerPage)
+	if !result.Meta.HasMore {
+		t.Error("expected has_more true")
 	}
-	if result.CurrentPage != 1 {
-		t.Errorf("expected current_page 1, got %d", result.CurrentPage)
+	if result.Meta.LastActivity == "" {
+		t.Error("expected last_activity to be present")
 	}
 
 	var items []*conversation.Conversation
@@ -114,11 +114,60 @@ func TestConversationList_Success(t *testing.T) {
 	if len(items) != 2 {
 		t.Fatalf("expected 2 conversations, got %d", len(items))
 	}
-	if items[0].ID != 1 || items[0].Status != "unassigned" {
-		t.Errorf("unexpected first item: %+v", items[0])
+	if items[0].ID != 12 {
+		t.Errorf("expected first item id 12, got %d", items[0].ID)
 	}
-	if items[1].ID != 2 || items[1].Status != "assigned" {
-		t.Errorf("unexpected second item: %+v", items[1])
+	if items[0].Contact == nil {
+		t.Fatal("expected contact on first item")
+	}
+	if items[0].Contact.ID != 7 || items[0].Contact.FirstName != "Budi" || items[0].Contact.LastName == nil || *items[0].Contact.LastName != "Santoso" {
+		t.Errorf("unexpected contact: %+v", items[0].Contact)
+	}
+	if len(items[0].Contact.Avatar) == 0 {
+		t.Error("expected contact avatar to be present")
+	}
+	if items[1].Contact != nil {
+		t.Errorf("expected no contact on second item, got %+v", items[1].Contact)
+	}
+}
+
+func TestConversationListCursor_Validation(t *testing.T) {
+	mock := &mockConversationService{
+		listCursorFunc: func(_ context.Context, _ conversation.ListConversationQuery, _ *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error) {
+			return []*conversation.Conversation{}, 0, "", false, nil
+		},
+	}
+
+	handler := conversation.NewConversationHandlerWithService(mock)
+	app := NewTestApp()
+	app.Use(TestAuthMiddleware())
+	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+
+	tests := []struct {
+		name string
+		url  string
+		want int
+	}{
+		{"last_id without last_activity", "/api/v1/tenant/conversations?last_id=10", http.StatusBadRequest},
+		{"last_activity without last_id", "/api/v1/tenant/conversations?last_activity=2026-08-02T10%3A00%3A00Z", http.StatusBadRequest},
+		{"both present", "/api/v1/tenant/conversations?last_id=10&last_activity=2026-08-02T10%3A00%3A00Z", http.StatusOK},
+		{"neither present", "/api/v1/tenant/conversations", http.StatusOK},
+		{"empty last_activity with last_id (null tail)", "/api/v1/tenant/conversations?last_id=10&last_activity=", http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			req, _ := http.NewRequest(http.MethodGet, tt.url, nil)
+			resp, err := app.Test(req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer resp.Body.Close()
+
+			if resp.StatusCode != tt.want {
+				t.Errorf("expected status %d, got %d", tt.want, resp.StatusCode)
+			}
+		})
 	}
 }
 

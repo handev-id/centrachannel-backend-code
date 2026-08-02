@@ -34,34 +34,6 @@ func scanMessage(row interface{ Scan(dest ...interface{}) error }) (*Message, er
 	return &m, nil
 }
 
-func (r *messageRepository) List(ctx context.Context, q DBTX, conversationID int, limit, offset int) ([]*Message, int, error) {
-	countQuery := `SELECT COUNT(*) FROM messages WHERE conversation_id = $1`
-	var total int
-	if err := q.QueryRowContext(ctx, countQuery, conversationID).Scan(&total); err != nil {
-		return nil, 0, err
-	}
-	if total == 0 {
-		return []*Message{}, 0, nil
-	}
-
-	query := `SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1 ORDER BY created_at ASC LIMIT $2 OFFSET $3`
-	rows, err := q.QueryContext(ctx, query, conversationID, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var msgs []*Message
-	for rows.Next() {
-		msg, err := scanMessage(rows)
-		if err != nil {
-			return nil, 0, err
-		}
-		msgs = append(msgs, msg)
-	}
-	return msgs, total, rows.Err()
-}
-
 func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
 	query := `SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1`
 	args := []interface{}{conversationID}

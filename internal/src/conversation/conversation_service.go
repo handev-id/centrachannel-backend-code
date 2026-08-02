@@ -12,7 +12,6 @@ import (
 )
 
 type ConversationService interface {
-	List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, error)
 	ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error)
 	GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error)
 	Create(ctx context.Context, req CreateConversationRequest, t *tenant.Tenant) (*Conversation, error)
@@ -33,19 +32,6 @@ type conversationService struct {
 
 func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) ConversationService {
 	return &conversationService{repo: repo, db: db, cfg: cfg, logger: logger}
-}
-
-func (s *conversationService) List(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, error) {
-	if q.Page < 1 { q.Page = 1 }
-	if q.Limit < 1 || q.Limit > 100 { q.Limit = 20 }
-	offset := (q.Page - 1) * q.Limit
-
-	convs, total, err := s.repo.List(ctx, s.db, t.ID, q.Limit, offset, q.Status, q.ChannelID, q.AgentID, q.Search)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	return convs, total, nil
 }
 
 func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error) {

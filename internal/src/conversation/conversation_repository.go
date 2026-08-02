@@ -13,7 +13,6 @@ type DBTX interface {
 }
 
 type ConversationRepository interface {
-	List(ctx context.Context, q DBTX, tenantID int, limit, offset int, status string, channelID, agentID int, search string) ([]*Conversation, int, error)
 	ListCursor(ctx context.Context, q DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*Conversation, error)
 	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error)
 	FindOpenByProfileAndChannel(ctx context.Context, q DBTX, tenantID int, profileID int, channelID int) (*Conversation, error)

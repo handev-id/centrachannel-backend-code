@@ -3,7 +3,6 @@ package message
 import "encoding/json"
 
 type ListMessageQuery struct {
-	Page   int `query:"page"`
 	Limit  int `query:"limit"`
 	LastID int `query:"last_id"`
 }

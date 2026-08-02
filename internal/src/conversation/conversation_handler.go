@@ -1,7 +1,6 @@
 package conversation
 
 import (
-	"math"
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
@@ -28,12 +27,18 @@ func NewConversationHandlerWithService(service ConversationService) *Conversatio
 
 func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
-	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 	channelID, _ := strconv.Atoi(c.Query("channel_id"))
 	agentID, _ := strconv.Atoi(c.Query("agent_id"))
 	lastActivity := c.Query("last_activity")
 	lastID, _ := strconv.Atoi(c.Query("last_id"))
+
+	queries := c.Queries()
+	_, hasLastActivity := queries["last_activity"]
+	_, hasLastID := queries["last_id"]
+	if hasLastActivity != hasLastID {
+		return response.BadRequest(c, "last_id and last_activity must be provided together", nil)
+	}
 
 	if middleware.IsAgentOnly(c) {
 		uid, err := middleware.GetUserID(c)
@@ -42,32 +47,17 @@ func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	}
 
 	q := ListConversationQuery{
-		Page: page, Limit: limit, Status: c.Query("status"),
+		Limit: limit, Status: c.Query("status"),
 		ChannelID: channelID, AgentID: agentID, Search: c.Query("search"),
 		SortBy: c.Query("sort_by"),
 		LastActivity: lastActivity, LastID: lastID,
 	}
 
-	if q.LastID > 0 {
-		convs, lastID, lastActivity, hasMore, err := h.service.ListCursor(c.Context(), q, t)
-		if err != nil {
-			return response.InternalServerError(c, err.Error())
-		}
-		return response.CursorPaginated(c, "success", convs, lastID, hasMore, lastActivity)
-	}
-
-	convs, total, err := h.service.List(c.Context(), q, t)
+	convs, lastID, lastActivity, hasMore, err := h.service.ListCursor(c.Context(), q, t)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}
-
-	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
-	from := (q.Page-1)*q.Limit + 1
-	to := (q.Page-1)*q.Limit + len(convs)
-	if to > total { to = total }
-	if total == 0 { from = 0; to = 0 }
-
-	return response.Paginated(c, "success", convs, total, q.Page, q.Limit, from, to, lastPage)
+	return response.CursorPaginated(c, "success", convs, lastID, hasMore, lastActivity)
 }
 
 func (h *ConversationHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
