@@ -144,8 +144,8 @@ func scanConversationCursor(row interface{ Scan(dest ...interface{}) error }) (*
 }
 
 func (r *conversationRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error) {
-	query := `SELECT id, tenant_id, status, profile_id, agent_id, channel_id, last_agent_id, unread_count, last_message, last_activity, last_seen, created_at, updated_at FROM conversations WHERE id = $1 AND tenant_id = $2`
-	return scanConversation(q.QueryRowContext(ctx, query, id, tenantID))
+	query := `SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c LEFT JOIN profiles p ON p.id = c.profile_id INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.deleted_at IS NULL WHERE c.id = $1 AND c.tenant_id = $2`
+	return scanConversationCursor(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
 func (r *conversationRepository) FindOpenByProfileAndChannel(ctx context.Context, q DBTX, tenantID int, profileID int, channelID int) (*Conversation, error) {
