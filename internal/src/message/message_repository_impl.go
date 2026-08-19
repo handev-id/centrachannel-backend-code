@@ -34,10 +34,10 @@ func scanMessage(row interface{ Scan(dest ...interface{}) error }) (*Message, er
 	return &m, nil
 }
 
-func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
-	query := `SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1`
-	args := []interface{}{conversationID}
-	argIdx := 2
+func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
+	query := `SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1 AND tenant_id = $2`
+	args := []interface{}{conversationID, tenantID}
+	argIdx := 3
 
 	if lastID > 0 {
 		query += fmt.Sprintf(" AND id < $%d", argIdx)

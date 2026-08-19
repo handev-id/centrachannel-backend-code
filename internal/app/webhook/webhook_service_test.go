@@ -128,7 +128,7 @@ func (m *mockMsgRepo) UpdateStatusByWebhookID(ctx context.Context, q message.DBT
 	if m.updateStatusByWebhookIDFunc != nil { return m.updateStatusByWebhookIDFunc(ctx, q, webhookMessageID, status) }
 	return nil
 }
-func (m *mockMsgRepo) ListCursor(ctx context.Context, q message.DBTX, conversationID int, limit int, lastID int) ([]*message.Message, error) { return nil, nil }
+func (m *mockMsgRepo) ListCursor(ctx context.Context, q message.DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*message.Message, error) { return nil, nil }
 func (m *mockMsgRepo) UpdateWebhookID(ctx context.Context, q message.DBTX, id int, webhookMessageID string) error { return nil }
 
 // ---- test helpers ----

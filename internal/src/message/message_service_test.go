@@ -58,7 +58,7 @@ func (t *mockSQLTx) Rollback() error { return nil }
 
 type mockMessageRepository struct {
 	createFunc                  func(ctx context.Context, q DBTX, msg *Message) (int, error)
-	listCursorFunc              func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error)
+	listCursorFunc              func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error)
 	updateStatusFunc            func(ctx context.Context, q DBTX, id int, status string) error
 	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, webhookMessageID string, status string) error
 }
@@ -67,8 +67,8 @@ func (m *mockMessageRepository) Create(ctx context.Context, q DBTX, msg *Message
 	return m.createFunc(ctx, q, msg)
 }
 
-func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
-	return m.listCursorFunc(ctx, q, conversationID, limit, lastID)
+func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
+	return m.listCursorFunc(ctx, q, tenantID, conversationID, limit, lastID)
 }
 
 func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, id int, status string) error {
@@ -412,10 +412,11 @@ func TestMessageService_ListCursor(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("defaults_limit_and_passes_cursor", func(t *testing.T) {
-		var capturedLimit, capturedLastID int
+		var capturedLimit, capturedLastID, capturedTenantID int
 
 		msgRepo := &mockMessageRepository{
-			listCursorFunc: func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
+			listCursorFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
+				capturedTenantID = tenantID
 				capturedLimit = limit
 				capturedLastID = lastID
 				return []*Message{{ID: 50}, {ID: 49}, {ID: 48}}, nil
@@ -428,9 +429,12 @@ func TestMessageService_ListCursor(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		result, lastID, hasMore, err := svc.ListCursor(ctx, 1, ListMessageQuery{Limit: 0, LastID: 55})
+		result, lastID, hasMore, err := svc.ListCursor(ctx, 7, 1, ListMessageQuery{Limit: 0, LastID: 55})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
+		}
+		if capturedTenantID != 7 {
+			t.Errorf("expected tenantID 7, got %d", capturedTenantID)
 		}
 		if capturedLimit != 51 {
 			t.Errorf("expected limit+1 = 51, got %d", capturedLimit)
@@ -461,7 +465,7 @@ func TestMessageService_ListCursor(t *testing.T) {
 		}
 
 		msgRepo := &mockMessageRepository{
-			listCursorFunc: func(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error) {
+			listCursorFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
 				capturedLimit = limit
 				return msgs, nil
 			},
@@ -473,7 +477,7 @@ func TestMessageService_ListCursor(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		result, lastID, hasMore, err := svc.ListCursor(ctx, 1, ListMessageQuery{Limit: 50, LastID: 60})
+		result, lastID, hasMore, err := svc.ListCursor(ctx, 7, 1, ListMessageQuery{Limit: 50, LastID: 60})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

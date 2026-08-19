@@ -12,7 +12,7 @@ type DBTX interface {
 }
 
 type MessageRepository interface {
-	ListCursor(ctx context.Context, q DBTX, conversationID int, limit int, lastID int) ([]*Message, error)
+	ListCursor(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error)
 	Create(ctx context.Context, q DBTX, msg *Message) (int, error)
 	UpdateStatus(ctx context.Context, q DBTX, id int, status string) error
 	UpdateStatusByWebhookID(ctx context.Context, q DBTX, webhookMessageID string, status string) error

@@ -19,7 +19,7 @@ import (
 )
 
 type MessageService interface {
-	ListCursor(ctx context.Context, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error)
+	ListCursor(ctx context.Context, tenantID int, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error)
 	Send(ctx context.Context, req SendMessageRequest, tenantID int, conversationID int) (*Message, error)
 	UpdateStatus(ctx context.Context, id int, status string) error
 }
@@ -40,12 +40,12 @@ func NewMessageService(repo MessageRepository, convRepo conversation.Conversatio
 	return &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger, rdb: rdb}
 }
 
-func (s *messageService) ListCursor(ctx context.Context, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error) {
+func (s *messageService) ListCursor(ctx context.Context, tenantID int, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error) {
 	if q.Limit < 1 || q.Limit > 100 {
 		q.Limit = 50
 	}
 
-	msgs, err := s.repo.ListCursor(ctx, s.db, conversationID, q.Limit+1, q.LastID)
+	msgs, err := s.repo.ListCursor(ctx, s.db, tenantID, conversationID, q.Limit+1, q.LastID)
 	if err != nil {
 		return nil, 0, false, err
 	}

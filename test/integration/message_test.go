@@ -11,13 +11,13 @@ import (
 )
 
 type mockMessageService struct {
-	listCursorFunc   func(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error)
+	listCursorFunc   func(ctx context.Context, tenantID int, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error)
 	sendFunc         func(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error)
 	updateStatusFunc func(ctx context.Context, id int, status string) error
 }
 
-func (m *mockMessageService) ListCursor(ctx context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
-	return m.listCursorFunc(ctx, conversationID, q)
+func (m *mockMessageService) ListCursor(ctx context.Context, tenantID int, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
+	return m.listCursorFunc(ctx, tenantID, conversationID, q)
 }
 func (m *mockMessageService) Send(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error) {
 	return m.sendFunc(ctx, req, tenantID, conversationID)
@@ -29,7 +29,7 @@ func (m *mockMessageService) UpdateStatus(ctx context.Context, id int, status st
 func TestMessageListCursor_Success(t *testing.T) {
 	text := "Older message"
 	mock := &mockMessageService{
-		listCursorFunc: func(_ context.Context, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
+		listCursorFunc: func(_ context.Context, tenantID int, conversationID int, q message.ListMessageQuery) ([]*message.Message, int, bool, error) {
 			return []*message.Message{
 				{ID: 40, TenantID: 1, ConversationID: conversationID, Text: &text, Status: "sent", SenderID: 1, SenderType: "user"},
 			}, 40, true, nil

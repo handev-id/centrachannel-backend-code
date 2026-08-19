@@ -31,7 +31,7 @@ func NewMessageHandlerWithService(service MessageService) *MessageHandler {
 	return &MessageHandler{service: service}
 }
 
-func (h *MessageHandler) List(c fiber.Ctx) error {
+func (h *MessageHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	conversationID, err := strconv.Atoi(c.Params("conversationId"))
 	if err != nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
@@ -42,7 +42,7 @@ func (h *MessageHandler) List(c fiber.Ctx) error {
 
 	q := ListMessageQuery{Limit: limit, LastID: lastID}
 
-	msgs, lastID, hasMore, err := h.service.ListCursor(c.Context(), conversationID, q)
+	msgs, lastID, hasMore, err := h.service.ListCursor(c.Context(), t.ID, conversationID, q)
 	if err != nil {
 		return response.InternalServerError(c, err.Error())
 	}

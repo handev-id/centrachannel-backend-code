@@ -7,7 +7,7 @@ import (
 )
 
 func RegisterConversationRoutes(group fiber.Router, handler *MessageHandler) {
-	group.Get("/:conversationId/messages", handler.List)
+	group.Get("/:conversationId/messages", middleware.Tenant(handler.List))
 	group.Post("/:conversationId/messages", middleware.Tenant(handler.Send))
 }
 
