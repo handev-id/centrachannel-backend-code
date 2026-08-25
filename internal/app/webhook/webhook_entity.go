@@ -53,12 +53,10 @@ type EvolutionConnectionUpdate struct {
 }
 
 type EvolutionMessageUpdate struct {
-	Key    EvolutionMessageKey   `json:"key"`
-	Update EvolutionStatusUpdate `json:"update"`
-}
-
-type EvolutionStatusUpdate struct {
-	Status string `json:"status"`
+	KeyID    string `json:"keyId"`
+	Status   string `json:"status"`
+	RemoteJid string `json:"remoteJid,omitempty"`
+	FromMe   bool   `json:"fromMe,omitempty"`
 }
 
 type EvolutionMessageKey struct {

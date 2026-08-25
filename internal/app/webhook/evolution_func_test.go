@@ -381,7 +381,7 @@ func TestHandleMessageUpdate_Delivered(t *testing.T) {
 	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
 
 	data, _ := json.Marshal(EvolutionMessageUpdate{
-		Key: EvolutionMessageKey{ID: "webhook_001"}, Update: EvolutionStatusUpdate{Status: "DELIVERED"},
+		KeyID: "webhook_001", Status: "DELIVERED",
 	})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{
 		Event: "messages.update", Instance: "instance_test", Data: data,
@@ -393,7 +393,7 @@ func TestHandleMessageUpdate_Delivered(t *testing.T) {
 
 func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
 	tests := []struct{ status, expected string }{
-		{"READ", "read"}, {"FAILED", "failed"}, {"SENT", "sent"},
+		{"READ", "read"}, {"FAILED", "failed"}, {"SENT", "sent"}, {"DELIVERY_ACK", "delivered"}, {"PLAYED", "read"},
 	}
 	for _, tt := range tests {
 		var capturedStatus string
@@ -404,7 +404,7 @@ func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
 		}
 		svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
 		data, _ := json.Marshal(EvolutionMessageUpdate{
-			Key: EvolutionMessageKey{ID: "w_" + tt.status}, Update: EvolutionStatusUpdate{Status: tt.status},
+			KeyID: "w_" + tt.status, Status: tt.status,
 		})
 		svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "messages.update", Instance: "test", Data: data})
 		if capturedStatus != tt.expected { t.Errorf("for %s: expected %s, got %s", tt.status, tt.expected, capturedStatus) }
@@ -420,7 +420,7 @@ func TestHandleMessageUpdate_UnhandledStatus(t *testing.T) {
 	}
 	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
 	data, _ := json.Marshal(EvolutionMessageUpdate{
-		Key: EvolutionMessageKey{ID: "w_004"}, Update: EvolutionStatusUpdate{Status: "PENDING"},
+		KeyID: "w_004", Status: "PENDING",
 	})
 	svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "messages.update", Instance: "test", Data: data})
 	if called { t.Error("expected no call for unhandled status") }

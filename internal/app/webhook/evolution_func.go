@@ -163,10 +163,10 @@ func (s *webhookService) handleMessageUpdate(ctx context.Context, payload *Evolu
 	}
 
 	msgStatus := "sent"
-	switch data.Update.Status {
-	case "DELIVERED":
+	switch data.Status {
+	case "DELIVERED", "DELIVERY_ACK":
 		msgStatus = "delivered"
-	case "READ":
+	case "READ", "PLAYED":
 		msgStatus = "read"
 	case "SENT":
 		msgStatus = "sent"
@@ -176,8 +176,8 @@ func (s *webhookService) handleMessageUpdate(ctx context.Context, payload *Evolu
 		return nil
 	}
 
-	if err := s.msgRepo.UpdateStatusByWebhookID(ctx, s.db, data.Key.ID, msgStatus); err != nil {
-		s.logger.Debug("no message found for webhook id %s: %v", data.Key.ID, err)
+	if err := s.msgRepo.UpdateStatusByWebhookID(ctx, s.db, data.KeyID, msgStatus); err != nil {
+		s.logger.Debug("no message found for webhook id %s: %v", data.KeyID, err)
 	}
 
 	return nil
