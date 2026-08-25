@@ -210,6 +210,7 @@ func (c *evolutionClient) CreateInstance(ctx context.Context, device *WhatsAppDe
 	payload := map[string]interface{}{
 		"instanceName": device.WhatsappID,
 		"integration":  "WHATSAPP-BAILEYS",
+		"groupsIgnore": true,
 	}
 
 	body, err := json.Marshal(payload)
@@ -282,6 +283,7 @@ func (c *evolutionClient) SetWebhook(ctx context.Context, device *WhatsAppDevice
 		"webhook": map[string]interface{}{
 			"url":     webhookURL,
 			"enabled": true,
+			"base64":  true,
 			"events":  []string{"messages.upsert", "messages.update", "connection.update"},
 		},
 	}

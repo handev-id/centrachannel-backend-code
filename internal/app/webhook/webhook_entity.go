@@ -78,22 +78,26 @@ type EvolutionMessage struct {
 		URL      string `json:"url"`
 		Mimetype string `json:"mimetype"`
 		Caption  string `json:"caption,omitempty"`
+		Base64   string `json:"base64,omitempty"`
 	} `json:"imageMessage,omitempty"`
 
 	VideoMessage *struct {
 		URL      string `json:"url"`
 		Mimetype string `json:"mimetype"`
 		Caption  string `json:"caption,omitempty"`
+		Base64   string `json:"base64,omitempty"`
 	} `json:"videoMessage,omitempty"`
 
 	AudioMessage *struct {
 		URL      string `json:"url"`
 		Mimetype string `json:"mimetype"`
+		Base64   string `json:"base64,omitempty"`
 	} `json:"audioMessage,omitempty"`
 
 	DocumentMessage *struct {
 		URL      string `json:"url"`
 		Mimetype string `json:"mimetype"`
 		FileName string `json:"fileName,omitempty"`
+		Base64   string `json:"base64,omitempty"`
 	} `json:"documentMessage,omitempty"`
 }
