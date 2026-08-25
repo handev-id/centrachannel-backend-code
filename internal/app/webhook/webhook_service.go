@@ -206,6 +206,8 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	msg.CreatedAt = now
 	msg.UpdatedAt = now
 
+	s.notifyNewMessage(tenantID, msg)
+
 	return nil
 }
 
@@ -393,8 +395,17 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	msg.CreatedAt = now
 	msg.UpdatedAt = now
 
+	s.notifyNewMessage(tenantID, msg)
+
 	s.logger.Info("synced outgoing message from phone: device=%s, contact=%s, msg_id=%s", payload.Instance, phone, data.Key.ID)
 	return nil
+}
+
+func (s *webhookService) notifyNewMessage(tenantID int, msg *message.Message) {
+	if s.notifier == nil {
+		return
+	}
+	s.notifier.Notify(tenantID, "new-message", msg)
 }
 
 func (s *webhookService) findConversation(ctx context.Context, tenantID, profileID, channelID int) (*conversation.Conversation, error) {
@@ -580,6 +591,8 @@ func (s *webhookService) ProcessMetaEvent(ctx context.Context, payload *MetaWebh
 			msgRecord.ID = mid
 			msgRecord.CreatedAt = time.Now()
 			msgRecord.UpdatedAt = time.Now()
+
+			s.notifyNewMessage(t.ID, msgRecord)
 
 			lastMsg := map[string]interface{}{
 				"text":        msgText,

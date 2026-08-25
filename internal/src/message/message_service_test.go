@@ -224,6 +224,27 @@ func (m *mockMessenger) Send(msg *messenger.OutgoingMessage) (string, error) {
 
 func strPtr(s string) *string { return &s }
 
+type notifiedEvent struct {
+	tenantID int
+	event    string
+	data     interface{}
+}
+
+type mockNotifier struct {
+	events []notifiedEvent
+}
+
+func (m *mockNotifier) Notify(tenantID int, event string, data interface{}) {
+	m.events = append(m.events, notifiedEvent{tenantID: tenantID, event: event, data: data})
+}
+
+func (m *mockNotifier) last() *notifiedEvent {
+	if len(m.events) == 0 {
+		return nil
+	}
+	return &m.events[len(m.events)-1]
+}
+
 // tests
 
 func TestMessageService_Send(t *testing.T) {
@@ -400,6 +421,67 @@ func TestMessageService_Send(t *testing.T) {
 			t.Error("attachment should not appear in last_message when absent from request")
 		}
 	})
+}
+
+func TestMessageService_Send_NotifiesNewMessage(t *testing.T) {
+	notifier := &mockNotifier{}
+
+	db, err := sql.Open("mock", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	cfg := &config.Config{}
+	log := logger.NewLogger("debug", "text")
+	ctx := context.Background()
+
+	msgRepo := &mockMessageRepository{
+		createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
+			return 1, nil
+		},
+	}
+	convRepo := &mockConversationRepository{
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			return nil
+		},
+	}
+
+	svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, notifier)
+	req := SendMessageRequest{
+		Text:       strPtr("hello"),
+		SenderID:   42,
+		SenderType: "user",
+	}
+	msg, err := svc.Send(ctx, req, 7, 10)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if msg.ID != 1 {
+		t.Errorf("expected ID 1, got %d", msg.ID)
+	}
+
+	ev := notifier.last()
+	if ev == nil {
+		t.Fatal("expected a websocket notification")
+	}
+	if ev.tenantID != 7 {
+		t.Errorf("expected tenantID 7, got %d", ev.tenantID)
+	}
+	if ev.event != "new-message" {
+		t.Errorf("expected event 'new-message', got %q", ev.event)
+	}
+	notified, ok := ev.data.(*Message)
+	if !ok {
+		t.Fatalf("expected data *Message, got %T", ev.data)
+	}
+	if notified.ID != 1 {
+		t.Errorf("expected message id 1, got %d", notified.ID)
+	}
+	if notified.ConversationID != 10 {
+		t.Errorf("expected conversation_id 10, got %d", notified.ConversationID)
+	}
+	if notified.SenderType != "user" {
+		t.Errorf("expected sender_type user, got %s", notified.SenderType)
+	}
 }
 
 func TestMessageService_ListCursor(t *testing.T) {

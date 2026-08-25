@@ -133,6 +133,27 @@ func (m *mockMsgRepo) UpdateWebhookID(ctx context.Context, q message.DBTX, id in
 
 // ---- test helpers ----
 
+type notifiedEvent struct {
+	tenantID int
+	event    string
+	data     interface{}
+}
+
+type mockNotifier struct {
+	events []notifiedEvent
+}
+
+func (m *mockNotifier) Notify(tenantID int, event string, data interface{}) {
+	m.events = append(m.events, notifiedEvent{tenantID: tenantID, event: event, data: data})
+}
+
+func (m *mockNotifier) last() *notifiedEvent {
+	if len(m.events) == 0 {
+		return nil
+	}
+	return &m.events[len(m.events)-1]
+}
+
 type mockMetaTenantRepo struct{}
 
 func (m *mockMetaTenantRepo) Create(ctx context.Context, q tenant.DBTX, t *tenant.Tenant) (int, error) { return 0, nil }
@@ -351,6 +372,245 @@ func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestHandleMessageUpsert_NotifiesNewMessage(t *testing.T) {
+	notifier := &mockNotifier{}
+
+	deviceRepo := &mockDeviceRepo{
+		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
+			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+		},
+	}
+	contactRepo := &mockContactRepo{
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Existing", Whatsapp: &phone}, nil
+		},
+	}
+	profileRepo := &mockProfileRepo{
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		},
+	}
+	channelRepo := &mockChannelRepo{
+		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
+			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+		},
+	}
+	convRepo := &mockConvRepo{
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		},
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			return nil
+		},
+	}
+	msgRepo := &mockMsgRepo{
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+	}
+
+	svc := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil, notifier)
+
+	text := "Incoming whatsapp message"
+	data, _ := json.Marshal(EvolutionMessageUpsert{
+		Key:         EvolutionMessageKey{RemoteJid: "5511999999999@s.whatsapp.net", FromMe: false, ID: "msg_notify_001"},
+		PushName:    "Existing User",
+		MessageType: "conversation",
+		Message:     EvolutionMessage{Conversation: &text},
+	})
+
+	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{
+		Event: "messages.upsert", Instance: "instance_test", Data: data,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ev := notifier.last()
+	if ev == nil {
+		t.Fatal("expected a websocket notification")
+	}
+	if ev.tenantID != 1 {
+		t.Errorf("expected tenantID 1, got %d", ev.tenantID)
+	}
+	if ev.event != "new-message" {
+		t.Errorf("expected event 'new-message', got %q", ev.event)
+	}
+	msg, ok := ev.data.(*message.Message)
+	if !ok {
+		t.Fatalf("expected data *message.Message, got %T", ev.data)
+	}
+	if msg.ID != 400 {
+		t.Errorf("expected message id 400, got %d", msg.ID)
+	}
+	if msg.ConversationID != 30 {
+		t.Errorf("expected conversation_id 30, got %d", msg.ConversationID)
+	}
+	if msg.SenderType != "contact" {
+		t.Errorf("expected sender_type contact, got %s", msg.SenderType)
+	}
+	if msg.Status != "unread" {
+		t.Errorf("expected status unread, got %s", msg.Status)
+	}
+}
+
+func TestProcessMetaEvent_NotifiesNewMessage(t *testing.T) {
+	notifier := &mockNotifier{}
+
+	contactRepo := &mockContactRepo{
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Existing", Facebook: &phone}, nil
+		},
+	}
+	profileRepo := &mockProfileRepo{
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		},
+	}
+	channelRepo := &mockChannelRepo{
+		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
+			return &channel.Channel{ID: 1, Type: channelType}, nil
+		},
+	}
+	convRepo := &mockConvRepo{
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		},
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			return nil
+		},
+	}
+	msgRepo := &mockMsgRepo{
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 500, nil },
+	}
+
+	svc := NewWebhookService(&mockDeviceRepo{}, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil, notifier)
+
+	payload := &MetaWebhookPayload{
+		Object: "page",
+		Entry: []MetaWebhookEntry{
+			{
+				ID:   "page_123",
+				Time: 1700000000,
+				Messaging: []MetaWebhookMessage{
+					{
+						Sender:  &MetaSender{ID: "fb_sender_1"},
+						Message: &MetaMessage{MID: "mid_001", Text: "Hello from facebook"},
+					},
+				},
+			},
+		},
+	}
+
+	err := svc.ProcessMetaEvent(context.Background(), payload)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ev := notifier.last()
+	if ev == nil {
+		t.Fatal("expected a websocket notification")
+	}
+	if ev.tenantID != 1 {
+		t.Errorf("expected tenantID 1, got %d", ev.tenantID)
+	}
+	if ev.event != "new-message" {
+		t.Errorf("expected event 'new-message', got %q", ev.event)
+	}
+	msg, ok := ev.data.(*message.Message)
+	if !ok {
+		t.Fatalf("expected data *message.Message, got %T", ev.data)
+	}
+	if msg.ID != 500 {
+		t.Errorf("expected message id 500, got %d", msg.ID)
+	}
+	if msg.ConversationID != 30 {
+		t.Errorf("expected conversation_id 30, got %d", msg.ConversationID)
+	}
+	if msg.SenderType != "contact" {
+		t.Errorf("expected sender_type contact, got %s", msg.SenderType)
+	}
+	if msg.Text == nil || *msg.Text != "Hello from facebook" {
+		t.Errorf("expected text 'Hello from facebook', got %v", msg.Text)
+	}
+}
+
+func TestProcessEvolutionEvent_FromMe_Sync_NotifiesNewMessage(t *testing.T) {
+	notifier := &mockNotifier{}
+
+	deviceRepo := &mockDeviceRepo{
+		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
+			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+		},
+	}
+	contactRepo := &mockContactRepo{
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Contact", Whatsapp: &phone}, nil
+		},
+	}
+	profileRepo := &mockProfileRepo{
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		},
+	}
+	channelRepo := &mockChannelRepo{
+		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
+			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+		},
+	}
+	convRepo := &mockConvRepo{
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		},
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			return nil
+		},
+	}
+	msgRepo := &mockMsgRepo{
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+	}
+
+	svc := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil, notifier)
+
+	text := "Outgoing from phone"
+	data, _ := json.Marshal(EvolutionMessageUpsert{
+		Key:         EvolutionMessageKey{RemoteJid: "5511999999999@s.whatsapp.net", FromMe: true, ID: "from_phone_notify_001"},
+		PushName:    "Test Contact",
+		MessageType: "conversation",
+		Message:     EvolutionMessage{Conversation: &text},
+	})
+	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{
+		Event:    "messages.upsert",
+		Instance: "instance_test",
+		Data:     data,
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+
+	ev := notifier.last()
+	if ev == nil {
+		t.Fatal("expected a websocket notification")
+	}
+	if ev.tenantID != 1 {
+		t.Errorf("expected tenantID 1, got %d", ev.tenantID)
+	}
+	if ev.event != "new-message" {
+		t.Errorf("expected event 'new-message', got %q", ev.event)
+	}
+	msg, ok := ev.data.(*message.Message)
+	if !ok {
+		t.Fatalf("expected data *message.Message, got %T", ev.data)
+	}
+	if msg.ID != 400 {
+		t.Errorf("expected message id 400, got %d", msg.ID)
+	}
+	if msg.ConversationID != 30 {
+		t.Errorf("expected conversation_id 30, got %d", msg.ConversationID)
+	}
+	if msg.SenderType != "user" {
+		t.Errorf("expected sender_type user, got %s", msg.SenderType)
 	}
 }
 

@@ -16,6 +16,7 @@ import (
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
+	"centrachannel/internal/ws"
 )
 
 type MessageService interface {
@@ -34,10 +35,15 @@ type messageService struct {
 	cfg         *config.Config
 	logger      *logger.Logger
 	rdb         *redis.Client
+	notifier    ws.Notifier
 }
 
-func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, rdb *redis.Client) MessageService {
-	return &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger, rdb: rdb}
+func NewMessageService(repo MessageRepository, convRepo conversation.ConversationRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, tenantRepo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, rdb *redis.Client, notifier ...ws.Notifier) MessageService {
+	svc := &messageService{repo: repo, convRepo: convRepo, profileRepo: profileRepo, channelRepo: channelRepo, tenantRepo: tenantRepo, db: db, cfg: cfg, logger: logger, rdb: rdb}
+	if len(notifier) > 0 {
+		svc.notifier = notifier[0]
+	}
+	return svc
 }
 
 func (s *messageService) ListCursor(ctx context.Context, tenantID int, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error) {
@@ -119,6 +125,8 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	msg.CreatedAt = time.Now()
 	msg.UpdatedAt = time.Now()
 
+	s.notifyNewMessage(tenantID, msg)
+
 	// Send to external platform via messenger (non-blocking)
 	go func() {
 		defer func() {
@@ -130,6 +138,13 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	}()
 
 	return msg, nil
+}
+
+func (s *messageService) notifyNewMessage(tenantID int, msg *Message) {
+	if s.notifier == nil {
+		return
+	}
+	s.notifier.Notify(tenantID, "new-message", msg)
 }
 
 func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg *Message) {

@@ -11,6 +11,7 @@ import (
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/ws"
 )
 
 type MessageHandler struct {
@@ -23,7 +24,7 @@ func NewMessageHandler(c *di.Container) *MessageHandler {
 	profileRepo := profile.NewProfileRepository()
 	channelRepo := channel.NewChannelRepository()
 	tenantRepo := tenant.NewTenantRepository()
-	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger, c.Redis)
+	service := NewMessageService(repo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, c.Config, c.Logger, c.Redis, ws.NewHubNotifier(c.Hub))
 	return &MessageHandler{service: service}
 }
 
