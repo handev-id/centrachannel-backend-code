@@ -13,6 +13,7 @@ import (
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/auth"
+	"centrachannel/internal/src/action"
 	"centrachannel/internal/src/campaign"
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
@@ -117,6 +118,10 @@ func main() {
 	wdGroup := app.Group("/api/whatsapp-devices", authMw, agentOrAbove)
 	wdHandler := whatsapp_device.NewWhatsAppDeviceHandler(c)
 	whatsapp_device.RegisterRoutes(wdGroup, wdHandler)
+
+	actionGroup := app.Group("/api/action", authMw, agentOrAbove)
+	actionHandler := action.NewActionHandler(c)
+	action.RegisterRoutes(actionGroup, actionHandler)
 
 	uploadGroup := app.Group("/api/upload", authMw, agentOrAbove)
 	uploadHandler := upload.NewUploadHandler(c)

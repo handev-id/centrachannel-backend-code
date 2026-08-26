@@ -86,6 +86,14 @@ func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id 
 	return nil
 }
 
+func (m *mockMessageRepository) MarkReadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) error {
+	return nil
+}
+
+func (m *mockMessageRepository) GetUnreadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]*Message, error) {
+	return nil, nil
+}
+
 type mockConversationRepository struct {
 	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
 }

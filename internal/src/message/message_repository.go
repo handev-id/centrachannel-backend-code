@@ -17,4 +17,6 @@ type MessageRepository interface {
 	UpdateStatus(ctx context.Context, q DBTX, id int, status string) error
 	UpdateStatusByWebhookID(ctx context.Context, q DBTX, webhookMessageID string, status string) error
 	UpdateWebhookID(ctx context.Context, q DBTX, id int, webhookMessageID string) error
+	MarkReadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) error
+	GetUnreadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]*Message, error)
 }

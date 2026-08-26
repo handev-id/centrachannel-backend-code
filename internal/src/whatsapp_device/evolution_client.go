@@ -352,6 +352,50 @@ func (c *evolutionClient) Disconnect(ctx context.Context, device *WhatsAppDevice
 	return nil
 }
 
+func (c *evolutionClient) MarkMessagesAsRead(ctx context.Context, device *WhatsAppDevice, messages []ReadMessageKey) error {
+	if len(messages) == 0 {
+		return nil
+	}
+
+	endpoint := fmt.Sprintf("%s/chat/markMessageAsRead/%s", strings.TrimRight(c.apiURL, "/"), device.WhatsappID)
+
+	payload := map[string]interface{}{
+		"readMessages": messages,
+	}
+
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal payload: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodPost, endpoint, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("apikey", c.apiKey)
+
+	resp, err := c.client.Do(req)
+	if err != nil {
+		return fmt.Errorf("evolution api request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	respBody, _ := io.ReadAll(resp.Body)
+
+	var result struct {
+		Error interface{} `json:"error,omitempty"`
+	}
+	if err := json.Unmarshal(respBody, &result); err != nil {
+		return fmt.Errorf("failed to parse evolution api response: %w", err)
+	}
+	if errStr := errorToString(result.Error); errStr != "" {
+		return fmt.Errorf("evolution api error: %s", errStr)
+	}
+
+	return nil
+}
+
 func errorToString(err interface{}) string {
 	if err == nil {
 		return ""

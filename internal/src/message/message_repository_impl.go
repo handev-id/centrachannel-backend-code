@@ -107,3 +107,32 @@ func (r *messageRepository) UpdateStatus(ctx context.Context, q DBTX, id int, st
 	}
 	return nil
 }
+
+func (r *messageRepository) MarkReadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) error {
+	_, err := q.ExecContext(ctx,
+		`UPDATE messages SET status='read', updated_at=$1 WHERE conversation_id=$2 AND tenant_id=$3 AND sender_type='contact' AND status!='read'`,
+		time.Now(), conversationID, tenantID,
+	)
+	return err
+}
+
+func (r *messageRepository) GetUnreadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]*Message, error) {
+	rows, err := q.QueryContext(ctx,
+		`SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id=$1 AND tenant_id=$2 AND sender_type='contact' AND webhook_message_id IS NOT NULL AND status!='read' ORDER BY id ASC`,
+		conversationID, tenantID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var msgs []*Message
+	for rows.Next() {
+		msg, err := scanMessage(rows)
+		if err != nil {
+			return nil, err
+		}
+		msgs = append(msgs, msg)
+	}
+	return msgs, rows.Err()
+}

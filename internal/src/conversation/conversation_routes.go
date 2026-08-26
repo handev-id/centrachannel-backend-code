@@ -15,5 +15,4 @@ func RegisterRoutes(group fiber.Router, handler *ConversationHandler) {
 	group.Post("/:id/resolve", middleware.Tenant(handler.Resolve))
 	group.Post("/:id/reopen", middleware.Tenant(handler.Reopen))
 	group.Get("/unread", middleware.Tenant(handler.TotalUnread))
-	group.Put("/:id/read", middleware.Tenant(handler.Read))
 }

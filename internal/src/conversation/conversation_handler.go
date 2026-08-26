@@ -152,16 +152,3 @@ func (h *ConversationHandler) TotalUnread(c fiber.Ctx, t *tenant.Tenant) error {
 	}
 	return response.OK(c, "success", fiber.Map{"unread_count": count})
 }
-
-func (h *ConversationHandler) Read(c fiber.Ctx, t *tenant.Tenant) error {
-
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid ID", nil)
-	}
-
-	if err := h.service.MarkRead(c.Context(), t.ID, id); err != nil {
-		return response.BadRequest(c, err.Error(), nil)
-	}
-	return response.OK(c, "Conversation marked as read", nil)
-}

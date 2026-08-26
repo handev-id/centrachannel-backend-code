@@ -17,6 +17,13 @@ type WhatsAppClient interface {
 	CreateInstance(ctx context.Context, device *WhatsAppDevice) error
 	DeleteInstance(ctx context.Context, device *WhatsAppDevice) error
 	SetWebhook(ctx context.Context, device *WhatsAppDevice, webhookURL string) error
+	MarkMessagesAsRead(ctx context.Context, device *WhatsAppDevice, messages []ReadMessageKey) error
+}
+
+type ReadMessageKey struct {
+	ID        string `json:"id"`
+	FromMe    bool   `json:"fromMe"`
+	RemoteJid string `json:"remoteJid"`
 }
 
 type MessageResult struct {
@@ -80,5 +87,10 @@ func (c *mockClient) DeleteInstance(ctx context.Context, device *WhatsAppDevice)
 
 func (c *mockClient) SetWebhook(ctx context.Context, device *WhatsAppDevice, webhookURL string) error {
 	c.logger.Info("Mock WhatsApp set webhook: device_id=%d, url=%s", device.ID, webhookURL)
+	return nil
+}
+
+func (c *mockClient) MarkMessagesAsRead(ctx context.Context, device *WhatsAppDevice, messages []ReadMessageKey) error {
+	c.logger.Info("Mock WhatsApp mark messages as read: device_id=%d, count=%d", device.ID, len(messages))
 	return nil
 }
