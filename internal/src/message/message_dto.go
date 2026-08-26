@@ -8,10 +8,11 @@ type ListMessageQuery struct {
 }
 
 type SendMessageRequest struct {
-	Text       *string         `json:"text,omitempty"`
-	Attachment json.RawMessage `json:"attachment,omitempty"`
-	SenderID   int             `json:"sender_id" validate:"required"`
-	SenderType string          `json:"sender_type" validate:"required,oneof=contact user ai"`
+	Text           *string         `json:"text,omitempty"`
+	Attachment     json.RawMessage `json:"attachment,omitempty"`
+	SenderID       int             `json:"sender_id" validate:"required"`
+	SenderType     string          `json:"sender_type" validate:"required,oneof=contact user ai"`
+	ConversationID int             `json:"conversation_id" validate:"required"`
 }
 
 type UpdateMessageStatusRequest struct {

@@ -27,7 +27,7 @@ func NewNoteHandlerWithService(service NoteService) *NoteHandler {
 
 func (h *NoteHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
-	conversationID, err := strconv.Atoi(c.Params("conversationId"))
+	conversationID, err := strconv.Atoi(c.Query("conversation_id"))
 	if err != nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
 	}
@@ -43,11 +43,6 @@ func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	userID, err := middleware.GetUserID(c)
 	if err != nil { return response.Unauthorized(c, err.Error()) }
 
-	conversationID, err := strconv.Atoi(c.Params("conversationId"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid conversation ID", nil)
-	}
-
 	var req CreateNoteRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
@@ -56,7 +51,7 @@ func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 		return err
 	}
 
-	note, err := h.service.Create(c.Context(), req, t.ID, conversationID, userID)
+	note, err := h.service.Create(c.Context(), req, t.ID, req.ConversationID, userID)
 	if err != nil {
 		return response.BadRequest(c, err.Error(), nil)
 	}

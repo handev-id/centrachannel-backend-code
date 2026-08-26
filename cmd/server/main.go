@@ -12,8 +12,8 @@ import (
 	"centrachannel/internal/app/webhook"
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
-	"centrachannel/internal/src/auth"
 	"centrachannel/internal/src/action"
+	"centrachannel/internal/src/auth"
 	"centrachannel/internal/src/campaign"
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
@@ -66,73 +66,28 @@ func main() {
 	wsHandler := ws.NewWSHandler(c.Hub, cfg.JWTSecret, c.Logger)
 	app.Get("/ws", wsHandler.Handle)
 
-	tenantHandler := tenant.NewTenantHandler(c)
-
 	// Tenant Source
 	app.Use(middleware.TenantMiddleware(c.Redis, c.DB))
-
-	authHandler := auth.NewAuthHandler(c)
-	auth.RegisterRoutes(app, authHandler)
 
 	authMw := middleware.AuthMiddleware(cfg, c.Redis)
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
 
-	userGroup := app.Group("/api/user", authMw, adminOrAbove)
-	userHandler := user.NewUserHandler(c)
-	user.RegisterRoutesByGroup(userGroup, userHandler)
-
-	campaignGroup := app.Group("/api/campaigns", authMw, agentOrAbove)
-	campaignHandler := campaign.NewCampaignHandler(c)
-	campaign.RegisterRoutes(campaignGroup, campaignHandler)
-
-	channelGroup := app.Group("/api/channels", authMw, agentOrAbove)
-	channelHandler := channel.NewChannelHandler(c)
-	channel.RegisterRoutes(channelGroup, channelHandler)
-
-	contactGroup := app.Group("/api/contacts", authMw, agentOrAbove)
-	contactHandler := contact.NewContactHandler(c)
-	contact.RegisterRoutes(contactGroup, contactHandler)
-
-	convGroup := app.Group("/api/conversations", authMw, agentOrAbove)
-	conversationHandler := conversation.NewConversationHandler(c)
-	conversation.RegisterRoutes(convGroup, conversationHandler)
-
-	messageHandler := message.NewMessageHandler(c)
-	message.RegisterConversationRoutes(convGroup, messageHandler)
-	msgGroup := app.Group("/api/messages", authMw, agentOrAbove)
-	message.RegisterRoutes(msgGroup, messageHandler)
-
-	ctHandler := conversation_tag.NewConversationTagHandler(c)
-	conversation_tag.RegisterRoutes(convGroup, ctHandler)
-
-	tagGroup := app.Group("/api/tags", authMw, agentOrAbove)
-	tagHandler := tag.NewTagHandler(c)
-	tag.RegisterRoutes(tagGroup, tagHandler)
-
-	noteHandler := note.NewNoteHandler(c)
-	note.RegisterConversationRoutes(convGroup, noteHandler)
-	notesGroup := app.Group("/api/notes", authMw, agentOrAbove)
-	note.RegisterRoutes(notesGroup, noteHandler)
-
-	wdGroup := app.Group("/api/whatsapp-devices", authMw, agentOrAbove)
-	wdHandler := whatsapp_device.NewWhatsAppDeviceHandler(c)
-	whatsapp_device.RegisterRoutes(wdGroup, wdHandler)
-
-	actionGroup := app.Group("/api/action", authMw, agentOrAbove)
-	actionHandler := action.NewActionHandler(c)
-	action.RegisterRoutes(actionGroup, actionHandler)
-
-	uploadGroup := app.Group("/api/upload", authMw, agentOrAbove)
-	uploadHandler := upload.NewUploadHandler(c)
-	upload.RegisterRoutes(uploadGroup, uploadHandler)
-
-	dashGroup := app.Group("/api/dashboard", authMw, agentOrAbove)
-	dashHandler := dashboard.NewDashboardHandler(c)
-	dashboard.RegisterRoutes(dashGroup, dashHandler)
-
-	tenantGroup := app.Group("/api/tenant", authMw, adminOrAbove)
-	tenant.RegisterRoutes(tenantGroup, tenantHandler)
+	auth.RegisterRoutes(app, "/api/auth", c, authMw)
+	user.RegisterRoutes(app, "/api/user", c, authMw, adminOrAbove)
+	campaign.RegisterRoutes(app, "/api/campaigns", c, authMw, agentOrAbove)
+	channel.RegisterRoutes(app, "/api/channels", c, authMw, agentOrAbove)
+	contact.RegisterRoutes(app, "/api/contacts", c, authMw, agentOrAbove)
+	conversation.RegisterRoutes(app, "/api/conversations", c, authMw, agentOrAbove)
+	conversation_tag.RegisterRoutes(app, "/api/conversations", c, authMw, agentOrAbove)
+	message.RegisterRoutes(app, "/api/messages", c, authMw, agentOrAbove)
+	tag.RegisterRoutes(app, "/api/tags", c, authMw, agentOrAbove)
+	note.RegisterRoutes(app, "/api/note", c, authMw, agentOrAbove)
+	whatsapp_device.RegisterRoutes(app, "/api/whatsapp-devices", c, authMw, agentOrAbove)
+	action.RegisterRoutes(app, "/api/action", c, authMw, agentOrAbove)
+	upload.RegisterRoutes(app, "/api/upload", c, authMw, agentOrAbove)
+	dashboard.RegisterRoutes(app, "/api/dashboard", c, authMw, agentOrAbove)
+	tenant.RegisterRoutes(app, "/api/tenant", c, authMw, adminOrAbove)
 
 	c.Logger.Info("Starting server on port %d", cfg.Port)
 

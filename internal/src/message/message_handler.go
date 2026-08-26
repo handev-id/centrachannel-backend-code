@@ -33,7 +33,7 @@ func NewMessageHandlerWithService(service MessageService) *MessageHandler {
 }
 
 func (h *MessageHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
-	conversationID, err := strconv.Atoi(c.Params("conversationId"))
+	conversationID, err := strconv.Atoi(c.Query("conversation_id"))
 	if err != nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
 	}
@@ -52,11 +52,6 @@ func (h *MessageHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *MessageHandler) Send(c fiber.Ctx, t *tenant.Tenant) error {
 
-	conversationID, err := strconv.Atoi(c.Params("conversationId"))
-	if err != nil {
-		return response.BadRequest(c, "Invalid conversation ID", nil)
-	}
-
 	var req SendMessageRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
@@ -65,7 +60,7 @@ func (h *MessageHandler) Send(c fiber.Ctx, t *tenant.Tenant) error {
 		return err
 	}
 
-	msg, err := h.service.Send(c.Context(), req, t.ID, conversationID)
+	msg, err := h.service.Send(c.Context(), req, t.ID, req.ConversationID)
 	if err != nil {
 		return response.BadRequest(c, err.Error(), nil)
 	}

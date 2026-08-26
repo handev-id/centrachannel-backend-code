@@ -3,10 +3,13 @@ package whatsapp_device
 import (
 	"github.com/gofiber/fiber/v3"
 
+	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
 )
 
-func RegisterRoutes(group fiber.Router, handler *WhatsAppDeviceHandler) {
+func RegisterRoutes(app fiber.Router, prefix string, c *di.Container, middlewares ...any) {
+	group := app.Group(prefix, middlewares...)
+	handler := NewWhatsAppDeviceHandler(c)
 	group.Get("/", middleware.Tenant(handler.List))
 	group.Post("/", middleware.Tenant(handler.Store))
 	group.Get("/:id", middleware.Tenant(handler.Show))
