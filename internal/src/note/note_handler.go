@@ -9,6 +9,7 @@ import (
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/ws"
 )
 
 type NoteHandler struct {
@@ -17,7 +18,7 @@ type NoteHandler struct {
 
 func NewNoteHandler(c *di.Container) *NoteHandler {
 	repo := NewNoteRepository()
-	service := NewNoteService(repo, c.DB, c.Config, c.Logger)
+	service := NewNoteService(repo, c.DB, c.Config, c.Logger, ws.NewHubNotifier(c.Hub))
 	return &NoteHandler{service: service}
 }
 

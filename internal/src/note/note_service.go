@@ -7,6 +7,7 @@ import (
 
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
+	"centrachannel/internal/ws"
 )
 
 type NoteService interface {
@@ -21,10 +22,15 @@ type noteService struct {
 	db     *sql.DB
 	cfg    *config.Config
 	logger *logger.Logger
+	notifier ws.Notifier
 }
 
-func NewNoteService(repo NoteRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) NoteService {
-	return &noteService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewNoteService(repo NoteRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) NoteService {
+	svc := &noteService{repo: repo, db: db, cfg: cfg, logger: logger}
+	if len(notifier) > 0 {
+		svc.notifier = notifier[0]
+	}
+	return svc
 }
 
 func (s *noteService) ListByConversation(ctx context.Context, tenantID int, conversationID int) ([]Note, error) {
@@ -57,6 +63,9 @@ func (s *noteService) Create(ctx context.Context, req CreateNoteRequest, tenantI
 	note.ID = id
 	note.CreatedAt = time.Now()
 	note.UpdatedAt = time.Now()
+
+	s.notifyNoteEvent(tenantID, "note-created", note)
+
 	return note, nil
 }
 
@@ -78,9 +87,27 @@ func (s *noteService) Update(ctx context.Context, tenantID int, id int, req Upda
 
 	existing.ID = id
 	existing.UpdatedAt = time.Now()
+
+	s.notifyNoteEvent(tenantID, "note-updated", existing)
+
 	return existing, nil
 }
 
 func (s *noteService) Delete(ctx context.Context, tenantID int, id int) error {
-	return s.repo.Delete(ctx, s.db, tenantID, id)
+	note := &Note{ID: id, TenantID: tenantID}
+
+	if err := s.repo.Delete(ctx, s.db, tenantID, id); err != nil {
+		return err
+	}
+
+	s.notifyNoteEvent(tenantID, "note-deleted", note)
+
+	return nil
+}
+
+func (s *noteService) notifyNoteEvent(tenantID int, event string, note *Note) {
+	if s.notifier == nil {
+		return
+	}
+	s.notifier.Notify(tenantID, event, note)
 }

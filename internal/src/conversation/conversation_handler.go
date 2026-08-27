@@ -9,6 +9,7 @@ import (
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/ws"
 )
 
 type ConversationHandler struct {
@@ -17,7 +18,7 @@ type ConversationHandler struct {
 
 func NewConversationHandler(c *di.Container) *ConversationHandler {
 	repo := NewConversationRepository()
-	service := NewConversationService(repo, c.DB, c.Config, c.Logger)
+	service := NewConversationService(repo, c.DB, c.Config, c.Logger, ws.NewHubNotifier(c.Hub))
 	return &ConversationHandler{service: service}
 }
 

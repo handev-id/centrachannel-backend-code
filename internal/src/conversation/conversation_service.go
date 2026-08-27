@@ -9,6 +9,7 @@ import (
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
+	"centrachannel/internal/ws"
 )
 
 type ConversationService interface {
@@ -28,10 +29,15 @@ type conversationService struct {
 	db     *sql.DB
 	cfg    *config.Config
 	logger *logger.Logger
+	notifier ws.Notifier
 }
 
-func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) ConversationService {
-	return &conversationService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger, notifier ...ws.Notifier) ConversationService {
+	svc := &conversationService{repo: repo, db: db, cfg: cfg, logger: logger}
+	if len(notifier) > 0 {
+		svc.notifier = notifier[0]
+	}
+	return svc
 }
 
 func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error) {
@@ -99,19 +105,47 @@ func (s *conversationService) Create(ctx context.Context, req CreateConversation
 }
 
 func (s *conversationService) Assign(ctx context.Context, tenantID int, id int, agentID int) error {
-	return s.repo.Assign(ctx, s.db, tenantID, id, agentID)
+	if err := s.repo.Assign(ctx, s.db, tenantID, id, agentID); err != nil {
+		return err
+	}
+	s.notifyConversationUpdated(tenantID, id)
+	return nil
 }
 
 func (s *conversationService) Unassign(ctx context.Context, tenantID int, id int) error {
-	return s.repo.Unassign(ctx, s.db, tenantID, id)
+	if err := s.repo.Unassign(ctx, s.db, tenantID, id); err != nil {
+		return err
+	}
+	s.notifyConversationUpdated(tenantID, id)
+	return nil
 }
 
 func (s *conversationService) Resolve(ctx context.Context, tenantID int, id int) error {
-	return s.repo.UpdateStatus(ctx, s.db, tenantID, id, "resolved")
+	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, "resolved"); err != nil {
+		return err
+	}
+	s.notifyConversationUpdated(tenantID, id)
+	return nil
 }
 
 func (s *conversationService) Reopen(ctx context.Context, tenantID int, id int) error {
-	return s.repo.UpdateStatus(ctx, s.db, tenantID, id, "unassigned")
+	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, "unassigned"); err != nil {
+		return err
+	}
+	s.notifyConversationUpdated(tenantID, id)
+	return nil
+}
+
+func (s *conversationService) notifyConversationUpdated(tenantID int, conversationID int) {
+	if s.notifier == nil {
+		return
+	}
+	conv, err := s.repo.GetByID(context.Background(), s.db, tenantID, conversationID)
+	if err != nil {
+		s.logger.Error("failed to get conversation for notification: %v", err)
+		return
+	}
+	s.notifier.Notify(tenantID, "conversation-updated", conv)
 }
 
 func (s *conversationService) MarkRead(ctx context.Context, tenantID int, id int) error {
