@@ -73,7 +73,7 @@ func main() {
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
 	agentOrAbove := middleware.RequireRole("super-admin", "admin", "agent")
 
-	auth.RegisterRoutes(app, "/api/auth", c, authMw)
+	auth.RegisterRoutes(app, "/api/auth", c)
 	user.RegisterRoutes(app, "/api/user", c, authMw, adminOrAbove)
 	campaign.RegisterRoutes(app, "/api/campaigns", c, authMw, agentOrAbove)
 	channel.RegisterRoutes(app, "/api/channels", c, authMw, agentOrAbove)
