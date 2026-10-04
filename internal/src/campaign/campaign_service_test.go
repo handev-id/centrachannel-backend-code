@@ -294,7 +294,7 @@ func (m *mockCampaignRepository) DeleteRecipientList(ctx context.Context, q DBTX
 	return nil
 }
 
-func (m *mockCampaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error) {
+func (m *mockCampaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, tenantID int, listID int) ([]CampaignRecipientContact, error) {
 	if m.listRecipientContactsFunc != nil {
 		return m.listRecipientContactsFunc(ctx, q, listID)
 	}
@@ -308,7 +308,7 @@ func (m *mockCampaignRepository) CreateRecipientContact(ctx context.Context, q D
 	return 1, nil
 }
 
-func (m *mockCampaignRepository) DeleteRecipientContact(ctx context.Context, q DBTX, id int) error {
+func (m *mockCampaignRepository) DeleteRecipientContact(ctx context.Context, q DBTX, tenantID int, listID int, id int) error {
 	if m.deleteRecipientContactFunc != nil {
 		return m.deleteRecipientContactFunc(ctx, q, id)
 	}
@@ -1080,7 +1080,7 @@ func TestCampaignService(t *testing.T) {
 		}
 		svc := &campaignService{repo: repo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		result, err := svc.AddRecipientContact(context.Background(), 5, AddContactToListRequest{
+		result, err := svc.AddRecipientContact(context.Background(), 1, 5, AddContactToListRequest{
 			FirstName: "John",
 			LastName:  strPtr("Doe"),
 			Email:     strPtr("john@example.com"),

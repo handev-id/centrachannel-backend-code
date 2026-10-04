@@ -341,8 +341,8 @@ func (r *campaignRepository) DeleteRecipientList(ctx context.Context, q DBTX, te
 	return nil
 }
 
-func (r *campaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error) {
-	rows, err := q.QueryContext(ctx, `SELECT id, first_name, last_name, username, institution, email, phone, campaign_recipient_list_id, master_contact_id, created_at, updated_at FROM campaign_recipient_contacts WHERE campaign_recipient_list_id=$1 ORDER BY first_name`, listID)
+func (r *campaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, tenantID int, listID int) ([]CampaignRecipientContact, error) {
+	rows, err := q.QueryContext(ctx, `SELECT c.id, c.first_name, c.last_name, c.username, c.institution, c.email, c.phone, c.campaign_recipient_list_id, c.master_contact_id, c.created_at, c.updated_at FROM campaign_recipient_contacts c JOIN campaign_recipient_lists l ON l.id = c.campaign_recipient_list_id WHERE c.campaign_recipient_list_id=$1 AND l.tenant_id=$2 ORDER BY c.first_name`, listID, tenantID)
 	if err != nil { return nil, err }
 	defer rows.Close()
 
@@ -366,8 +366,8 @@ func (r *campaignRepository) CreateRecipientContact(ctx context.Context, q DBTX,
 	return id, nil
 }
 
-func (r *campaignRepository) DeleteRecipientContact(ctx context.Context, q DBTX, id int) error {
-	result, err := q.ExecContext(ctx, `DELETE FROM campaign_recipient_contacts WHERE id=$1`, id)
+func (r *campaignRepository) DeleteRecipientContact(ctx context.Context, q DBTX, tenantID int, listID int, id int) error {
+	result, err := q.ExecContext(ctx, `DELETE FROM campaign_recipient_contacts c USING campaign_recipient_lists l WHERE c.id=$1 AND c.campaign_recipient_list_id=$2 AND l.id=c.campaign_recipient_list_id AND l.tenant_id=$3`, id, listID, tenantID)
 	if err != nil { return err }
 	rows, _ := result.RowsAffected()
 	if rows == 0 { return fmt.Errorf("recipient contact not found") }

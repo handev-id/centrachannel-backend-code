@@ -44,6 +44,7 @@ type Config struct {
 
 	// Meta Webhook
 	MetaWebhookSecret string
+	MetaAppSecret     string
 }
 
 type DatabaseConfig struct {
@@ -115,6 +116,7 @@ func Load() (*Config, error) {
         EvolutionAPIKey:  getEnv("EVOLUTION_API_KEY", ""),
         WebhookBaseURL:   getEnv("WEBHOOK_BASE_URL", ""),
         MetaWebhookSecret: getEnv("META_WEBHOOK_SECRET", ""),
+        MetaAppSecret:     getEnv("META_APP_SECRET", ""),
 
     }
 

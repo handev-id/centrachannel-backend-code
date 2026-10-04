@@ -8,6 +8,7 @@ import (
 	"github.com/redis/go-redis/v9"
 
 	"centrachannel/config"
+	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/response"
 )
 
@@ -41,8 +42,12 @@ func AuthMiddleware(cfg *config.Config, rdb *redis.Client) fiber.Handler {
 			}
 		}
 
-		subFloat, _ := claims["sub"].(float64)
-		tenantFloat, _ := claims["tenant"].(float64)
+		subFloat, subOK := claims["sub"].(float64)
+		tenantFloat, tenantOK := claims["tenant"].(float64)
+		currentTenant, currentTenantOK := c.Locals("tenant").(*tenant.Tenant)
+		if !subOK || !tenantOK || !currentTenantOK || int(tenantFloat) != currentTenant.ID {
+			return response.Unauthorized(c, "Invalid token tenant")
+		}
 
 		rawRoles, _ := claims["roles"].([]interface{})
 		roles := make([]string, len(rawRoles))

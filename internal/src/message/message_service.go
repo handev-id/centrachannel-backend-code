@@ -22,7 +22,7 @@ import (
 type MessageService interface {
 	ListCursor(ctx context.Context, tenantID int, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error)
 	Send(ctx context.Context, req SendMessageRequest, tenantID int, conversationID int) (*Message, error)
-	UpdateStatus(ctx context.Context, id int, status string) error
+	UpdateStatus(ctx context.Context, tenantID int, id int, status string) error
 }
 
 type messageService struct {
@@ -244,7 +244,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 	extID, err := sender.Send(extMsg)
 	if err != nil {
 		s.logger.Error("failed to deliver message to %s (conv=%d): %v", ch.Type, conversationID, err)
-		_ = s.repo.UpdateStatus(ctx, s.db, msg.ID, "failed")
+		_ = s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed")
 		return
 	}
 
@@ -257,6 +257,6 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 	}
 }
 
-func (s *messageService) UpdateStatus(ctx context.Context, id int, status string) error {
-	return s.repo.UpdateStatus(ctx, s.db, id, status)
+func (s *messageService) UpdateStatus(ctx context.Context, tenantID int, id int, status string) error {
+	return s.repo.UpdateStatus(ctx, s.db, tenantID, id, status)
 }

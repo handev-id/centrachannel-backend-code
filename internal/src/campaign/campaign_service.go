@@ -33,9 +33,9 @@ type CampaignService interface {
 	CreateRecipientList(ctx context.Context, req CreateRecipientListRequest, t *tenant.Tenant) (*CampaignRecipientList, error)
 	UpdateRecipientList(ctx context.Context, tenantID int, id int, req UpdateRecipientListRequest) (*CampaignRecipientList, error)
 	DeleteRecipientList(ctx context.Context, tenantID int, id int) error
-	ListRecipientContacts(ctx context.Context, listID int) ([]CampaignRecipientContact, error)
-	AddRecipientContact(ctx context.Context, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error)
-	RemoveRecipientContact(ctx context.Context, id int) error
+	ListRecipientContacts(ctx context.Context, tenantID int, listID int) ([]CampaignRecipientContact, error)
+	AddRecipientContact(ctx context.Context, tenantID int, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error)
+	RemoveRecipientContact(ctx context.Context, tenantID int, listID int, contactID int) error
 }
 
 type campaignService struct {
@@ -82,6 +82,12 @@ func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest,
 		scheduledAt = &parsed
 	}
 
+	if req.RecipientListID != nil {
+		if _, err := s.repo.GetRecipientListByID(ctx, s.db, t.ID, *req.RecipientListID); err != nil {
+			return nil, fmt.Errorf("recipient list not found")
+		}
+	}
+
 	campaign := &Campaign{
 		TenantID:        t.ID,
 		Name:            req.Name,
@@ -105,7 +111,7 @@ func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest,
 	if err != nil { return nil, fmt.Errorf("failed to create campaign: %w", err) }
 
 	if req.RecipientListID != nil {
-		contacts, err := s.repo.ListRecipientContacts(ctx, s.db, *req.RecipientListID)
+		contacts, err := s.repo.ListRecipientContacts(ctx, s.db, t.ID, *req.RecipientListID)
 		if err != nil { return nil, fmt.Errorf("failed to fetch recipient contacts: %w", err) }
 
 		for _, c := range contacts {
@@ -154,7 +160,12 @@ func (s *campaignService) Update(ctx context.Context, tenantID int, id int, req 
 		if err != nil { return nil, fmt.Errorf("invalid scheduled_at format, use RFC3339") }
 		updated.ScheduledAt = &parsed
 	}
-	if req.RecipientListID != nil { updated.RecipientListID = req.RecipientListID }
+	if req.RecipientListID != nil {
+		if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, *req.RecipientListID); err != nil {
+			return nil, fmt.Errorf("recipient list not found")
+		}
+		updated.RecipientListID = req.RecipientListID
+	}
 	if req.TemplateID != nil { updated.TemplateID = req.TemplateID }
 	if req.AgentID != nil { updated.AgentID = req.AgentID }
 	if req.SenderID != nil { updated.SenderID = req.SenderID }
@@ -263,8 +274,9 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 
 		for _, r := range recipients {
 			now := time.Now()
-			status := "delivered"
-			var failedReason *string
+			status := "failed"
+			failure := "campaign recipient could not be delivered"
+			failedReason := &failure
 
 			if device != nil && (ch.Type == "whatsapp" || ch.Type == "whatsapp_business") && r.Phone != "" {
 				evoCfg := messenger.EvolutionConfig{
@@ -299,9 +311,10 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 
 				if _, err := sender.Send(outMsg); err != nil {
 					s.logger.Error("Failed to send campaign message to %s: %v", r.Phone, err)
-					status = "failed"
-					errStr := err.Error()
-					failedReason = &errStr
+					failure = err.Error()
+				} else {
+					status = "delivered"
+					failedReason = nil
 				}
 			}
 
@@ -451,20 +464,27 @@ func (s *campaignService) DeleteRecipientList(ctx context.Context, tenantID int,
 	return s.repo.DeleteRecipientList(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) ListRecipientContacts(ctx context.Context, listID int) ([]CampaignRecipientContact, error) {
-	return s.repo.ListRecipientContacts(ctx, s.db, listID)
+func (s *campaignService) ListRecipientContacts(ctx context.Context, tenantID int, listID int) ([]CampaignRecipientContact, error) {
+	if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, listID); err != nil {
+		return nil, err
+	}
+	return s.repo.ListRecipientContacts(ctx, s.db, tenantID, listID)
 }
 
-func (s *campaignService) AddRecipientContact(ctx context.Context, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error) {
+func (s *campaignService) AddRecipientContact(ctx context.Context, tenantID int, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error) {
+	if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, listID); err != nil {
+		return nil, err
+	}
+
 	contact := &CampaignRecipientContact{
-		FirstName:             req.FirstName,
-		LastName:              req.LastName,
-		Username:              req.Username,
-		Institution:           req.Institution,
-		Email:                 req.Email,
-		Phone:                 req.Phone,
+		FirstName:               req.FirstName,
+		LastName:                req.LastName,
+		Username:                req.Username,
+		Institution:             req.Institution,
+		Email:                   req.Email,
+		Phone:                   req.Phone,
 		CampaignRecipientListID: listID,
-		MasterContactID:       req.MasterContactID,
+		MasterContactID:         req.MasterContactID,
 	}
 
 	id, err := s.repo.CreateRecipientContact(ctx, s.db, contact)
@@ -476,6 +496,9 @@ func (s *campaignService) AddRecipientContact(ctx context.Context, listID int, r
 	return contact, nil
 }
 
-func (s *campaignService) RemoveRecipientContact(ctx context.Context, id int) error {
-	return s.repo.DeleteRecipientContact(ctx, s.db, id)
+func (s *campaignService) RemoveRecipientContact(ctx context.Context, tenantID int, listID int, contactID int) error {
+	if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, listID); err != nil {
+		return err
+	}
+	return s.repo.DeleteRecipientContact(ctx, s.db, tenantID, listID, contactID)
 }

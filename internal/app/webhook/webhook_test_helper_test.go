@@ -120,7 +120,7 @@ func (m *mockMsgRepo) Create(ctx context.Context, q message.DBTX, msg *message.M
 	if m.createFunc != nil { return m.createFunc(ctx, q, msg) }
 	return 0, nil
 }
-func (m *mockMsgRepo) UpdateStatus(ctx context.Context, q message.DBTX, id int, status string) error { return nil }
+func (m *mockMsgRepo) UpdateStatus(ctx context.Context, q message.DBTX, tenantID int, id int, status string) error { return nil }
 func (m *mockMsgRepo) UpdateStatusByWebhookID(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
 	if m.updateStatusByWebhookIDFunc != nil { return m.updateStatusByWebhookIDFunc(ctx, q, webhookMessageID, status) }
 	return nil

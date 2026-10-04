@@ -77,7 +77,7 @@ type Response struct {
 }
 
 func Paginated(c fiber.Ctx, message string, data interface{}, total, page, limit, from, to, lastPage int) error {
-	t, p, l, f, t2, lp := total, page, limit, from, to, lastPage
+	t, p, l, f, t2, lp := total, limit, page, from, to, lastPage
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Meta: ResponseMeta{
 			Message:     message,

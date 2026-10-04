@@ -22,7 +22,7 @@ func (m *mockMessageService) ListCursor(ctx context.Context, tenantID int, conve
 func (m *mockMessageService) Send(ctx context.Context, req message.SendMessageRequest, tenantID int, conversationID int) (*message.Message, error) {
 	return m.sendFunc(ctx, req, tenantID, conversationID)
 }
-func (m *mockMessageService) UpdateStatus(ctx context.Context, id int, status string) error {
+func (m *mockMessageService) UpdateStatus(ctx context.Context, tenantID int, id int, status string) error {
 	return m.updateStatusFunc(ctx, id, status)
 }
 

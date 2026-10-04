@@ -204,16 +204,16 @@ func (h *CampaignHandler) DeleteRecipientList(c fiber.Ctx, t *tenant.Tenant) err
 	return response.OK(c, "Recipient list deleted", nil)
 }
 
-func (h *CampaignHandler) ListRecipientContacts(c fiber.Ctx) error {
+func (h *CampaignHandler) ListRecipientContacts(c fiber.Ctx, t *tenant.Tenant) error {
 	listID, err := strconv.Atoi(c.Params("id"))
 	if err != nil { return response.BadRequest(c, "Invalid list ID", nil) }
 
-	contacts, err := h.service.ListRecipientContacts(c.Context(), listID)
+	contacts, err := h.service.ListRecipientContacts(c.Context(), t.ID, listID)
 	if err != nil { return response.InternalServerError(c, err.Error()) }
 	return response.OK(c, "success", contacts)
 }
 
-func (h *CampaignHandler) AddRecipientContact(c fiber.Ctx) error {
+func (h *CampaignHandler) AddRecipientContact(c fiber.Ctx, t *tenant.Tenant) error {
 	listID, err := strconv.Atoi(c.Params("id"))
 	if err != nil { return response.BadRequest(c, "Invalid list ID", nil) }
 
@@ -221,16 +221,18 @@ func (h *CampaignHandler) AddRecipientContact(c fiber.Ctx) error {
 	if err := c.Bind().Body(&req); err != nil { return response.BadRequest(c, "Invalid payload", nil) }
 	if err := response.Validate(c, &req); err != nil { return err }
 
-	contact, err := h.service.AddRecipientContact(c.Context(), listID, req)
+	contact, err := h.service.AddRecipientContact(c.Context(), t.ID, listID, req)
 	if err != nil { return response.BadRequest(c, err.Error(), nil) }
 	return response.Created(c, "Contact added to list", contact)
 }
 
-func (h *CampaignHandler) RemoveRecipientContact(c fiber.Ctx) error {
+func (h *CampaignHandler) RemoveRecipientContact(c fiber.Ctx, t *tenant.Tenant) error {
+	listID, err := strconv.Atoi(c.Params("id"))
+	if err != nil { return response.BadRequest(c, "Invalid list ID", nil) }
 	contactID, err := strconv.Atoi(c.Params("contactId"))
 	if err != nil { return response.BadRequest(c, "Invalid contact ID", nil) }
 
-	if err := h.service.RemoveRecipientContact(c.Context(), contactID); err != nil {
+	if err := h.service.RemoveRecipientContact(c.Context(), t.ID, listID, contactID); err != nil {
 		return response.BadRequest(c, err.Error(), nil)
 	}
 	return response.OK(c, "Contact removed from list", nil)

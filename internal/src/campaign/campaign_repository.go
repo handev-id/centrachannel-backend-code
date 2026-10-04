@@ -32,7 +32,7 @@ type CampaignRepository interface {
 	CreateRecipientList(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error)
 	UpdateRecipientList(ctx context.Context, q DBTX, tenantID int, id int, list *CampaignRecipientList) error
 	DeleteRecipientList(ctx context.Context, q DBTX, tenantID int, id int) error
-	ListRecipientContacts(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error)
+	ListRecipientContacts(ctx context.Context, q DBTX, tenantID int, listID int) ([]CampaignRecipientContact, error)
 	CreateRecipientContact(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (int, error)
-	DeleteRecipientContact(ctx context.Context, q DBTX, id int) error
+	DeleteRecipientContact(ctx context.Context, q DBTX, tenantID int, listID int, id int) error
 }

@@ -96,8 +96,8 @@ func (r *messageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id int,
 	return err
 }
 
-func (r *messageRepository) UpdateStatus(ctx context.Context, q DBTX, id int, status string) error {
-	result, err := q.ExecContext(ctx, `UPDATE messages SET status=$1, updated_at=$2 WHERE id=$3`, status, time.Now(), id)
+func (r *messageRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error {
+	result, err := q.ExecContext(ctx, `UPDATE messages SET status=$1, updated_at=$2 WHERE id=$3 AND tenant_id=$4`, status, time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}

@@ -71,7 +71,7 @@ func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, tenantID
 	return m.listCursorFunc(ctx, q, tenantID, conversationID, limit, lastID)
 }
 
-func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, id int, status string) error {
+func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error {
 	return m.updateStatusFunc(ctx, q, id, status)
 }
 
@@ -616,7 +616,7 @@ func TestMessageService_UpdateStatus(t *testing.T) {
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		if err := svc.UpdateStatus(ctx, 5, "read"); err != nil {
+		if err := svc.UpdateStatus(ctx, 1, 5, "read"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if capturedID != 5 {

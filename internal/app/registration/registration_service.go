@@ -54,7 +54,7 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 	}
 	t.ID = tenantID
 
-	roleNames := []string{"super_admin", "admin", "agent"}
+	roleNames := []string{"super-admin", "admin", "agent"}
 	roleIDs := make(map[string]int, len(roleNames))
 	for _, name := range roleNames {
 		roleID, err := s.repo.CreateRole(ctx, tx, tenantID, name)
