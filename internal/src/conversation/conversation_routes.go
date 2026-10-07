@@ -9,7 +9,15 @@ import (
 
 func RegisterRoutes(app fiber.Router, prefix string, c *di.Container, middlewares ...any) {
 	group := app.Group(prefix, middlewares...)
-	handler := NewConversationHandler(c)
+	registerRoutes(group, NewConversationHandler(c))
+}
+
+func RegisterRoutesWithHandler(app fiber.Router, handler *ConversationHandler, middlewares ...any) {
+	group := app.Group("", middlewares...)
+	registerRoutes(group, handler)
+}
+
+func registerRoutes(group fiber.Router, handler *ConversationHandler) {
 	group.Get("/", middleware.Tenant(handler.List))
 	group.Post("/", middleware.Tenant(handler.Store))
 	group.Get("/unread", middleware.Tenant(handler.TotalUnread))

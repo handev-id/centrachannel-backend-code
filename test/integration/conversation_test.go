@@ -68,7 +68,7 @@ func TestConversationListCursor_Success(t *testing.T) {
 	handler := conversation.NewConversationHandlerWithService(mock)
 	app := NewTestApp()
 	app.Use(TestAuthMiddleware())
-	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+	conversation.RegisterRoutesWithHandler(app.Group("/api/v1/tenant/conversations"), handler)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/tenant/conversations?last_id=13&last_activity=2026-08-02T11:00:00Z", nil)
 	resp, err := app.Test(req)
@@ -141,7 +141,7 @@ func TestConversationListCursor_Validation(t *testing.T) {
 	handler := conversation.NewConversationHandlerWithService(mock)
 	app := NewTestApp()
 	app.Use(TestAuthMiddleware())
-	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+	conversation.RegisterRoutesWithHandler(app.Group("/api/v1/tenant/conversations"), handler)
 
 	tests := []struct {
 		name string
@@ -184,7 +184,7 @@ func TestConversationCreate_Success(t *testing.T) {
 	handler := conversation.NewConversationHandlerWithService(mock)
 	app := NewTestApp()
 	app.Use(TestAuthMiddleware())
-	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+	conversation.RegisterRoutesWithHandler(app.Group("/api/v1/tenant/conversations"), handler)
 
 	body := conversation.CreateConversationRequest{ProfileID: 10, ChannelID: 5}
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/tenant/conversations", JSONBody(body))
@@ -234,7 +234,7 @@ func TestConversationShow_Success(t *testing.T) {
 	handler := conversation.NewConversationHandlerWithService(mock)
 	app := NewTestApp()
 	app.Use(TestAuthMiddleware())
-	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+	conversation.RegisterRoutesWithHandler(app.Group("/api/v1/tenant/conversations"), handler)
 
 	req, _ := http.NewRequest(http.MethodGet, "/api/v1/tenant/conversations/1", nil)
 	resp, err := app.Test(req)
@@ -273,7 +273,7 @@ func TestConversationAssign_Success(t *testing.T) {
 	handler := conversation.NewConversationHandlerWithService(mock)
 	app := NewTestApp()
 	app.Use(TestAuthMiddleware())
-	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+	conversation.RegisterRoutesWithHandler(app.Group("/api/v1/tenant/conversations"), handler)
 
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/tenant/conversations/1/assign", nil)
 	resp, err := app.Test(req)
@@ -297,7 +297,7 @@ func TestConversationResolve_Success(t *testing.T) {
 	handler := conversation.NewConversationHandlerWithService(mock)
 	app := NewTestApp()
 	app.Use(TestAuthMiddleware())
-	conversation.RegisterRoutes(app.Group("/api/v1/tenant/conversations"), handler)
+	conversation.RegisterRoutesWithHandler(app.Group("/api/v1/tenant/conversations"), handler)
 
 	req, _ := http.NewRequest(http.MethodPost, "/api/v1/tenant/conversations/1/resolve", nil)
 	resp, err := app.Test(req)
