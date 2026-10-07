@@ -100,7 +100,7 @@ jobs:
         run: |
           ssh "$SSH_USER@$SSH_HOST" "IMAGE_TAG='$IMAGE_TAG' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<'REMOTE'
           set -eu
-          cd /home/solodev/centrachannel
+          cd /home/solodev/centrachannel/centrachannel-be
 
           printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username handev-id --password-stdin >/dev/null
 
