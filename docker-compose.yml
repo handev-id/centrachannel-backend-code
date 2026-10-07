@@ -7,7 +7,7 @@ services:
     env_file:
       - .env
     healthcheck:
-      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4001/health"]
+      test: ["CMD-SHELL", "wget -qO- --tries=1 http://127.0.0.1:4001/health | grep -q '\"status\":\"ok\"'"]
       interval: 10s
       timeout: 5s
       retries: 6
