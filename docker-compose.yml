@@ -1,6 +1,14 @@
 services:
   app:
-    build: .
-    ports:
-      - "3000:3000"
-    env_file: .env
+    image: ${IMAGE_NAME}:${IMAGE_TAG}
+    container_name: centrachannel-staging
+    network_mode: host
+    restart: unless-stopped
+    env_file:
+      - .env
+    healthcheck:
+      test: ["CMD", "wget", "--no-verbose", "--tries=1", "--spider", "http://127.0.0.1:4001/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s

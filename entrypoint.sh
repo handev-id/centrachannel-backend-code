@@ -1,8 +1,4 @@
 #!/bin/sh
-set -e
+set -eu
 
-echo "Running migrations..."
-migrate -path /root/database/migrations -database "$DB_URL" up
-
-echo "Starting app..."
-exec ./main
+exec ./centrachannel

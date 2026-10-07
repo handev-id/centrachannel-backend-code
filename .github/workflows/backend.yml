@@ -1,0 +1,130 @@
+name: Backend CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main, master]
+
+permissions:
+  contents: read
+  packages: write
+
+concurrency:
+  group: centrachannel-backend-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  IMAGE_NAME: ghcr.io/handev-id/centrachannel-backend-code
+
+jobs:
+  checks:
+    name: Go checks and Docker build
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Check formatting
+        run: |
+          changed_go_files="$(git diff --name-only HEAD^ HEAD -- '*.go')"
+          if [ -n "$changed_go_files" ]; then
+            test -z "$(gofmt -l $changed_go_files)"
+          fi
+
+      - name: Vet
+        run: go vet ./...
+
+      - name: Test
+        run: go test ./...
+
+      - name: Build image
+        run: docker build --tag "${IMAGE_NAME}:${GITHUB_SHA}" .
+
+  publish:
+    name: Publish staging image
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: checks
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push immutable image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: |
+            ${{ env.IMAGE_NAME }}:${{ github.sha }}
+            ${{ env.IMAGE_NAME }}:staging
+
+  deploy-staging:
+    name: Deploy staging
+    if: github.event_name == 'push' && (github.ref == 'refs/heads/main' || github.ref == 'refs/heads/master')
+    needs: publish
+    runs-on: ubuntu-latest
+    environment: staging
+    steps:
+      - name: Configure SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.STAGING_SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.STAGING_SSH_KNOWN_HOSTS }}
+        run: |
+          install -m 700 -d ~/.ssh
+          printf '%s\n' "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
+          printf '%s\n' "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy immutable image with rollback
+        env:
+          IMAGE_TAG: ${{ github.sha }}
+          SSH_HOST: ${{ secrets.STAGING_SSH_HOST }}
+          SSH_USER: ${{ secrets.STAGING_SSH_USER }}
+          GHCR_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+        run: |
+          ssh "$SSH_USER@$SSH_HOST" "IMAGE_TAG='$IMAGE_TAG' GHCR_TOKEN='$GHCR_TOKEN' bash -s" <<'REMOTE'
+          set -eu
+          cd /home/solodev/centrachannel
+
+          printf '%s' "$GHCR_TOKEN" | docker login ghcr.io --username handev-id --password-stdin >/dev/null
+
+          current_tag="$(sed -n 's/^IMAGE_TAG=//p' .env | head -n 1)"
+          test -n "$current_tag"
+          cp .env .env.previous
+          sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=$IMAGE_TAG/" .env
+
+          rollback() {
+            cp .env.previous .env
+            docker compose --project-name centrachannel-staging up -d --remove-orphans
+          }
+          trap rollback ERR
+
+          docker compose --project-name centrachannel-staging pull app
+          docker compose --project-name centrachannel-staging up -d --remove-orphans
+
+          for attempt in $(seq 1 30); do
+            if curl --fail --silent --show-error http://127.0.0.1:4001/health >/dev/null; then
+              trap - ERR
+              rm -f .env.previous
+              exit 0
+            fi
+            sleep 2
+          done
+
+          exit 1
+          REMOTE

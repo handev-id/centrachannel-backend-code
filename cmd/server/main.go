@@ -52,7 +52,7 @@ func main() {
 	app.Use(middleware.CORSMiddleware())
 	app.Use(middleware.LogMiddleware(c.Logger, cfg.Env))
 
-	obsHandler := observability.NewObservabilityHandler()
+	obsHandler := observability.NewObservabilityHandler(cfg, c.DB)
 	observability.RegisterRoutes(app, obsHandler)
 
 	docs.RegisterRoutes(app)
@@ -91,7 +91,7 @@ func main() {
 
 	c.Logger.Info("Starting server on port %d", cfg.Port)
 
-	if err := app.Listen(":" + fmt.Sprintf("%d", cfg.Port)); err != nil {
+	if err := app.Listen(fmt.Sprintf("%s:%d", cfg.Host, cfg.Port)); err != nil {
 		c.Logger.Fatal("Server error: %v", err)
 	}
 }
