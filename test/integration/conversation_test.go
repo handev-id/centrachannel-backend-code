@@ -13,15 +13,15 @@ import (
 )
 
 type mockConversationService struct {
-	listCursorFunc       func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error)
-	getByIDFunc          func(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error)
-	createFunc           func(ctx context.Context, req conversation.CreateConversationRequest, t *tenant.Tenant) (*conversation.Conversation, error)
-	assignFunc           func(ctx context.Context, tenantID int, id int, agentID int) error
-	unassignFunc         func(ctx context.Context, tenantID int, id int) error
-	resolveFunc          func(ctx context.Context, tenantID int, id int) error
-	reopenFunc           func(ctx context.Context, tenantID int, id int) error
-	markReadFunc         func(ctx context.Context, tenantID int, id int) error
-	getTotalUnreadFunc   func(ctx context.Context, tenantID int) (int, error)
+	listCursorFunc     func(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error)
+	getByIDFunc        func(ctx context.Context, tenantID int, id int) (*conversation.Conversation, error)
+	createFunc         func(ctx context.Context, req conversation.CreateConversationRequest, t *tenant.Tenant) (*conversation.Conversation, error)
+	assignFunc         func(ctx context.Context, tenantID int, id int, agentID int) error
+	unassignFunc       func(ctx context.Context, tenantID int, id int) error
+	resolveFunc        func(ctx context.Context, tenantID int, id int) error
+	reopenFunc         func(ctx context.Context, tenantID int, id int) error
+	markReadFunc       func(ctx context.Context, tenantID int, id int) error
+	getTotalUnreadFunc func(ctx context.Context, tenantID int) (int, error)
 }
 
 func (m *mockConversationService) ListCursor(ctx context.Context, q conversation.ListConversationQuery, t *tenant.Tenant) ([]*conversation.Conversation, int, string, bool, error) {
