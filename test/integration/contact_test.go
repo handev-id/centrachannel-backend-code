@@ -89,7 +89,7 @@ func TestContactList_200(t *testing.T) {
 
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	req := httptest.NewRequest("GET", "/contacts", nil)
 	resp, err := app.Test(req)
@@ -128,7 +128,7 @@ func TestContactCreate_201(t *testing.T) {
 
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	body := contact.CreateContactRequest{FirstName: "John"}
 	req := httptest.NewRequest("POST", "/contacts", JSONBody(body))
@@ -161,7 +161,7 @@ func TestContactShow_200(t *testing.T) {
 
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	req := httptest.NewRequest("GET", "/contacts/1", nil)
 	resp, err := app.Test(req)
@@ -194,7 +194,7 @@ func TestContactUpdate_200(t *testing.T) {
 
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	body := contact.UpdateContactRequest{FirstName: strPtr("Jane")}
 	req := httptest.NewRequest("PUT", "/contacts/1", JSONBody(body))
@@ -227,7 +227,7 @@ func TestContactDelete_200(t *testing.T) {
 
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	req := httptest.NewRequest("DELETE", "/contacts/1", nil)
 	resp, err := app.Test(req)
@@ -252,7 +252,7 @@ func TestContactConversations_200(t *testing.T) {
 
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	req := httptest.NewRequest("GET", "/contacts/1/conversations", nil)
 	resp, err := app.Test(req)
@@ -282,7 +282,7 @@ func TestContactCreate_400(t *testing.T) {
 	mockSvc := &mockContactService{}
 	app := NewTestApp()
 	grp := app.Group("/contacts", TestAuthMiddleware())
-	contact.RegisterRoutes(grp, contact.NewContactHandlerWithService(mockSvc))
+	contact.RegisterRoutesWithHandler(grp, contact.NewContactHandlerWithService(mockSvc))
 
 	req := httptest.NewRequest("POST", "/contacts", strings.NewReader(`{invalid}`))
 	req.Header.Set("Content-Type", "application/json")

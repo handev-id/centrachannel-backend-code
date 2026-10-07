@@ -119,11 +119,11 @@ func logJSON(level string, data map[string]interface{}, l *logger.Logger) {
 	msg := string(b)
 	switch level {
 	case "ERROR":
-		l.Error(msg)
+		l.Error("%s", msg)
 	case "WARN":
-		l.Warn(msg)
+		l.Warn("%s", msg)
 	default:
-		l.Info(msg)
+		l.Info("%s", msg)
 	}
 }
 
