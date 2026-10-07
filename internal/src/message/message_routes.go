@@ -7,6 +7,11 @@ import (
 	"centrachannel/internal/middleware"
 )
 
+func RegisterConversationRoutes(app fiber.Router, handler *MessageHandler) {
+	app.Get("/:conversationId/messages", middleware.Tenant(handler.List))
+	app.Post("/:conversationId/messages", middleware.Tenant(handler.Send))
+}
+
 func RegisterRoutes(app fiber.Router, prefix string, c *di.Container, middlewares ...any) {
 	group := app.Group(prefix, middlewares...)
 	handler := NewMessageHandler(c)
