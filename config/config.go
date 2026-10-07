@@ -38,13 +38,13 @@ type Config struct {
 	StoragePath      string
 	MaxFileSize      int64
 	StorageSecretKey string
-	LogLevel      string
-	LogFormat     string
+	LogLevel         string
+	LogFormat        string
 
 	// Evolution API
-	EvolutionAPIURL   string
-	EvolutionAPIKey   string
-	WebhookBaseURL    string
+	EvolutionAPIURL string
+	EvolutionAPIKey string
+	WebhookBaseURL  string
 
 	// Meta Webhook
 	MetaWebhookSecret string
@@ -104,36 +104,35 @@ func Load() (*Config, error) {
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       getEnvInt("REDIS_DB", 0),
 		},
-		JWTSecret:          getEnv("JWT_SECRET", "your-secret-key-change-this-in-production"),
-		JWTExpiry:          getDurationEnv("JWT_EXPIRY", 24*time.Hour),
+		JWTSecret: getEnv("JWT_SECRET", "your-secret-key-change-this-in-production"),
+		JWTExpiry: getDurationEnv("JWT_EXPIRY", 24*time.Hour),
 		Email: EmailConfig{
 			Host:     getEnv("SMTP_HOST", "smtp.gmail.com"),
 			Port:     getEnvInt("SMTP_PORT", 587),
 			User:     getEnv("SMTP_USER", ""),
 			Password: getEnv("SMTP_PASSWORD", ""),
 		},
-        StorageURL:       getEnv("STORAGE_URL", "https://storage.solodevs.my.id"),
-        StoragePath:      getEnv("STORAGE_PATH", "./storage"),
-        MaxFileSize:      getEnvInt64("MAX_FILE_SIZE", 10485760),
-        StorageSecretKey: getEnv("STORAGE_SECRET_KEY", "solodevkeysss"),
-        LogLevel:    getEnv("LOG_LEVEL", "info"),
-        LogFormat:   getEnv("LOG_FORMAT", "json"),
+		StorageURL:       getEnv("STORAGE_URL", "https://storage.solodevs.my.id"),
+		StoragePath:      getEnv("STORAGE_PATH", "./storage"),
+		MaxFileSize:      getEnvInt64("MAX_FILE_SIZE", 10485760),
+		StorageSecretKey: getEnv("STORAGE_SECRET_KEY", "solodevkeysss"),
+		LogLevel:         getEnv("LOG_LEVEL", "info"),
+		LogFormat:        getEnv("LOG_FORMAT", "json"),
 
-        EvolutionAPIURL:  getEnv("EVOLUTION_API_URL", ""),
-        EvolutionAPIKey:  getEnv("EVOLUTION_API_KEY", ""),
-        WebhookBaseURL:   getEnv("WEBHOOK_BASE_URL", ""),
-        MetaWebhookSecret: getEnv("META_WEBHOOK_SECRET", ""),
-        MetaAppSecret:     getEnv("META_APP_SECRET", ""),
+		EvolutionAPIURL:   getEnv("EVOLUTION_API_URL", ""),
+		EvolutionAPIKey:   getEnv("EVOLUTION_API_KEY", ""),
+		WebhookBaseURL:    getEnv("WEBHOOK_BASE_URL", ""),
+		MetaWebhookSecret: getEnv("META_WEBHOOK_SECRET", ""),
+		MetaAppSecret:     getEnv("META_APP_SECRET", ""),
+	}
 
-    }
+	// Validate required fields using go-playground/validator
+	v := validator.New()
+	if err := v.Struct(cfg); err != nil {
+		return nil, fmt.Errorf("configuration validation error: %w", err)
+	}
 
-    // Validate required fields using go-playground/validator
-    v := validator.New()
-    if err := v.Struct(cfg); err != nil {
-        return nil, fmt.Errorf("configuration validation error: %w", err)
-    }
-
-    return cfg, nil
+	return cfg, nil
 }
 
 // Helper functions
