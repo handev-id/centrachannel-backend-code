@@ -13,10 +13,10 @@ import (
 
 type Config struct {
 	// Server
-	Port              int
-	Host              string
-	Env               string
-	BaseDomain        string
+	Port       int
+	Host       string
+	Env        string
+	BaseDomain string
 
 	// Database
 	Database DatabaseConfig
@@ -80,10 +80,10 @@ func Load() (*Config, error) {
 	_ = godotenv.Load()
 
 	cfg := &Config{
-		Port:              getEnvInt("PORT", 3000),
-		Host:              getEnv("HOST", "0.0.0.0"),
-		Env:               getEnv("ENV", "development"),
-		BaseDomain:        getEnv("APP_BASE_DOMAIN", "localhost"),
+		Port:       getEnvInt("PORT", 3000),
+		Host:       getEnv("HOST", "0.0.0.0"),
+		Env:        getEnv("ENV", "development"),
+		BaseDomain: getEnv("APP_BASE_DOMAIN", "localhost"),
 		Database: DatabaseConfig{
 			Host:            getEnv("DB_HOST", "localhost"),
 			Port:            getEnvInt("DB_PORT", 5432),
