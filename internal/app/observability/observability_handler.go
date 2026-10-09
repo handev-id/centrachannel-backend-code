@@ -60,11 +60,5 @@ func (h *ObservabilityHandler) AskTLS(c fiber.Ctx) error {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
 
-	for _, allowedDomain := range h.config.TLSAllowedDomains {
-		if domain == allowedDomain {
-			return c.SendStatus(fiber.StatusOK)
-		}
-	}
-
 	return c.SendStatus(fiber.StatusForbidden)
 }

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/joho/godotenv"
@@ -18,7 +17,6 @@ type Config struct {
 	Host              string
 	Env               string
 	BaseDomain        string
-	TLSAllowedDomains []string
 
 	// Database
 	Database DatabaseConfig
@@ -86,7 +84,6 @@ func Load() (*Config, error) {
 		Host:              getEnv("HOST", "0.0.0.0"),
 		Env:               getEnv("ENV", "development"),
 		BaseDomain:        getEnv("APP_BASE_DOMAIN", "localhost"),
-		TLSAllowedDomains: getEnvList("TLS_ALLOWED_DOMAINS"),
 		Database: DatabaseConfig{
 			Host:            getEnv("DB_HOST", "localhost"),
 			Port:            getEnvInt("DB_PORT", 5432),
@@ -157,23 +154,6 @@ func getEnvInt64(key string, defaultVal int64) int64 {
 		return val
 	}
 	return defaultVal
-}
-
-func getEnvList(key string) []string {
-	value := getEnv(key, "")
-	if value == "" {
-		return nil
-	}
-
-	items := strings.Split(value, ",")
-	result := make([]string, 0, len(items))
-	for _, item := range items {
-		item = strings.TrimSpace(strings.ToLower(item))
-		if item != "" {
-			result = append(result, item)
-		}
-	}
-	return result
 }
 
 func getDurationEnv(key string, defaultVal time.Duration) time.Duration {
