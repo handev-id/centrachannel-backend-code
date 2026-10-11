@@ -45,7 +45,7 @@ func (h *WebhookHandler) HandleEvolution(c fiber.Ctx) error {
 		return response.BadRequest(c, "invalid payload", nil)
 	}
 
-	// Disable for
+	// Disable for temporary
 	// key := c.Get("apikey") temporary
 	// if key == "" {
 	// 	key = c.Get("x-api-key")

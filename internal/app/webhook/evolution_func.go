@@ -25,6 +25,9 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	if err := json.Unmarshal(payload.Data, &data); err != nil {
 		return fmt.Errorf("failed to parse messages.upsert data: %w", err)
 	}
+	if strings.HasSuffix(data.Key.RemoteJid, "@g.us") {
+		return nil
+	}
 
 	if data.Key.FromMe {
 		if s.rdb != nil {
