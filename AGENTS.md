@@ -50,6 +50,10 @@ Features are split into two layers:
 - Follow the existing codebase structure, architecture, naming conventions, and implementation patterns consistently.
 - Avoid over-extraction; prefer inline code for small logic, even with minor duplication, to prioritize readability and maintainability.
 - Make minimal, focused changes. Avoid unnecessary refactoring, abstractions, helper functions, or modifications outside the requested scope.
+- Handler, service, and repository files contain only their layer's types, constructors, and operation methods. Do not place standalone helper functions for normalization, validation, parsing, formatting, or similar support logic in these files. Do not turn such helpers into methods merely to bypass this rule.
+- Keep small logic used once inline. Extract only when it is reused or substantial enough to need its own file. Put reusable generic helpers in a small, focused package under `internal/utils` (for example, hostname validation in `internal/utils/hostname/hostname.go`). Keep feature-specific helpers in a separate `<feature>_helpers.go` file within the feature; never move business rules into global utils.
+- Follow existing CRUD patterns such as `internal/src/tag`. Do not add generic mutation callbacks, extra abstraction layers, or helper wrappers for simple repository calls.
+
 
 # N+1 Prevention
 
