@@ -37,6 +37,7 @@ type EvolutionWebhookPayload struct {
 	Event    string          `json:"event"`
 	Instance string          `json:"instance"`
 	Data     json.RawMessage `json:"data,omitempty"`
+	APIKey   string          `json:"apikey,omitempty"`
 }
 
 type EvolutionMessageUpsert struct {

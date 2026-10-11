@@ -60,6 +60,22 @@ func TestHandleEvolution_NoAuth(t *testing.T) {
 	}
 }
 
+func TestHandleEvolution_BodyAPIKey(t *testing.T) {
+	app := setupApp("secret123", "")
+
+	body := bytes.NewReader([]byte(`{"event":"connection.update","apikey":"secret123"}`))
+	req := httptest.NewRequest(http.MethodPost, "/webhook/evolution", body)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err := app.Test(req)
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if resp.StatusCode != http.StatusOK {
+		t.Errorf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
 func TestHandleMetaVerify_Success(t *testing.T) {
 	app := setupApp("", "meta_secret_456")
 

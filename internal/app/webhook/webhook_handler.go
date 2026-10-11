@@ -40,17 +40,20 @@ func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ws.Notifier
 }
 
 func (h *WebhookHandler) HandleEvolution(c fiber.Ctx) error {
+	var payload EvolutionWebhookPayload
+	if err := c.Bind().Body(&payload); err != nil {
+		return response.BadRequest(c, "invalid payload", nil)
+	}
+
 	key := c.Get("apikey")
 	if key == "" {
 		key = c.Get("x-api-key")
 	}
+	if key == "" {
+		key = payload.APIKey
+	}
 	if h.apiKey == "" || key == "" || key != h.apiKey {
 		return response.Unauthorized(c, "invalid api key")
-	}
-
-	var payload EvolutionWebhookPayload
-	if err := c.Bind().Body(&payload); err != nil {
-		return response.BadRequest(c, "invalid payload", nil)
 	}
 
 	if err := h.service.ProcessEvolutionEvent(c.Context(), &payload); err != nil {
