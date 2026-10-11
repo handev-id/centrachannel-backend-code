@@ -20,6 +20,24 @@ func NewUserRepository() UserRepository {
 	return &userRepository{}
 }
 
+func (r *userRepository) ListRoles(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Role, error) {
+	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, created_at, updated_at FROM roles WHERE tenant_id = $1 ORDER BY name`, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	roles := make([]Role, 0)
+	for rows.Next() {
+		var role Role
+		if err := rows.Scan(&role.ID, &role.TenantID, &role.Name, &role.CreatedAt, &role.UpdatedAt); err != nil {
+			return nil, err
+		}
+		roles = append(roles, role)
+	}
+	return roles, rows.Err()
+}
+
 func scanUser(row interface {
 	Scan(dest ...interface{}) error
 }) (*User, error) {

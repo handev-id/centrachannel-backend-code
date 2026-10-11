@@ -14,6 +14,7 @@ type DBTX interface {
 }
 
 type UserRepository interface {
+	ListRoles(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Role, error)
 	List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, search string, roleID *uuid.UUID) ([]*User, int, error)
 	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error)
 	Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error)

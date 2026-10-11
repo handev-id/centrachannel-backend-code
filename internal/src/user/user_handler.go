@@ -26,6 +26,14 @@ func NewUserHandlerWithService(service UserService) *UserHandler {
 	return &UserHandler{service: service}
 }
 
+func (h *UserHandler) Roles(c fiber.Ctx, t *tenant.Tenant) error {
+	roles, err := h.service.ListRoles(c.Context(), t.ID)
+	if err != nil {
+		return response.InternalServerError(c, err.Error())
+	}
+	return response.OK(c, "success", roles)
+}
+
 func (h *UserHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))

@@ -10,6 +10,7 @@ import (
 func RegisterRoutes(app fiber.Router, prefix string, c *di.Container, middlewares ...any) {
 	group := app.Group(prefix, middlewares...)
 	handler := NewUserHandler(c)
+	group.Get("/roles", middleware.Tenant(handler.Roles))
 	group.Get("/", middleware.Tenant(handler.List))
 	group.Post("/", middleware.Tenant(handler.Store))
 	group.Get("/:id", middleware.Tenant(handler.Show))

@@ -19,6 +19,7 @@ type OnlineChecker interface {
 }
 
 type UserService interface {
+	ListRoles(ctx context.Context, tenantID uuid.UUID) ([]Role, error)
 	List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) ([]*User, int, error)
 	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*User, error)
 	Create(ctx context.Context, req CreateUserRequest, t *tenant.Tenant) (*User, error)
@@ -40,6 +41,10 @@ func NewUserService(repo UserRepository, db *sql.DB, cfg *config.Config, logger 
 		s.checker = checker[0]
 	}
 	return s
+}
+
+func (s *userService) ListRoles(ctx context.Context, tenantID uuid.UUID) ([]Role, error) {
+	return s.repo.ListRoles(ctx, s.db, tenantID)
 }
 
 func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) ([]*User, int, error) {

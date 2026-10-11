@@ -17,11 +17,16 @@ import (
 )
 
 type mockUserService struct {
-	listFn    func(context.Context, user.ListUserQuery, *tenant.Tenant) ([]*user.User, int, error)
-	getByIDFn func(context.Context, uuid.UUID, uuid.UUID) (*user.User, error)
-	createFn  func(context.Context, user.CreateUserRequest, *tenant.Tenant) (*user.User, error)
-	updateFn  func(context.Context, uuid.UUID, uuid.UUID, user.UpdateUserRequest) (*user.User, error)
-	deleteFn  func(context.Context, uuid.UUID, uuid.UUID) error
+	listRolesFn func(context.Context, uuid.UUID) ([]user.Role, error)
+	listFn      func(context.Context, user.ListUserQuery, *tenant.Tenant) ([]*user.User, int, error)
+	getByIDFn   func(context.Context, uuid.UUID, uuid.UUID) (*user.User, error)
+	createFn    func(context.Context, user.CreateUserRequest, *tenant.Tenant) (*user.User, error)
+	updateFn    func(context.Context, uuid.UUID, uuid.UUID, user.UpdateUserRequest) (*user.User, error)
+	deleteFn    func(context.Context, uuid.UUID, uuid.UUID) error
+}
+
+func (m *mockUserService) ListRoles(ctx context.Context, tenantID uuid.UUID) ([]user.Role, error) {
+	return m.listRolesFn(ctx, tenantID)
 }
 
 func (m *mockUserService) List(ctx context.Context, q user.ListUserQuery, t *tenant.Tenant) ([]*user.User, int, error) {
@@ -47,6 +52,7 @@ func (m *mockUserService) Delete(ctx context.Context, tenantID, id uuid.UUID) er
 func newUserApp(svc user.UserService) *fiber.App {
 	app := NewTestApp()
 	h := user.NewUserHandlerWithService(svc)
+	app.Get("/api/users/roles", TestAuthMiddleware(), middleware.Tenant(h.Roles))
 	app.Get("/api/users", TestAuthMiddleware(), middleware.Tenant(h.List))
 	app.Post("/api/users", TestAuthMiddleware(), middleware.Tenant(h.Store))
 	app.Get("/api/users/:id", TestAuthMiddleware(), middleware.Tenant(h.Show))
@@ -265,5 +271,54 @@ func TestUserDelete_NormalUser(t *testing.T) {
 
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+}
+
+func TestUserRoles(t *testing.T) {
+	mock := &mockUserService{listRolesFn: func(_ context.Context, tenantID uuid.UUID) ([]user.Role, error) {
+		if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Fatalf("wrong tenant: %s", tenantID)
+		}
+		return []user.Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), TenantID: tenantID, Name: "agent"}}, nil
+	}}
+	req, _ := http.NewRequest(http.MethodGet, "/api/users/roles", nil)
+	resp, err := newUserApp(mock).Test(req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+	var roles []user.Role
+	if err := DecodeData(resp, &roles); err != nil {
+		t.Fatal(err)
+	}
+	if len(roles) != 1 || roles[0].Name != "agent" {
+		t.Fatalf("unexpected roles: %+v", roles)
+	}
+}
+
+func TestUserRequiresRoles(t *testing.T) {
+	for _, method := range []string{http.MethodPost, http.MethodPut} {
+		for _, roles := range []interface{}{nil, []string{}, []string{"00000000-0000-0000-0000-000000000000"}} {
+			t.Run(fmt.Sprintf("%s/%v", method, roles), func(t *testing.T) {
+				mock := &mockUserService{}
+				path := "/api/users"
+				if method == http.MethodPut {
+					path += "/00000000-0000-4000-8000-000000000001"
+				}
+				req, _ := http.NewRequest(method, path, JSONBody(map[string]interface{}{"first_name": "John", "username": "john", "email": "john@test.com", "password": "password123", "roles": roles}))
+				req.Header.Set("Content-Type", "application/json")
+				resp, err := newUserApp(mock).Test(req)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer resp.Body.Close()
+				if resp.StatusCode != http.StatusUnprocessableEntity {
+					t.Fatalf("expected 422, got %d", resp.StatusCode)
+				}
+			})
+		}
 	}
 }

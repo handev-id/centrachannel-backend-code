@@ -83,6 +83,7 @@ func newMockDB() *sql.DB {
 // ---------------------------------------------------------------------------
 
 type mockUserRepository struct {
+	listRolesFunc         func(context.Context, DBTX, uuid.UUID) ([]Role, error)
 	listFunc              func(context.Context, DBTX, uuid.UUID, int, int, string, *uuid.UUID) ([]*User, int, error)
 	getByIDFunc           func(context.Context, DBTX, uuid.UUID, uuid.UUID) (*User, error)
 	createFunc            func(context.Context, DBTX, *User) (uuid.UUID, error)
@@ -111,6 +112,13 @@ type mockUserRepository struct {
 	listOffset              int
 	getRolesByUserIDsCalled bool
 	getRolesByUserIDs       []uuid.UUID
+}
+
+func (m *mockUserRepository) ListRoles(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Role, error) {
+	if m.listRolesFunc != nil {
+		return m.listRolesFunc(ctx, q, tenantID)
+	}
+	return []Role{}, nil
 }
 
 func (m *mockUserRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, search string, roleID *uuid.UUID) ([]*User, int, error) {
@@ -621,4 +629,24 @@ func TestList(t *testing.T) {
 			t.Fatalf("expected 5 users, got %d", len(result))
 		}
 	})
+}
+
+func TestListRoles(t *testing.T) {
+	tenantID := uuid.MustParse("00000000-0000-4000-8000-000000000002")
+	expected := []Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000003"), TenantID: tenantID, Name: "agent"}}
+	repo := &mockUserRepository{listRolesFunc: func(_ context.Context, _ DBTX, gotTenantID uuid.UUID) ([]Role, error) {
+		if gotTenantID != tenantID {
+			t.Fatalf("expected tenant %s, got %s", tenantID, gotTenantID)
+		}
+		return expected, nil
+	}}
+	svc := newTestService(repo)
+	defer svc.db.Close()
+	roles, err := svc.ListRoles(context.Background(), tenantID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(roles) != 1 || roles[0].ID != expected[0].ID {
+		t.Fatalf("unexpected roles: %+v", roles)
+	}
 }
