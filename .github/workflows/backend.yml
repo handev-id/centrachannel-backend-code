@@ -111,12 +111,14 @@ jobs:
 
           rollback() {
             cp .env.previous .env
-            docker compose --project-name centrachannel-be up -d --remove-orphans
+            docker rm -f centrachannel-staging 2>/dev/null || true
+            docker compose --project-name centrachannel-staging up -d --remove-orphans
           }
           trap rollback ERR
 
-          docker compose --project-name centrachannel-be pull app
-          docker compose --project-name centrachannel-be up -d --remove-orphans
+          docker compose --project-name centrachannel-staging pull app
+          docker rm -f centrachannel-staging 2>/dev/null || true
+          docker compose --project-name centrachannel-staging up -d --remove-orphans
 
           for attempt in $(seq 1 30); do
             if curl --fail --silent --show-error http://127.0.0.1:4001/health >/dev/null; then
