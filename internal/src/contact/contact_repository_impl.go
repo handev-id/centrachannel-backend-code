@@ -187,9 +187,8 @@ func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID
 
 	where := strings.Join(conditions, " AND ")
 
-	countQuery := fmt.Sprintf("SELECT COUNT(*) FROM contacts c WHERE %s", where)
 	var total int
-	if err := q.QueryRowContext(ctx, countQuery, args...).Scan(&total); err != nil {
+	if err := q.QueryRowContext(ctx, fmt.Sprintf("SELECT COUNT(*) FROM contacts c WHERE %s", where), args...).Scan(&total); err != nil {
 		return nil, 0, err
 	}
 	if total == 0 {
@@ -207,10 +206,9 @@ func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID
 	}
 
 	cols := `c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at`
-	dataQuery := fmt.Sprintf(`SELECT %s FROM contacts c WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`, cols, where, orderBy, argIdx, argIdx+1)
 	args = append(args, limit, offset)
 
-	rows, err := q.QueryContext(ctx, dataQuery, args...)
+	rows, err := q.QueryContext(ctx, fmt.Sprintf(`SELECT %s FROM contacts c WHERE %s ORDER BY %s LIMIT $%d OFFSET $%d`, cols, where, orderBy, argIdx, argIdx+1), args...)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -228,19 +226,16 @@ func (r *contactRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID
 }
 
 func (r *contactRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Contact, error) {
-	query := `SELECT c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at FROM contacts c WHERE c.id = $1 AND c.tenant_id = $2 AND c.deleted_at IS NULL`
-	return scanContact(q.QueryRowContext(ctx, query, id, tenantID))
+	return scanContact(q.QueryRowContext(ctx, `SELECT c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at FROM contacts c WHERE c.id = $1 AND c.tenant_id = $2 AND c.deleted_at IS NULL`, id, tenantID))
 }
 
 func (r *contactRepository) GetByPhone(ctx context.Context, q DBTX, tenantID uuid.UUID, phone string) (*Contact, error) {
-	query := `SELECT c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at FROM contacts c WHERE c.tenant_id = $1 AND c.phone = $2 AND c.deleted_at IS NULL`
-	return scanContact(q.QueryRowContext(ctx, query, tenantID, phone))
+	return scanContact(q.QueryRowContext(ctx, `SELECT c.id, c.tenant_id, c.first_name, c.last_name, c.username, c.email, c.phone, c.avatar, c.country, c.bio, c.occupation, c.category, c.category_description, c.gender, c.date_of_birth, c.province_of_origin, c.facebook, c.instagram, c.whatsapp, c.x, c.tiktok, c.status, c.institution_name, c.merged_to_id, c.deleted_at, c.created_at, c.updated_at FROM contacts c WHERE c.tenant_id = $1 AND c.phone = $2 AND c.deleted_at IS NULL`, tenantID, phone))
 }
 
 func (r *contactRepository) Create(ctx context.Context, q DBTX, contact *Contact) (uuid.UUID, error) {
-	query := `INSERT INTO contacts (tenant_id, first_name, last_name, username, email, phone, avatar, country, bio, occupation, category, category_description, gender, date_of_birth, province_of_origin, facebook, instagram, whatsapp, x, tiktok, status, institution_name, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, `INSERT INTO contacts (tenant_id, first_name, last_name, username, email, phone, avatar, country, bio, occupation, category, category_description, gender, date_of_birth, province_of_origin, facebook, instagram, whatsapp, x, tiktok, status, institution_name, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19,$20,$21,$22,$23,$24) RETURNING id`,
 		contact.TenantID, contact.FirstName, contact.LastName, contact.Username, contact.Email,
 		contact.Phone, contact.Avatar, contact.Country, contact.Bio, contact.Occupation,
 		contact.Category, contact.CategoryDescription, contact.Gender, contact.DateOfBirth,
@@ -255,8 +250,7 @@ func (r *contactRepository) Create(ctx context.Context, q DBTX, contact *Contact
 }
 
 func (r *contactRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, contact *Contact) error {
-	query := `UPDATE contacts SET first_name=$1, last_name=$2, username=$3, email=$4, phone=$5, avatar=COALESCE($6, avatar), country=$7, bio=$8, occupation=$9, category=$10, category_description=$11, gender=$12, date_of_birth=$13, province_of_origin=$14, facebook=$15, instagram=$16, whatsapp=$17, x=$18, tiktok=$19, status=$20, institution_name=$21, updated_at=$22 WHERE id=$23 AND tenant_id=$24 AND deleted_at IS NULL`
-	result, err := q.ExecContext(ctx, query,
+	result, err := q.ExecContext(ctx, `UPDATE contacts SET first_name=$1, last_name=$2, username=$3, email=$4, phone=$5, avatar=COALESCE($6, avatar), country=$7, bio=$8, occupation=$9, category=$10, category_description=$11, gender=$12, date_of_birth=$13, province_of_origin=$14, facebook=$15, instagram=$16, whatsapp=$17, x=$18, tiktok=$19, status=$20, institution_name=$21, updated_at=$22 WHERE id=$23 AND tenant_id=$24 AND deleted_at IS NULL`,
 		contact.FirstName, contact.LastName, contact.Username, contact.Email,
 		contact.Phone, contact.Avatar, contact.Country, contact.Bio, contact.Occupation,
 		contact.Category, contact.CategoryDescription, contact.Gender, contact.DateOfBirth,
@@ -275,8 +269,7 @@ func (r *contactRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UU
 }
 
 func (r *contactRepository) SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
-	query := `UPDATE contacts SET deleted_at=$1, updated_at=$2 WHERE id=$3 AND tenant_id=$4 AND deleted_at IS NULL`
-	result, err := q.ExecContext(ctx, query, time.Now(), time.Now(), id, tenantID)
+	result, err := q.ExecContext(ctx, `UPDATE contacts SET deleted_at=$1, updated_at=$2 WHERE id=$3 AND tenant_id=$4 AND deleted_at IS NULL`, time.Now(), time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}

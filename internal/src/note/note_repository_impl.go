@@ -57,13 +57,12 @@ func (r *noteRepository) ListByConversation(ctx context.Context, q DBTX, tenantI
 }
 
 func (r *noteRepository) Create(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error) {
-	query := `INSERT INTO notes (tenant_id, text, date, conversation_id, user_id, created_at, updated_at)
+	var id uuid.UUID
+	err := q.QueryRowContext(ctx, `INSERT INTO notes (tenant_id, text, date, conversation_id, user_id, created_at, updated_at)
 		SELECT $1,$2,$3,c.id,$5,$6,$7 FROM conversations c
 		WHERE c.id=$4 AND c.tenant_id=$1
 		AND ($5::uuid IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id=$5 AND u.tenant_id=$1 AND u.deleted_at IS NULL))
-		RETURNING id`
-	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query, note.TenantID, note.Text, note.Date, note.ConversationID, note.UserID, time.Now(), time.Now()).Scan(&id)
+		RETURNING id`, note.TenantID, note.Text, note.Date, note.ConversationID, note.UserID, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -71,8 +70,7 @@ func (r *noteRepository) Create(ctx context.Context, q DBTX, note *Note) (uuid.U
 }
 
 func (r *noteRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
-	query := `UPDATE notes SET text=$1, date=$2, updated_at=$3 WHERE id=$4 AND tenant_id=$5`
-	result, err := q.ExecContext(ctx, query, note.Text, note.Date, time.Now(), id, tenantID)
+	result, err := q.ExecContext(ctx, `UPDATE notes SET text=$1, date=$2, updated_at=$3 WHERE id=$4 AND tenant_id=$5`, note.Text, note.Date, time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}

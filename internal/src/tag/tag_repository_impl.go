@@ -54,9 +54,8 @@ func (r *tagRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID,
 }
 
 func (r *tagRepository) Create(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error) {
-	query := `INSERT INTO tags (tenant_id, name, color, created_at, updated_at) VALUES ($1,$2,$3,$4,$5) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query, tag.TenantID, tag.Name, tag.Color, time.Now(), time.Now()).Scan(&id)
+	err := q.QueryRowContext(ctx, `INSERT INTO tags (tenant_id, name, color, created_at, updated_at) VALUES ($1,$2,$3,$4,$5) RETURNING id`, tag.TenantID, tag.Name, tag.Color, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}

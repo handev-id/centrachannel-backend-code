@@ -51,19 +51,16 @@ func (r *whatsAppDeviceRepository) List(ctx context.Context, q DBTX, tenantID uu
 }
 
 func (r *whatsAppDeviceRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
-	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE id = $1 AND tenant_id = $2`
-	return scanDevice(q.QueryRowContext(ctx, query, id, tenantID))
+	return scanDevice(q.QueryRowContext(ctx, `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE id = $1 AND tenant_id = $2`, id, tenantID))
 }
 
 func (r *whatsAppDeviceRepository) GetByWhatsappID(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error) {
-	query := `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE whatsapp_id = $1`
-	return scanDevice(q.QueryRowContext(ctx, query, whatsappID))
+	return scanDevice(q.QueryRowContext(ctx, `SELECT id, tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at FROM whatsapp_devices WHERE whatsapp_id = $1`, whatsappID))
 }
 
 func (r *whatsAppDeviceRepository) Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (uuid.UUID, error) {
-	query := `INSERT INTO whatsapp_devices (tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query, device.TenantID, device.Name, device.CountryCode, device.Phone, device.WhatsappID, device.Status, time.Now(), time.Now()).Scan(&id)
+	err := q.QueryRowContext(ctx, `INSERT INTO whatsapp_devices (tenant_id, name, country_code, phone, whatsapp_id, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8) RETURNING id`, device.TenantID, device.Name, device.CountryCode, device.Phone, device.WhatsappID, device.Status, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}

@@ -16,10 +16,9 @@ func NewChannelRepository() ChannelRepository {
 }
 
 func (r *channelRepository) GetByID(ctx context.Context, q DBTX, id uuid.UUID) (*Channel, error) {
-	query := `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE id = $1`
 	var c Channel
 	var logo sql.NullString
-	err := q.QueryRowContext(ctx, query, id).Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt)
+	err := q.QueryRowContext(ctx, `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE id = $1`, id).Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}
@@ -30,10 +29,9 @@ func (r *channelRepository) GetByID(ctx context.Context, q DBTX, id uuid.UUID) (
 }
 
 func (r *channelRepository) GetByType(ctx context.Context, q DBTX, channelType string) (*Channel, error) {
-	query := `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE type = $1`
 	var c Channel
 	var logo sql.NullString
-	err := q.QueryRowContext(ctx, query, channelType).Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt)
+	err := q.QueryRowContext(ctx, `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE type = $1`, channelType).Scan(&c.ID, &c.Name, &c.Type, &logo, &c.CreatedAt, &c.UpdatedAt)
 	if err != nil {
 		return nil, fmt.Errorf("channel not found: %w", err)
 	}

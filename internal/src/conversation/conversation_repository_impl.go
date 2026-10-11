@@ -101,10 +101,9 @@ func (r *conversationRepository) ListCursor(ctx context.Context, q DBTX, tenantI
 
 	where := strings.Join(conditions, " AND ")
 
-	query := fmt.Sprintf(`SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c INNER JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL WHERE %s ORDER BY c.last_activity DESC NULLS LAST, c.id DESC LIMIT $%d`, where, argIdx)
 	args = append(args, limit)
 
-	rows, err := q.QueryContext(ctx, query, args...)
+	rows, err := q.QueryContext(ctx, fmt.Sprintf(`SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c INNER JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL WHERE %s ORDER BY c.last_activity DESC NULLS LAST, c.id DESC LIMIT $%d`, where, argIdx), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -174,19 +173,16 @@ func scanConversationCursor(row interface {
 }
 
 func (r *conversationRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Conversation, error) {
-	query := `SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c INNER JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL WHERE c.id = $1 AND c.tenant_id = $2`
-	return scanConversationCursor(q.QueryRowContext(ctx, query, id, tenantID))
+	return scanConversationCursor(q.QueryRowContext(ctx, `SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c INNER JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL WHERE c.id = $1 AND c.tenant_id = $2`, id, tenantID))
 }
 
 func (r *conversationRepository) FindOpenByProfileAndChannel(ctx context.Context, q DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*Conversation, error) {
-	query := `SELECT id, tenant_id, status, profile_id, agent_id, channel_id, last_agent_id, unread_count, last_message, last_activity, last_seen, created_at, updated_at FROM conversations WHERE tenant_id = $1 AND profile_id = $2 AND channel_id = $3 AND status != 'resolved' AND status != 'closed' ORDER BY last_activity DESC NULLS LAST LIMIT 1`
-	return scanConversation(q.QueryRowContext(ctx, query, tenantID, profileID, channelID))
+	return scanConversation(q.QueryRowContext(ctx, `SELECT id, tenant_id, status, profile_id, agent_id, channel_id, last_agent_id, unread_count, last_message, last_activity, last_seen, created_at, updated_at FROM conversations WHERE tenant_id = $1 AND profile_id = $2 AND channel_id = $3 AND status != 'resolved' AND status != 'closed' ORDER BY last_activity DESC NULLS LAST LIMIT 1`, tenantID, profileID, channelID))
 }
 
 func (r *conversationRepository) Create(ctx context.Context, q DBTX, conv *Conversation) (uuid.UUID, error) {
-	query := `INSERT INTO conversations (tenant_id, status, profile_id, agent_id, channel_id, created_at, updated_at) SELECT $1,$2,p.id,$4,$5,$6,$7 FROM profiles p JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = p.tenant_id WHERE p.id = $3 AND p.tenant_id = $1 AND p.channel_id = $5 AND p.deleted_at IS NULL AND ct.deleted_at IS NULL AND ($4::uuid IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id = $4 AND u.tenant_id = $1 AND u.deleted_at IS NULL)) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query, conv.TenantID, conv.Status, conv.ProfileID, conv.AgentID, conv.ChannelID, time.Now(), time.Now()).Scan(&id)
+	err := q.QueryRowContext(ctx, `INSERT INTO conversations (tenant_id, status, profile_id, agent_id, channel_id, created_at, updated_at) SELECT $1,$2,p.id,$4,$5,$6,$7 FROM profiles p JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = p.tenant_id WHERE p.id = $3 AND p.tenant_id = $1 AND p.channel_id = $5 AND p.deleted_at IS NULL AND ct.deleted_at IS NULL AND ($4::uuid IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id = $4 AND u.tenant_id = $1 AND u.deleted_at IS NULL)) RETURNING id`, conv.TenantID, conv.Status, conv.ProfileID, conv.AgentID, conv.ChannelID, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}

@@ -123,15 +123,14 @@ func (r *dashboardRepository) GetConversationsByStatus(ctx context.Context, q DB
 }
 
 func (r *dashboardRepository) GetConversationsByChannel(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]ConversationsByChannel, error) {
-	query := `
+	rows, err := q.QueryContext(ctx, `
 		SELECT c.channel_id, ch.name, COUNT(*) as total, COALESCE(SUM(c.unread_count), 0) as unread
 		FROM conversations c
 		JOIN channels ch ON ch.id = c.channel_id
 		WHERE c.tenant_id = $1
 		GROUP BY c.channel_id, ch.name
 		ORDER BY total DESC
-	`
-	rows, err := q.QueryContext(ctx, query, tenantID)
+	`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -168,7 +167,7 @@ type recentConversationScan struct {
 }
 
 func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int) ([]RecentConversation, error) {
-	query := `
+	rows, err := q.QueryContext(ctx, `
 		SELECT
 			c.id, c.status, c.unread_count, c.last_activity, c.last_message,
 			ch.id, ch.name, ch.logo,
@@ -182,8 +181,7 @@ func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX
 		WHERE c.tenant_id = $1
 		ORDER BY c.last_activity DESC NULLS LAST, c.id DESC
 		LIMIT $2
-	`
-	rows, err := q.QueryContext(ctx, query, tenantID, limit)
+	`, tenantID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -250,8 +248,7 @@ func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX
 }
 
 func (r *dashboardRepository) GetConversationChart(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error) {
-	query := `SELECT DATE(created_at) as date, COUNT(*) as count FROM conversations WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL GROUP BY DATE(created_at) ORDER BY date`
-	rows, err := q.QueryContext(ctx, query, tenantID, days)
+	rows, err := q.QueryContext(ctx, `SELECT DATE(created_at) as date, COUNT(*) as count FROM conversations WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL GROUP BY DATE(created_at) ORDER BY date`, tenantID, days)
 	if err != nil {
 		return nil, err
 	}
@@ -319,8 +316,7 @@ func (r *dashboardRepository) GetMessagesBySenderType(ctx context.Context, q DBT
 }
 
 func (r *dashboardRepository) GetMessagesByDate(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]MessagesByDate, error) {
-	query := `SELECT DATE(created_at) as date, COUNT(*) as count FROM messages WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL GROUP BY DATE(created_at) ORDER BY date`
-	rows, err := q.QueryContext(ctx, query, tenantID, days)
+	rows, err := q.QueryContext(ctx, `SELECT DATE(created_at) as date, COUNT(*) as count FROM messages WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL GROUP BY DATE(created_at) ORDER BY date`, tenantID, days)
 	if err != nil {
 		return nil, err
 	}
@@ -367,15 +363,14 @@ type agentWorkloadScan struct {
 }
 
 func (r *dashboardRepository) GetAgentWorkload(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]AgentWorkload, error) {
-	query := `
+	rows, err := q.QueryContext(ctx, `
 		SELECT u.id, u.first_name, u.last_name, u.avatar, COUNT(c.id) as ongoing
 		FROM users u
 		INNER JOIN conversations c ON c.agent_id = u.id AND c.tenant_id = u.tenant_id AND c.status != 'resolved'
 		WHERE u.tenant_id = $1 AND u.deleted_at IS NULL
 		GROUP BY u.id, u.first_name, u.last_name, u.avatar
 		ORDER BY ongoing DESC
-	`
-	rows, err := q.QueryContext(ctx, query, tenantID)
+	`, tenantID)
 	if err != nil {
 		return nil, err
 	}

@@ -199,15 +199,12 @@ func scanRecipientContact(row interface {
 }
 
 func (r *campaignRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, search string) ([]*Campaign, int, error) {
-	countQuery := `SELECT COUNT(*) FROM campaigns WHERE tenant_id = $1 AND ($2 = '' OR name ILIKE '%' || $2 || '%')`
 	var total int
-	err := q.QueryRowContext(ctx, countQuery, tenantID, search).Scan(&total)
+	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM campaigns WHERE tenant_id = $1 AND ($2 = '' OR name ILIKE '%' || $2 || '%')`, tenantID, search).Scan(&total)
 	if err != nil {
 		return nil, 0, err
 	}
-
-	dataQuery := `SELECT id, tenant_id, name, type, description, message_template, channel_id, status, sending_option::text, stats::text, scheduled_at::text, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at FROM campaigns WHERE tenant_id = $1 AND ($2 = '' OR name ILIKE '%' || $2 || '%') ORDER BY created_at DESC LIMIT $3 OFFSET $4`
-	rows, err := q.QueryContext(ctx, dataQuery, tenantID, search, limit, offset)
+	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, type, description, message_template, channel_id, status, sending_option::text, stats::text, scheduled_at::text, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at FROM campaigns WHERE tenant_id = $1 AND ($2 = '' OR name ILIKE '%' || $2 || '%') ORDER BY created_at DESC LIMIT $3 OFFSET $4`, tenantID, search, limit, offset)
 	if err != nil {
 		return nil, 0, err
 	}
@@ -227,20 +224,17 @@ func (r *campaignRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUI
 }
 
 func (r *campaignRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Campaign, error) {
-	query := `SELECT id, tenant_id, name, type, description, message_template, channel_id, status, sending_option::text, stats::text, scheduled_at::text, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at FROM campaigns WHERE id = $1 AND tenant_id = $2`
-	return scanCampaign(q.QueryRowContext(ctx, query, id, tenantID))
+	return scanCampaign(q.QueryRowContext(ctx, `SELECT id, tenant_id, name, type, description, message_template, channel_id, status, sending_option::text, stats::text, scheduled_at::text, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at FROM campaigns WHERE id = $1 AND tenant_id = $2`, id, tenantID))
 }
 
 func (r *campaignRepository) Create(ctx context.Context, q DBTX, campaign *Campaign) (uuid.UUID, error) {
-	query := `INSERT INTO campaigns (tenant_id, name, type, description, message_template, channel_id, status, sending_option, scheduled_at, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`
-
 	var scheduledAt interface{}
 	if campaign.ScheduledAt != nil {
 		scheduledAt = *campaign.ScheduledAt
 	}
 
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, `INSERT INTO campaigns (tenant_id, name, type, description, message_template, channel_id, status, sending_option, scheduled_at, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
 		campaign.TenantID, campaign.Name, campaign.Type, campaign.Description, campaign.MessageTemplate,
 		campaign.ChannelID, campaign.Status, campaign.SendingOption, scheduledAt,
 		campaign.SentCount, campaign.TotalCount, campaign.AgentID, campaign.SenderID,
@@ -307,9 +301,8 @@ func (r *campaignRepository) Delete(ctx context.Context, q DBTX, tenantID uuid.U
 }
 
 func (r *campaignRepository) CreateRecipient(ctx context.Context, q DBTX, recipient *CampaignRecipient) (uuid.UUID, error) {
-	query := `INSERT INTO campaign_recipients (campaign_id, recipient_contact_id, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query, recipient.CampaignID, recipient.RecipientContactID, recipient.Status, time.Now(), time.Now()).Scan(&id)
+	err := q.QueryRowContext(ctx, `INSERT INTO campaign_recipients (campaign_id, recipient_contact_id, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5) RETURNING id`, recipient.CampaignID, recipient.RecipientContactID, recipient.Status, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -317,8 +310,7 @@ func (r *campaignRepository) CreateRecipient(ctx context.Context, q DBTX, recipi
 }
 
 func (r *campaignRepository) UpdateRecipientStatus(ctx context.Context, q DBTX, id uuid.UUID, status string, failedReason *string, deliveryTime *sql.NullTime) error {
-	query := `UPDATE campaign_recipients SET status=$2, failed_reason=$3, delivery_time=COALESCE($4,delivery_time), updated_at=$5 WHERE id=$1`
-	_, err := q.ExecContext(ctx, query, id, status, failedReason, deliveryTime, time.Now())
+	_, err := q.ExecContext(ctx, `UPDATE campaign_recipients SET status=$2, failed_reason=$3, delivery_time=COALESCE($4,delivery_time), updated_at=$5 WHERE id=$1`, id, status, failedReason, deliveryTime, time.Now())
 	return err
 }
 
@@ -349,8 +341,7 @@ func (r *campaignRepository) GetPendingRecipients(ctx context.Context, q DBTX, c
 }
 
 func (r *campaignRepository) GetPendingRecipientsWithPhone(ctx context.Context, q DBTX, campaignID uuid.UUID, limit int) ([]CampaignRecipientWithPhone, error) {
-	query := `SELECT r.id, r.campaign_id, r.recipient_contact_id, r.status, r.failed_reason, r.delivery_time, r.open_time, r.click_time, r.created_at, r.updated_at, COALESCE(c.phone, ''), '', COALESCE(c.first_name, '') FROM campaign_recipients r INNER JOIN campaign_recipient_contacts c ON c.id = r.recipient_contact_id WHERE r.campaign_id=$1 AND r.status='pending' LIMIT $2`
-	rows, err := q.QueryContext(ctx, query, campaignID, limit)
+	rows, err := q.QueryContext(ctx, `SELECT r.id, r.campaign_id, r.recipient_contact_id, r.status, r.failed_reason, r.delivery_time, r.open_time, r.click_time, r.created_at, r.updated_at, COALESCE(c.phone, ''), '', COALESCE(c.first_name, '') FROM campaign_recipients r INNER JOIN campaign_recipient_contacts c ON c.id = r.recipient_contact_id WHERE r.campaign_id=$1 AND r.status='pending' LIMIT $2`, campaignID, limit)
 	if err != nil {
 		return nil, err
 	}
@@ -393,9 +384,8 @@ func (r *campaignRepository) GetTemplateByID(ctx context.Context, q DBTX, tenant
 }
 
 func (r *campaignRepository) CreateTemplate(ctx context.Context, q DBTX, template *CampaignTemplate) (uuid.UUID, error) {
-	query := `INSERT INTO campaign_templates (tenant_id, name, type, template_type, category, language, content, variables, quality, account_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, `INSERT INTO campaign_templates (tenant_id, name, type, template_type, category, language, content, variables, quality, account_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12) RETURNING id`,
 		template.TenantID, template.Name, template.Type, template.TemplateType, template.Category,
 		template.Language, template.Content, template.Variables, template.Quality, template.AccountID,
 		time.Now(), time.Now(),
@@ -458,9 +448,8 @@ func (r *campaignRepository) GetRecipientListByID(ctx context.Context, q DBTX, t
 }
 
 func (r *campaignRepository) CreateRecipientList(ctx context.Context, q DBTX, list *CampaignRecipientList) (uuid.UUID, error) {
-	query := `INSERT INTO campaign_recipient_lists (tenant_id, name, source, status, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query, list.TenantID, list.Name, list.Source, list.Status, list.ChannelID, time.Now(), time.Now()).Scan(&id)
+	err := q.QueryRowContext(ctx, `INSERT INTO campaign_recipient_lists (tenant_id, name, source, status, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`, list.TenantID, list.Name, list.Source, list.Status, list.ChannelID, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return uuid.Nil, err
 	}
@@ -514,9 +503,8 @@ func (r *campaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, 
 }
 
 func (r *campaignRepository) CreateRecipientContact(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (uuid.UUID, error) {
-	query := `INSERT INTO campaign_recipient_contacts (first_name, last_name, username, institution, email, phone, campaign_recipient_list_id, master_contact_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, `INSERT INTO campaign_recipient_contacts (first_name, last_name, username, institution, email, phone, campaign_recipient_list_id, master_contact_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`,
 		contact.FirstName, contact.LastName, contact.Username, contact.Institution, contact.Email,
 		contact.Phone, contact.CampaignRecipientListID, contact.MasterContactID, time.Now(), time.Now(),
 	).Scan(&id)

@@ -47,20 +47,19 @@ func scanMessage(row interface {
 }
 
 func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error) {
-	query := `SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1 AND tenant_id = $2`
+	cursorClause := ""
 	args := []interface{}{conversationID, tenantID}
 	argIdx := 3
 
 	if lastID != uuid.Nil {
-		query += fmt.Sprintf(" AND (created_at, id) < (SELECT created_at, id FROM messages WHERE id = $%d AND tenant_id = $2 AND conversation_id = $1)", argIdx)
+		cursorClause = fmt.Sprintf(" AND (created_at, id) < (SELECT created_at, id FROM messages WHERE id = $%d AND tenant_id = $2 AND conversation_id = $1)", argIdx)
 		args = append(args, lastID)
 		argIdx++
 	}
 
-	query += fmt.Sprintf(" ORDER BY created_at DESC, id DESC LIMIT $%d", argIdx)
 	args = append(args, limit)
 
-	rows, err := q.QueryContext(ctx, query, args...)
+	rows, err := q.QueryContext(ctx, fmt.Sprintf(`SELECT id, tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at FROM messages WHERE conversation_id = $1 AND tenant_id = $2%s ORDER BY created_at DESC, id DESC LIMIT $%d`, cursorClause, argIdx), args...)
 	if err != nil {
 		return nil, err
 	}
@@ -78,9 +77,8 @@ func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, tenantID uui
 }
 
 func (r *messageRepository) Create(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
-	query := `INSERT INTO messages (tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, query,
+	err := q.QueryRowContext(ctx, `INSERT INTO messages (tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
 		msg.TenantID, msg.Text, msg.Attachment, msg.Status, msg.SenderID, msg.SenderType,
 		msg.WebhookMessageID, msg.WebhookMessageReplyID, msg.ConversationID,
 		time.Now(), time.Now(),
