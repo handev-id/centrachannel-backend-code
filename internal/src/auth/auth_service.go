@@ -57,12 +57,6 @@ func (s *authService) Register(ctx context.Context, req RegisterRequest, t *tena
 		return nil, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	user := &User{
 		TenantID:  t.ID,
 		FirstName: req.FirstName,
@@ -74,22 +68,9 @@ func (s *authService) Register(ctx context.Context, req RegisterRequest, t *tena
 		Avatar:    req.Avatar,
 	}
 
-	userID, err := s.repo.Create(ctx, tx, user)
+	userID, agentRoleID, err := s.repo.Create(ctx, s.db, user, "agent")
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
-	}
-
-	agentRoleID, err := s.repo.GetRoleIDByName(ctx, tx, t.ID, "agent")
-	if err != nil {
-		return nil, fmt.Errorf("failed to find agent role: %w", err)
-	}
-
-	if err := s.repo.AttachRole(ctx, tx, t.ID, userID, agentRoleID); err != nil {
-		return nil, fmt.Errorf("failed to attach role: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
 	}
 
 	user.ID = userID

@@ -122,39 +122,21 @@ func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest,
 		CreatedBy:       userID,
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	campaignID, err := s.repo.Create(ctx, tx, campaign)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create campaign: %w", err)
-	}
-
+	var recipients []CampaignRecipient
 	if req.RecipientListID != nil {
 		contacts, err := s.repo.ListRecipientContacts(ctx, s.db, t.ID, *req.RecipientListID)
 		if err != nil {
 			return nil, fmt.Errorf("failed to fetch recipient contacts: %w", err)
 		}
-
 		for _, c := range contacts {
-			recipient := &CampaignRecipient{
-				CampaignID:         campaignID,
-				RecipientContactID: c.ID,
-				Status:             "pending",
-			}
-			if _, err := s.repo.CreateRecipient(ctx, tx, recipient); err != nil {
-				return nil, fmt.Errorf("failed to add recipient: %w", err)
-			}
-			campaign.TotalCount++
+			recipients = append(recipients, CampaignRecipient{RecipientContactID: c.ID, Status: "pending"})
 		}
 	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit: %w", err)
+	campaignID, err := s.repo.Create(ctx, s.db, campaign, recipients)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create campaign: %w", err)
 	}
+	campaign.TotalCount = len(recipients)
 
 	campaign.ID = campaignID
 	campaign.CreatedAt = time.Now()
@@ -258,17 +240,8 @@ func (s *campaignService) Send(ctx context.Context, tenantID uuid.UUID, id uuid.
 		return fmt.Errorf("campaign must be in draft or failed status to send")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
-	if err := s.repo.UpdateStatus(ctx, tx, tenantID, id, "sending", nil); err != nil {
+	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, "sending", nil); err != nil {
 		return fmt.Errorf("failed to update campaign status: %w", err)
-	}
-	if err := tx.Commit(); err != nil {
-		return fmt.Errorf("failed to commit: %w", err)
 	}
 
 	go func() {

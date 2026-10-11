@@ -71,20 +71,35 @@ func (r *authRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID
 	return scanUser(q.QueryRowContext(ctx, `SELECT id, tenant_id, first_name, last_name, username, email, phone, password, avatar, last_login, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`, id, tenantID))
 }
 
-func (r *authRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
+func (r *authRepository) Create(ctx context.Context, db *sql.DB, user *User, roleName string) (uuid.UUID, uuid.UUID, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	defer tx.Rollback()
 	var avatarBytes []byte
 	if user.Avatar != nil {
 		avatarBytes = user.Avatar
 	}
-	var id uuid.UUID
-	err := q.QueryRowContext(ctx, `INSERT INTO users (tenant_id, first_name, last_name, username, email, phone, password, avatar, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+	var userID uuid.UUID
+	err = tx.QueryRowContext(ctx, `INSERT INTO users (tenant_id, first_name, last_name, username, email, phone, password, avatar, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
 		user.TenantID, user.FirstName, user.LastName, user.Username, user.Email, user.Phone,
 		user.Password, avatarBytes, time.Now(), time.Now(),
-	).Scan(&id)
+	).Scan(&userID)
 	if err != nil {
-		return uuid.Nil, err
+		return uuid.Nil, uuid.Nil, err
 	}
-	return id, nil
+	roleID, err := r.GetRoleIDByName(ctx, tx, user.TenantID, roleName)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	if err := r.AttachRole(ctx, tx, user.TenantID, userID, roleID); err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	if err := tx.Commit(); err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	return userID, roleID, nil
 }
 
 func (r *authRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error) {

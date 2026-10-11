@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"encoding/json"
+	"fmt"
 	"io"
 	"testing"
 	"time"
@@ -175,11 +176,30 @@ func (m *mockCampaignRepository) GetByID(ctx context.Context, q DBTX, tenantID u
 	return &Campaign{Status: "draft"}, nil
 }
 
-func (m *mockCampaignRepository) Create(ctx context.Context, q DBTX, campaign *Campaign) (uuid.UUID, error) {
-	if m.createFunc != nil {
-		return m.createFunc(ctx, q, campaign)
+func (m *mockCampaignRepository) Create(ctx context.Context, db *sql.DB, campaign *Campaign, recipients []CampaignRecipient) (uuid.UUID, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, err
 	}
-	return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
+	defer tx.Rollback()
+	var campaignID uuid.UUID
+	if m.createFunc != nil {
+		campaignID, err = m.createFunc(ctx, tx, campaign)
+	}
+	if err != nil {
+		return uuid.Nil, err
+	}
+
+	for i := range recipients {
+		recipients[i].CampaignID = campaignID
+		if _, err := m.CreateRecipient(ctx, tx, &recipients[i]); err != nil {
+			return uuid.Nil, fmt.Errorf("failed to add recipient: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return uuid.Nil, err
+	}
+	return campaignID, nil
 }
 
 func (m *mockCampaignRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, campaign *Campaign) error {
@@ -862,8 +882,8 @@ func TestCampaignService(t *testing.T) {
 		if err != nil {
 			t.Fatalf("Send returned error: %v", err)
 		}
-		if !mockTxObj.commitCalled {
-			t.Error("expected transaction to be committed")
+		if mockTxObj.commitCalled {
+			t.Error("single status update should not open a transaction")
 		}
 		// No recipients were delivered, so the worker must finish as failed.
 		for _, want := range []string{"sending", "failed"} {

@@ -336,13 +336,18 @@ func (r *contactRepository) ListConversations(ctx context.Context, q DBTX, tenan
 	return convs, total, nil
 }
 
-func (r *contactRepository) Merge(ctx context.Context, q DBTX, tenantID, sourceID, targetID uuid.UUID) error {
+func (r *contactRepository) Merge(ctx context.Context, db *sql.DB, tenantID, sourceID, targetID uuid.UUID) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
 	if sourceID == targetID {
 		return fmt.Errorf("cannot merge contact into itself")
 	}
-	// The service supplies a transaction. Lock both contacts in a stable order so
+	// Lock both contacts in a stable order so
 	// overlapping merges cannot change their ownership while we move profiles.
-	rows, err := q.QueryContext(ctx, `SELECT id FROM contacts WHERE id IN ($1,$2) AND tenant_id = $3 AND deleted_at IS NULL ORDER BY id FOR UPDATE`, sourceID, targetID, tenantID)
+	rows, err := tx.QueryContext(ctx, `SELECT id FROM contacts WHERE id IN ($1,$2) AND tenant_id = $3 AND deleted_at IS NULL ORDER BY id FOR UPDATE`, sourceID, targetID, tenantID)
 	if err != nil {
 		return err
 	}
@@ -368,24 +373,29 @@ func (r *contactRepository) Merge(ctx context.Context, q DBTX, tenantID, sourceI
 	// A single provenance column cannot represent nested merges. Require the
 	// incoming merges to be undone before merging their target elsewhere.
 	var incoming bool
-	if err := q.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM contacts WHERE tenant_id = $1 AND merged_to_id = $2)`, tenantID, sourceID).Scan(&incoming); err != nil {
+	if err := tx.QueryRowContext(ctx, `SELECT EXISTS (SELECT 1 FROM contacts WHERE tenant_id = $1 AND merged_to_id = $2)`, tenantID, sourceID).Scan(&incoming); err != nil {
 		return err
 	}
 	if incoming {
 		return fmt.Errorf("unmerge source contact's merged contacts first")
 	}
-	if _, err := q.ExecContext(ctx, `UPDATE contacts SET merged_to_id = $1, deleted_at = $2, updated_at = $2 WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL`, targetID, time.Now(), sourceID, tenantID); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE contacts SET merged_to_id = $1, deleted_at = $2, updated_at = $2 WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL`, targetID, time.Now(), sourceID, tenantID); err != nil {
 		return err
 	}
-	if _, err := q.ExecContext(ctx, `UPDATE profiles SET contact_id = $1, merged_from_contact_id = $2, updated_at = $4 WHERE contact_id = $2 AND tenant_id = $3 AND deleted_at IS NULL`, targetID, sourceID, tenantID, time.Now()); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE profiles SET contact_id = $1, merged_from_contact_id = $2, updated_at = $4 WHERE contact_id = $2 AND tenant_id = $3 AND deleted_at IS NULL`, targetID, sourceID, tenantID, time.Now()); err != nil {
 		return err
 	}
 
-	return nil
+	return tx.Commit()
 }
 
-func (r *contactRepository) Unmerge(ctx context.Context, q DBTX, tenantID, id uuid.UUID) error {
-	result, err := q.ExecContext(ctx, `UPDATE contacts SET merged_to_id = NULL, deleted_at = NULL, updated_at = $1 WHERE id = $2 AND tenant_id = $3 AND merged_to_id IS NOT NULL`, time.Now(), id, tenantID)
+func (r *contactRepository) Unmerge(ctx context.Context, db *sql.DB, tenantID, id uuid.UUID) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	result, err := tx.ExecContext(ctx, `UPDATE contacts SET merged_to_id = NULL, deleted_at = NULL, updated_at = $1 WHERE id = $2 AND tenant_id = $3 AND merged_to_id IS NOT NULL`, time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}
@@ -396,9 +406,9 @@ func (r *contactRepository) Unmerge(ctx context.Context, q DBTX, tenantID, id uu
 	if count == 0 {
 		return fmt.Errorf("merged contact not found")
 	}
-	if _, err := q.ExecContext(ctx, `UPDATE profiles SET contact_id = $1, merged_from_contact_id = NULL, updated_at = $3 WHERE merged_from_contact_id = $1 AND tenant_id = $2`, id, tenantID, time.Now()); err != nil {
+	if _, err := tx.ExecContext(ctx, `UPDATE profiles SET contact_id = $1, merged_from_contact_id = NULL, updated_at = $3 WHERE merged_from_contact_id = $1 AND tenant_id = $2`, id, tenantID, time.Now()); err != nil {
 		return err
 	}
 
-	return nil
+	return tx.Commit()
 }

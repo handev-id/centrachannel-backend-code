@@ -227,23 +227,37 @@ func (r *campaignRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.
 	return scanCampaign(q.QueryRowContext(ctx, `SELECT id, tenant_id, name, type, description, message_template, channel_id, status, sending_option::text, stats::text, scheduled_at::text, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at FROM campaigns WHERE id = $1 AND tenant_id = $2`, id, tenantID))
 }
 
-func (r *campaignRepository) Create(ctx context.Context, q DBTX, campaign *Campaign) (uuid.UUID, error) {
+func (r *campaignRepository) Create(ctx context.Context, db *sql.DB, campaign *Campaign, recipients []CampaignRecipient) (uuid.UUID, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer tx.Rollback()
 	var scheduledAt interface{}
 	if campaign.ScheduledAt != nil {
 		scheduledAt = *campaign.ScheduledAt
 	}
 
-	var id uuid.UUID
-	err := q.QueryRowContext(ctx, `INSERT INTO campaigns (tenant_id, name, type, description, message_template, channel_id, status, sending_option, scheduled_at, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
+	var campaignID uuid.UUID
+	err = tx.QueryRowContext(ctx, `INSERT INTO campaigns (tenant_id, name, type, description, message_template, channel_id, status, sending_option, scheduled_at, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`,
 		campaign.TenantID, campaign.Name, campaign.Type, campaign.Description, campaign.MessageTemplate,
 		campaign.ChannelID, campaign.Status, campaign.SendingOption, scheduledAt,
 		campaign.SentCount, campaign.TotalCount, campaign.AgentID, campaign.SenderID,
 		campaign.RecipientListID, campaign.TemplateID, campaign.CreatedBy, time.Now(), time.Now(),
-	).Scan(&id)
+	).Scan(&campaignID)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	return id, nil
+	for i := range recipients {
+		recipients[i].CampaignID = campaignID
+		if _, err := r.CreateRecipient(ctx, tx, &recipients[i]); err != nil {
+			return uuid.Nil, fmt.Errorf("failed to add recipient: %w", err)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return uuid.Nil, err
+	}
+	return campaignID, nil
 }
 
 func (r *campaignRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, campaign *Campaign) error {

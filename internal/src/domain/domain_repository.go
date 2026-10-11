@@ -18,6 +18,6 @@ type DomainRepository interface {
 	GetByTenantIDs(ctx context.Context, q DBTX, tenantIDs []uuid.UUID) (map[uuid.UUID][]Domain, error)
 	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Domain, error)
 	Create(ctx context.Context, q DBTX, d *Domain) (uuid.UUID, error)
-	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, d *Domain) error
+	Update(ctx context.Context, db *sql.DB, tenantID uuid.UUID, id uuid.UUID, d *Domain) error
 	Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }

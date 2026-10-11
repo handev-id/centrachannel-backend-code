@@ -3,6 +3,8 @@ package message
 import (
 	"context"
 	"database/sql"
+
+	"centrachannel/internal/src/conversation"
 	"fmt"
 	"time"
 
@@ -76,14 +78,27 @@ func (r *messageRepository) ListCursor(ctx context.Context, q DBTX, tenantID uui
 	return msgs, rows.Err()
 }
 
-func (r *messageRepository) Create(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
+func (r *messageRepository) Create(ctx context.Context, db *sql.DB, msg *Message, lastMessageJSON []byte, lastAgentID *uuid.UUID, conversations conversation.ConversationRepository) (uuid.UUID, error) {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	defer tx.Rollback()
 	var id uuid.UUID
-	err := q.QueryRowContext(ctx, `INSERT INTO messages (tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
+	err = tx.QueryRowContext(ctx, `INSERT INTO messages (tenant_id, text, attachment, status, sender_id, sender_type, webhook_message_id, webhook_message_reply_id, conversation_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11) RETURNING id`,
 		msg.TenantID, msg.Text, msg.Attachment, msg.Status, msg.SenderID, msg.SenderType,
 		msg.WebhookMessageID, msg.WebhookMessageReplyID, msg.ConversationID,
 		time.Now(), time.Now(),
 	).Scan(&id)
 	if err != nil {
+		return uuid.Nil, err
+	}
+	if conversations != nil {
+		if err := conversations.UpdateLastMessage(ctx, tx, msg.TenantID, msg.ConversationID, lastMessageJSON, lastAgentID); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	if err := tx.Commit(); err != nil {
 		return uuid.Nil, err
 	}
 	return id, nil

@@ -138,22 +138,36 @@ func (m *mockUserRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.
 	return nil, sql.ErrNoRows
 }
 
-func (m *mockUserRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
+func (m *mockUserRepository) Create(ctx context.Context, db *sql.DB, user *User, roleIDs []uuid.UUID) (uuid.UUID, error) {
+
 	m.createCalled = true
 	m.createUser = user
+	var userID uuid.UUID
+	var err error
 	if m.createFunc != nil {
-		return m.createFunc(ctx, q, user)
+		userID, err = m.createFunc(ctx, db, user)
 	}
-	return uuid.Nil, nil
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if err := m.AttachRoles(ctx, db, user.TenantID, userID, roleIDs); err != nil {
+		return uuid.Nil, err
+	}
+	return userID, nil
+
 }
 
-func (m *mockUserRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, user *User) error {
+func (m *mockUserRepository) Update(ctx context.Context, db *sql.DB, tenantID, id uuid.UUID, user *User, roleIDs []uuid.UUID) error {
+
 	m.updateCalled = true
 	m.updateUser = user
 	if m.updateFunc != nil {
-		return m.updateFunc(ctx, q, tenantID, id, user)
+		if err := m.updateFunc(ctx, db, tenantID, id, user); err != nil {
+			return err
+		}
 	}
-	return nil
+	return m.SyncRoles(ctx, db, tenantID, id, roleIDs)
+
 }
 
 func (m *mockUserRepository) SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {

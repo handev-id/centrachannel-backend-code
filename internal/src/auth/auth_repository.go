@@ -17,7 +17,7 @@ type AuthRepository interface {
 	GetByEmail(ctx context.Context, q DBTX, tenantID uuid.UUID, email string) (*User, error)
 	GetByUsername(ctx context.Context, q DBTX, tenantID uuid.UUID, username string) (*User, error)
 	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error)
-	Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error)
+	Create(ctx context.Context, db *sql.DB, user *User, roleName string) (uuid.UUID, uuid.UUID, error)
 	GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error)
 	GetRoleIDByName(ctx context.Context, q DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error)
 	AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID uuid.UUID) error

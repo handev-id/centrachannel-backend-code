@@ -580,9 +580,9 @@ func TestContactService_GetConversations(t *testing.T) {
 func (m *mockContactRepository) ListConversations(ctx context.Context, q DBTX, tenantID, contactID uuid.UUID, limit, offset int) ([]ConversationBrief, int, error) {
 	return NewContactRepository().ListConversations(ctx, q, tenantID, contactID, limit, offset)
 }
-func (m *mockContactRepository) Merge(ctx context.Context, q DBTX, tenantID, sourceID, targetID uuid.UUID) error {
-	return NewContactRepository().Merge(ctx, q, tenantID, sourceID, targetID)
+func (m *mockContactRepository) Merge(ctx context.Context, db *sql.DB, tenantID, sourceID, targetID uuid.UUID) error {
+	return NewContactRepository().Merge(ctx, db, tenantID, sourceID, targetID)
 }
-func (m *mockContactRepository) Unmerge(ctx context.Context, q DBTX, tenantID, id uuid.UUID) error {
-	return NewContactRepository().Unmerge(ctx, q, tenantID, id)
+func (m *mockContactRepository) Unmerge(ctx context.Context, db *sql.DB, tenantID, id uuid.UUID) error {
+	return NewContactRepository().Unmerge(ctx, db, tenantID, id)
 }

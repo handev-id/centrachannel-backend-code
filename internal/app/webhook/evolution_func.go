@@ -142,7 +142,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		ConversationID:   conv.ID,
 	}
 
-	mid, err := s.msgRepo.Create(ctx, s.db, msg)
+	mid, err := s.msgRepo.Create(ctx, s.db, msg, nil, nil, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
 	}
@@ -347,7 +347,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		ConversationID:   conv.ID,
 	}
 
-	mid, err := s.msgRepo.Create(ctx, s.db, msg)
+	mid, err := s.msgRepo.Create(ctx, s.db, msg, nil, nil, nil)
 	if err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
 	}

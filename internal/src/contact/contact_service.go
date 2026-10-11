@@ -266,31 +266,11 @@ func (s *contactService) Merge(ctx context.Context, tenantID uuid.UUID, sourceID
 		return fmt.Errorf("cannot merge contact into itself")
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if err := s.repo.Merge(ctx, tx, tenantID, sourceID, targetID); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return s.repo.Merge(ctx, s.db, tenantID, sourceID, targetID)
 }
 
 func (s *contactService) Unmerge(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return err
-	}
-	defer tx.Rollback()
-
-	if err := s.repo.Unmerge(ctx, tx, tenantID, id); err != nil {
-		return err
-	}
-
-	return tx.Commit()
+	return s.repo.Unmerge(ctx, s.db, tenantID, id)
 }
 
 func (s *contactService) ImportCSV(ctx context.Context, tenantID uuid.UUID, records [][]string) (*CSVImportResult, error) {

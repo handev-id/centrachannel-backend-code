@@ -17,8 +17,8 @@ type RegistrationHandler struct {
 }
 
 func NewRegistrationHandler(c *di.Container) *RegistrationHandler {
-	repo := tenant.NewTenantRepository()
-	service := NewRegistrationService(repo, domain.NewDomainRepository(), c.DB, c.Config, c.Logger)
+	repo := NewRegistrationRepository(tenant.NewTenantRepository(), domain.NewDomainRepository())
+	service := NewRegistrationService(repo, c.DB, c.Config, c.Logger)
 	return &RegistrationHandler{service: service}
 }
 

@@ -2,6 +2,7 @@ package webhook
 
 import (
 	"context"
+	"database/sql"
 	"encoding/json"
 	"fmt"
 	"time"
@@ -182,9 +183,9 @@ type mockMsgRepo struct {
 	updateStatusByWebhookIDFunc func(ctx context.Context, q message.DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error
 }
 
-func (m *mockMsgRepo) Create(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
+func (m *mockMsgRepo) Create(ctx context.Context, db *sql.DB, msg *message.Message, lastMessageJSON []byte, lastAgentID *uuid.UUID, conversations conversation.ConversationRepository) (uuid.UUID, error) {
 	if m.createFunc != nil {
-		return m.createFunc(ctx, q, msg)
+		return m.createFunc(ctx, db, msg)
 	}
 	return uuid.Nil, nil
 }

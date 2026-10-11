@@ -133,28 +133,44 @@ func (r *userRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID
 	return scanUser(q.QueryRowContext(ctx, `SELECT id, tenant_id, first_name, last_name, username, email, phone, password, avatar, last_login, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`, id, tenantID))
 }
 
-func (r *userRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
-	var avatarBytes []byte
-	if user.Avatar != nil {
-		avatarBytes = user.Avatar
-	}
-	var id uuid.UUID
-	err := q.QueryRowContext(ctx, `INSERT INTO users (tenant_id, first_name, last_name, username, email, phone, password, avatar, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
-		user.TenantID, user.FirstName, user.LastName, user.Username, user.Email, user.Phone,
-		user.Password, avatarBytes, time.Now(), time.Now(),
-	).Scan(&id)
+func (r *userRepository) Create(ctx context.Context, db *sql.DB, user *User, roleIDs []uuid.UUID) (uuid.UUID, error) {
+	tx, err := db.BeginTx(ctx, nil)
 	if err != nil {
 		return uuid.Nil, err
 	}
-	return id, nil
-}
-
-func (r *userRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, user *User) error {
+	defer tx.Rollback()
 	var avatarBytes []byte
 	if user.Avatar != nil {
 		avatarBytes = user.Avatar
 	}
-	result, err := q.ExecContext(ctx, `UPDATE users SET first_name = $1, last_name = $2, username = $3, email = $4, phone = $5, password = COALESCE(NULLIF($6, ''), password), avatar = COALESCE($7, avatar), updated_at = $8 WHERE id = $9 AND tenant_id = $10 AND deleted_at IS NULL`, user.FirstName, user.LastName, user.Username, user.Email, user.Phone, user.Password, avatarBytes, time.Now(), id, tenantID)
+	var userID uuid.UUID
+	err = tx.QueryRowContext(ctx, `INSERT INTO users (tenant_id, first_name, last_name, username, email, phone, password, avatar, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`,
+		user.TenantID, user.FirstName, user.LastName, user.Username, user.Email, user.Phone,
+		user.Password, avatarBytes, time.Now(), time.Now(),
+	).Scan(&userID)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if err := r.AttachRoles(ctx, tx, user.TenantID, userID, roleIDs); err != nil {
+		return uuid.Nil, fmt.Errorf("failed to attach roles: %w", err)
+	}
+	if err := tx.Commit(); err != nil {
+		return uuid.Nil, err
+	}
+	return userID, nil
+}
+
+func (r *userRepository) Update(ctx context.Context, db *sql.DB, tenantID, id uuid.UUID, user *User, roleIDs []uuid.UUID) error {
+	tx, err := db.BeginTx(ctx, nil)
+	if err != nil {
+		return err
+	}
+	defer tx.Rollback()
+	var avatarBytes []byte
+	if user.Avatar != nil {
+		avatarBytes = user.Avatar
+	}
+	result, err := tx.ExecContext(ctx, `UPDATE users SET first_name = $1, last_name = $2, username = $3, email = $4, phone = $5, password = COALESCE(NULLIF($6, ''), password), avatar = COALESCE($7, avatar), updated_at = $8 WHERE id = $9 AND tenant_id = $10 AND deleted_at IS NULL`, user.FirstName, user.LastName, user.Username, user.Email, user.Phone, user.Password, avatarBytes, time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}
@@ -162,7 +178,10 @@ func (r *userRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID,
 	if rows == 0 {
 		return fmt.Errorf("user not found")
 	}
-	return nil
+	if err := r.SyncRoles(ctx, tx, tenantID, id, roleIDs); err != nil {
+		return fmt.Errorf("failed to sync roles: %w", err)
+	}
+	return tx.Commit()
 }
 
 func (r *userRepository) SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {

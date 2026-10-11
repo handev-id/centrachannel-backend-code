@@ -4,7 +4,6 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
-	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -75,12 +74,6 @@ func (s *messageService) ListCursor(ctx context.Context, tenantID uuid.UUID, con
 }
 
 func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*Message, error) {
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	msg := &Message{
 		TenantID:       tenantID,
 		Text:           req.Text,
@@ -89,11 +82,6 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 		SenderID:       req.SenderID,
 		SenderType:     req.SenderType,
 		ConversationID: conversationID,
-	}
-
-	id, err := s.repo.Create(ctx, tx, msg)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create message: %w", err)
 	}
 
 	var lastMsgJSON []byte
@@ -114,11 +102,8 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 		lastAgentID = &req.SenderID
 	}
 
-	if err := s.convRepo.UpdateLastMessage(ctx, tx, tenantID, conversationID, lastMsgJSON, lastAgentID); err != nil {
-		return nil, err
-	}
-
-	if err := tx.Commit(); err != nil {
+	id, err := s.repo.Create(ctx, s.db, msg, lastMsgJSON, lastAgentID, s.convRepo)
+	if err != nil {
 		return nil, err
 	}
 

@@ -148,7 +148,7 @@ func TestOnboard(t *testing.T) {
 			},
 		}
 
-		svc := NewRegistrationService(repo, &mockDomainRepository{t: t}, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
+		svc := NewRegistrationService(NewRegistrationRepository(repo, &mockDomainRepository{t: t}), newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
 		resp, err := svc.Onboard(context.Background(), OnboardRequest{
 			Name:          "test-tenant",
@@ -220,7 +220,7 @@ func TestOnboard(t *testing.T) {
 			},
 		}
 
-		svc := NewRegistrationService(repo, &mockDomainRepository{t: t}, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
+		svc := NewRegistrationService(NewRegistrationRepository(repo, &mockDomainRepository{t: t}), newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
 		resp, err := svc.Onboard(context.Background(), OnboardRequest{
 			Name:          "test-tenant",

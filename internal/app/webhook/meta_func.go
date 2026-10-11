@@ -139,7 +139,7 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 			ConversationID:   conv.ID,
 		}
 
-		mid, err := s.msgRepo.Create(ctx, s.db, msgRecord)
+		mid, err := s.msgRepo.Create(ctx, s.db, msgRecord, nil, nil, nil)
 		if err != nil {
 			s.logger.Error("failed to create message for meta sender %s: %v", externalID, err)
 			continue

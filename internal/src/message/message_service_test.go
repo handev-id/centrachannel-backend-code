@@ -65,8 +65,19 @@ type mockMessageRepository struct {
 	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error
 }
 
-func (m *mockMessageRepository) Create(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
-	return m.createFunc(ctx, q, msg)
+func (m *mockMessageRepository) Create(ctx context.Context, db *sql.DB, msg *Message, lastMessageJSON []byte, lastAgentID *uuid.UUID, conversations conversation.ConversationRepository) (uuid.UUID, error) {
+
+	id, err := m.createFunc(ctx, db, msg)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	if conversations != nil {
+		if err := conversations.UpdateLastMessage(ctx, db, msg.TenantID, msg.ConversationID, lastMessageJSON, lastAgentID); err != nil {
+			return uuid.Nil, err
+		}
+	}
+	return id, nil
+
 }
 
 func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error) {

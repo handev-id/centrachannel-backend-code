@@ -8,8 +8,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-
 	"centrachannel/config"
 	"centrachannel/internal/src/domain"
 	"centrachannel/internal/src/tenant"
@@ -24,15 +22,14 @@ type RegistrationService interface {
 }
 
 type registrationService struct {
-	repo    tenant.TenantRepository
-	domains domain.DomainRepository
-	db      *sql.DB
-	cfg     *config.Config
-	logger  *logger.Logger
+	repo   RegistrationRepository
+	db     *sql.DB
+	cfg    *config.Config
+	logger *logger.Logger
 }
 
-func NewRegistrationService(repo tenant.TenantRepository, domains domain.DomainRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) RegistrationService {
-	return &registrationService{repo: repo, domains: domains, db: db, cfg: cfg, logger: logger}
+func NewRegistrationService(repo RegistrationRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) RegistrationService {
+	return &registrationService{repo: repo, db: db, cfg: cfg, logger: logger}
 }
 
 func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (*OnboardResponse, error) {
@@ -45,12 +42,6 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 		tenantName = req.CompanyName
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, fmt.Errorf("failed to begin transaction: %w", err)
-	}
-	defer tx.Rollback()
-
 	t := &tenant.Tenant{
 		Name:      tenantName,
 		IsActive:  true,
@@ -58,31 +49,7 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 		UpdatedAt: time.Now(),
 	}
 
-	tenantID, err := s.repo.Create(ctx, tx, t)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create tenant: %w", err)
-	}
-	t.ID = tenantID
-	d := &domain.Domain{TenantID: tenantID, Name: name, IsDefault: true, IsActive: true}
-	domainID, err := s.domains.Create(ctx, tx, d)
-	if err != nil {
-		return nil, fmt.Errorf("failed to create default domain: %w", err)
-	}
-	d.ID = domainID
-	domainData, err := json.Marshal([]domain.Domain{*d})
-	if err != nil {
-		return nil, fmt.Errorf("failed to serialize domain: %w", err)
-	}
-
-	roleNames := []string{"super-admin", "admin", "agent"}
-	roleIDs := make(map[string]uuid.UUID, len(roleNames))
-	for _, name := range roleNames {
-		roleID, err := s.repo.CreateRole(ctx, tx, tenantID, name)
-		if err != nil {
-			return nil, fmt.Errorf("failed to create role %s: %w", name, err)
-		}
-		roleIDs[name] = roleID
-	}
+	d := &domain.Domain{Name: name, IsDefault: true, IsActive: true}
 
 	hashedPassword, err := hash.HashPassword(req.AdminPassword)
 	if err != nil {
@@ -97,21 +64,15 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 		Username:  username,
 		Email:     req.AdminEmail,
 		Password:  hashedPassword,
-		TenantID:  tenantID,
 	}
 
-	userID, err := s.repo.CreateUser(ctx, tx, user)
+	userID, err := s.repo.Create(ctx, s.db, t, d, user, []string{"super-admin", "admin", "agent"}, "super-admin")
 	if err != nil {
-		return nil, fmt.Errorf("failed to create admin user: %w", err)
+		return nil, err
 	}
-
-	err = s.repo.AttachRole(ctx, tx, tenantID, userID, roleIDs["super-admin"])
+	domainData, err := json.Marshal([]domain.Domain{*d})
 	if err != nil {
-		return nil, fmt.Errorf("failed to attach super admin role: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, fmt.Errorf("failed to commit transaction: %w", err)
+		return nil, fmt.Errorf("failed to serialize domain: %w", err)
 	}
 
 	t.Settings = tenantutils.StripSettings(t.Settings)

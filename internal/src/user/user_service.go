@@ -98,12 +98,6 @@ func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tena
 		return nil, err
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	user := &User{
 		TenantID:  t.ID,
 		FirstName: req.FirstName,
@@ -115,17 +109,9 @@ func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tena
 		Avatar:    req.Avatar,
 	}
 
-	userID, err := s.repo.Create(ctx, tx, user)
+	userID, err := s.repo.Create(ctx, s.db, user, req.Roles)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create user: %w", err)
-	}
-
-	if err := s.repo.AttachRoles(ctx, tx, t.ID, userID, req.Roles); err != nil {
-		return nil, fmt.Errorf("failed to attach roles: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
 	}
 
 	user.ID = userID
@@ -150,12 +136,6 @@ func (s *userService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UU
 		}
 	}
 
-	tx, err := s.db.BeginTx(ctx, nil)
-	if err != nil {
-		return nil, err
-	}
-	defer tx.Rollback()
-
 	updated := &User{
 		FirstName: req.FirstName,
 		LastName:  req.LastName,
@@ -166,16 +146,8 @@ func (s *userService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UU
 		Avatar:    req.Avatar,
 	}
 
-	if err := s.repo.Update(ctx, tx, tenantID, id, updated); err != nil {
+	if err := s.repo.Update(ctx, s.db, tenantID, id, updated, req.Roles); err != nil {
 		return nil, fmt.Errorf("failed to update user: %w", err)
-	}
-
-	if err := s.repo.SyncRoles(ctx, tx, tenantID, id, req.Roles); err != nil {
-		return nil, fmt.Errorf("failed to sync roles: %w", err)
-	}
-
-	if err := tx.Commit(); err != nil {
-		return nil, err
 	}
 
 	return s.GetByID(ctx, tenantID, id)

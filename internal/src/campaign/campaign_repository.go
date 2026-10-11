@@ -16,7 +16,7 @@ type DBTX interface {
 type CampaignRepository interface {
 	List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, search string) ([]*Campaign, int, error)
 	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Campaign, error)
-	Create(ctx context.Context, q DBTX, campaign *Campaign) (uuid.UUID, error)
+	Create(ctx context.Context, db *sql.DB, campaign *Campaign, recipients []CampaignRecipient) (uuid.UUID, error)
 	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, campaign *Campaign) error
 	UpdateStatus(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, status string, sentCount *int) error
 	Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error

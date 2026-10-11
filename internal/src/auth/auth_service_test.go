@@ -183,11 +183,21 @@ func (m *mockAuthRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.
 	return m.getByIDFn(ctx, q, tenantID, id)
 }
 
-func (m *mockAuthRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
-	if m.createFn == nil {
-		return uuid.Nil, nil
+func (m *mockAuthRepository) Create(ctx context.Context, db *sql.DB, user *User, roleName string) (uuid.UUID, uuid.UUID, error) {
+
+	userID, err := m.createFn(ctx, db, user)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
 	}
-	return m.createFn(ctx, q, user)
+	roleID, err := m.GetRoleIDByName(ctx, db, user.TenantID, roleName)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	if err := m.AttachRole(ctx, db, user.TenantID, userID, roleID); err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+	return userID, roleID, nil
+
 }
 
 func (m *mockAuthRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error) {

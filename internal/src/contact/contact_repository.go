@@ -21,6 +21,6 @@ type ContactRepository interface {
 	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, contact *Contact) error
 	SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 	ListConversations(ctx context.Context, q DBTX, tenantID, contactID uuid.UUID, limit, offset int) ([]ConversationBrief, int, error)
-	Merge(ctx context.Context, q DBTX, tenantID, sourceID, targetID uuid.UUID) error
-	Unmerge(ctx context.Context, q DBTX, tenantID, id uuid.UUID) error
+	Merge(ctx context.Context, db *sql.DB, tenantID, sourceID, targetID uuid.UUID) error
+	Unmerge(ctx context.Context, db *sql.DB, tenantID, id uuid.UUID) error
 }
