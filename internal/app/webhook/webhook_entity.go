@@ -8,8 +8,8 @@ type MetaWebhookPayload struct {
 }
 
 type MetaWebhookEntry struct {
-	ID        string              `json:"id"`
-	Time      int64               `json:"time"`
+	ID        string               `json:"id"`
+	Time      int64                `json:"time"`
 	Messaging []MetaWebhookMessage `json:"messaging"`
 }
 
@@ -48,16 +48,16 @@ type EvolutionMessageUpsert struct {
 }
 
 type EvolutionConnectionUpdate struct {
-	Instance    string `json:"instance"`
-	State       string `json:"state"`
-	StatusReason int   `json:"statusReason,omitempty"`
+	Instance     string `json:"instance"`
+	State        string `json:"state"`
+	StatusReason int    `json:"statusReason,omitempty"`
 }
 
 type EvolutionMessageUpdate struct {
-	KeyID    string `json:"keyId"`
-	Status   string `json:"status"`
+	KeyID     string `json:"keyId"`
+	Status    string `json:"status"`
 	RemoteJid string `json:"remoteJid,omitempty"`
-	FromMe   bool   `json:"fromMe,omitempty"`
+	FromMe    bool   `json:"fromMe,omitempty"`
 }
 
 type EvolutionMessageKey struct {

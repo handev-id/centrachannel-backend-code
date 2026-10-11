@@ -21,9 +21,9 @@ import (
 )
 
 type WebhookHandler struct {
-	service    WebhookService
-	apiKey     string
-	metaSecret string
+	service       WebhookService
+	apiKey        string
+	metaSecret    string
 	metaAppSecret string
 }
 
