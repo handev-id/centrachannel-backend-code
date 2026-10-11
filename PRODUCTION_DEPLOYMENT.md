@@ -106,4 +106,10 @@ Staging and production use separate databases, so tenant domains do not need an 
 5. Verify `/health`, login, tenant subdomain TLS, WebSocket, webhook, and storage.
 6. Keep staging online until production verification is complete.
 
-The Caddy On-Demand TLS ask endpoint must allow the active base domain and existing Caddy-managed domains. Never allow arbitrary hostnames, otherwise the VPS can be abused for certificate issuance.
+The Caddy On-Demand TLS ask endpoint allows the configured base domain and exact hostnames registered in `domains` where both domain and tenant are active. This includes custom domains outside APP_BASE_DOMAIN. Unknown or inactive names are denied; subdomain suffix alone does not grant permission.
+
+For a custom domain, point DNS at the intended proxy, configure Caddy/proxy routing, then register the full hostname through `/api/domains`. Registration does not create DNS records. Verify TLS, login, API calls, and WebSocket routing through each intended hostname. Every tenant has one active default; other active domains also serve the tenant without redirecting.
+
+JWT tokens identify the tenant UUID and may be supplied on any active hostname for that tenant. Login cookies remain host-specific; signing in on one unrelated custom domain does not automatically sign in on another.
+
+The tenant/domains schema change patches the original development tenant CREATE and adds a separate domains CREATE/DROP migration pair. It is not an upgrade procedure for an existing production database: already-applied versions will not rerun and no data backfill is provided. Prepare a separate reviewed rollout if applying this design to an existing production database; do not reset a production database.

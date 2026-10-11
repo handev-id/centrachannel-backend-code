@@ -21,10 +21,10 @@ Multi-tenant REST API built with Go, Fiber, PostgreSQL, and Redis.
 
 Two access layers based on domain:
 
-| Domain | Tenant Context | Auth |
-|--------|----------------|------|
-| `centrachannel.com/api` | No (resolved from payload) | Optional (API key) |
-| `{tenant}.centrachannel.com/api` | Yes (from Host header) | JWT + Role |
+| Domain                           | Tenant Context             | Auth               |
+| -------------------------------- | -------------------------- | ------------------ |
+| `centrachannel.com/api`          | No (resolved from payload) | Optional (API key) |
+| `{tenant}.centrachannel.com/api` | Yes (from Host header)     | JWT + Role         |
 
 ### Main Domain (`internal/app`)
 
@@ -57,20 +57,20 @@ make run
 
 ## Commands
 
-| Command | Description |
-|---------|-------------|
-| `make help` | List all available commands |
-| `make migrate` / `make migrate-up` | Apply pending migrations |
-| `make rollback n=1` / `make migrate-down n=1` | Rollback N migrations |
-| `make migrate-drop` | Drop all tables |
-| `make seed` | Run all seed files through `database/seed.sql` in one transaction |
-| `make reset` | Drop + migrate + seed |
-| `make status` | Current migration version and pending migration files |
-| `make run` | Run the backend |
+| Command                                          | Description                                                                 |
+| ------------------------------------------------ | --------------------------------------------------------------------------- |
+| `make help`                                      | List all available commands                                                 |
+| `make migrate` / `make migrate-up`               | Apply pending migrations                                                    |
+| `make rollback n=1` / `make migrate-down n=1`    | Rollback N migrations                                                       |
+| `make migrate-drop`                              | Drop all tables                                                             |
+| `make seed`                                      | Run all seed files through `database/seed.sql` in one transaction           |
+| `make reset`                                     | Drop + migrate + seed                                                       |
+| `make status`                                    | Current migration version and pending migration files                       |
+| `make run`                                       | Run the backend                                                             |
 | `make test` / `make test-unit` / `make coverage` | Run all unit tests without cached results, with verbose output and coverage |
-| `make test-all` | Run unit and integration tests without cached results, with coverage |
-| `make docker-build` | Build the image configured by `IMAGE_NAME` and `IMAGE_TAG` |
-| `make docker-run` | Run the image with host networking and the configured environment |
+| `make test-all`                                  | Run unit and integration tests without cached results, with coverage        |
+| `make docker-build`                              | Build the image configured by `IMAGE_NAME` and `IMAGE_TAG`                  |
+| `make docker-run`                                | Run the image with host networking and the configured environment           |
 
 Commands load `.env` using the project's `godotenv` parser. Existing environment variables and Make command-line overrides take precedence. Use `ENV_FILE` to select another file:
 
@@ -96,7 +96,8 @@ internal/
 │   ├── registration/        #   POST /api/tenants/onboard
 │   └── webhook/             #   /webhook/evolution, /webhook/meta
 ├── src/                     # Subdomain (after TenantMiddleware + auth)
-│   ├── tenant/              #   Tenant CRUD (admin only)
+│   ├── tenant/              #   Current tenant GET/PUT (admin only)
+│   ├── domain/              #   Tenant domain CRUD (admin only)
 │   ├── auth/                #   Register, login, check-token, logout
 │   ├── user/                #   CRUD users within tenant
 │   ├── campaign/            #   Campaigns, templates, recipient lists
@@ -119,32 +120,23 @@ internal/
 
 ### Main Domain (`centrachannel.com/api`)
 
-| Method | Path | Description |
-|--------|------|-------------|
-| POST | `/api/tenants/onboard` | Register new tenant + admin user |
+| Method | Path                   | Description                      |
+| ------ | ---------------------- | -------------------------------- |
+| POST   | `/api/tenants/onboard` | Register new tenant + admin user |
 
 ### Subdomain (`{tenant}.centrachannel.com/api`)
 
-Tenant resolved from `Host` header automatically. For local dev, use `X-Tenant-Domain` header.
-
-#### Auth
-
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| POST | `/api/auth/register` | No | Register (default role=agent) |
-| POST | `/api/auth/login` | No | Login |
-| GET | `/api/auth/check-token` | JWT | Validate token |
-| DELETE | `/api/auth/logout` | JWT | Logout |
+Tenant is resolved from a registered active hostname in `domains`, including custom domains. Both the domain and tenant must be active. In `ENV=development` or `ENV=local`, `X-Tenant-Domain` can override the Host header; this override is ignored in production.
 
 #### Users
 
-| Method | Path | Auth | Description |
-|--------|------|------|-------------|
-| GET | `/api/user` | JWT | Paginated list |
-| POST | `/api/user` | JWT | Create user with roles |
-| GET | `/api/user/:id` | JWT | User detail |
-| PUT | `/api/user/:id` | JWT | Update user + sync roles |
-| DELETE | `/api/user/:id` | JWT | Soft delete (protects the super-admin role) |
+| Method | Path            | Auth | Description                                 |
+| ------ | --------------- | ---- | ------------------------------------------- |
+| GET    | `/api/user`     | JWT  | Paginated list                              |
+| POST   | `/api/user`     | JWT  | Create user with roles                      |
+| GET    | `/api/user/:id` | JWT  | User detail                                 |
+| PUT    | `/api/user/:id` | JWT  | Update user + sync roles                    |
+| DELETE | `/api/user/:id` | JWT  | Soft delete (protects the super-admin role) |
 
 ## Docker
 
@@ -152,13 +144,3 @@ Tenant resolved from `Host` header automatically. For local dev, use `X-Tenant-D
 make docker-build
 make docker-run
 ```
-
-## License
-
-MIT
-
-## UUID identifiers
-
-All application primary keys and foreign keys use PostgreSQL `UUID`. Existing CREATE migrations generate IDs with `gen_random_uuid()` (PostgreSQL 13+). Go uses `uuid.UUID`; API IDs and JWT `sub`/`tenant` claims are UUID strings. Provider IDs remain strings. Super admin deletion is blocked by the tenant's `super-admin` role.
-
-These patched migrations describe a fresh development database. An already migrated integer-ID database is not converted by `make migrate-up`; recreate it using `make reset` only when its data may be discarded. Existing numeric-ID JWTs must be replaced by logging in again.
