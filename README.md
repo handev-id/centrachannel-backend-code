@@ -52,19 +52,39 @@ centrachannel.com/api/*
 cp .env.example .env
 make migrate-up
 make seed
-go run ./cmd/server/main.go
+make run
 ```
 
 ## Commands
 
 | Command | Description |
 |---------|-------------|
-| `make migrate-up` | Apply pending migrations |
-| `make migrate-down n=1` | Rollback N migrations |
+| `make help` | List all available commands |
+| `make migrate` / `make migrate-up` | Apply pending migrations |
+| `make rollback n=1` / `make migrate-down n=1` | Rollback N migrations |
 | `make migrate-drop` | Drop all tables |
-| `make seed` | Seed tenant + roles |
+| `make seed` | Run all seed files through `database/seed.sql` in one transaction |
 | `make reset` | Drop + migrate + seed |
-| `make status` | Migration status |
+| `make status` | Current migration version and pending migration files |
+| `make run` | Run the backend |
+| `make test` / `make test-unit` / `make coverage` | Run all unit tests without cached results, with verbose output and coverage |
+| `make test-all` | Run unit and integration tests without cached results, with coverage |
+| `make docker-build` | Build the image configured by `IMAGE_NAME` and `IMAGE_TAG` |
+| `make docker-run` | Run the image with host networking and the configured environment |
+
+Commands load `.env` using the project's `godotenv` parser. Existing environment variables and Make command-line overrides take precedence. Use `ENV_FILE` to select another file:
+
+```bash
+make migrate-up ENV_FILE=.env.local
+make rollback n=2
+make test
+```
+
+Database commands use `DB_URL` when set; otherwise they build it from `DB_HOST`, `DB_PORT`, `DB_USER`, `DB_PASSWORD`, `DB_NAME`, and `DB_SSL_MODE`. Keep `DB_URL` consistent with those fields when both are set. Optional overrides in `.env` include `MIGRATIONS_PATH` and `SEED_FILE`.
+
+`make test` covers every application package and excludes `test/integration`. It uses `-count=1` to disable Go's test-result cache, prints each test and coverage per function, and writes `coverage/unit.out` plus `coverage/unit.html`. `make test-all` also includes integration tests and writes `coverage/all.out` plus `coverage/all.html`. Failed tests still return a failing exit status; any generated coverage then may be incomplete.
+
+Set `COVERAGE_DIR` or `TEST_TIMEOUT` in `.env` or the command line to override the report directory or per-package timeout (default: `coverage`, `5m`). Migration operations require `golang-migrate` (installed automatically if missing); seed requires `psql`.
 
 ## Project Structure
 

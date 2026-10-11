@@ -49,6 +49,7 @@ dist/
 build/
 bin/
 server
+coverage/
 
 # Database
 *.db

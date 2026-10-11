@@ -72,7 +72,7 @@ func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, tenantID
 }
 
 func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error {
-	return m.updateStatusFunc(ctx, q, id, status)
+	return m.updateStatusFunc(ctx, q, tenantID, id, status)
 }
 
 func (m *mockMessageRepository) UpdateStatusByWebhookID(ctx context.Context, q DBTX, webhookMessageID string, status string) error {
@@ -82,7 +82,7 @@ func (m *mockMessageRepository) UpdateStatusByWebhookID(ctx context.Context, q D
 	return nil
 }
 
-func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, tenantID int, id int, webhookMessageID string) error {
+func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id int, webhookMessageID string) error {
 	return nil
 }
 
