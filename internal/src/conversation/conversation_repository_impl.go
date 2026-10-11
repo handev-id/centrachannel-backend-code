@@ -15,7 +15,9 @@ func NewConversationRepository() ConversationRepository {
 	return &conversationRepository{}
 }
 
-func scanConversation(row interface{ Scan(dest ...interface{}) error }) (*Conversation, error) {
+func scanConversation(row interface {
+	Scan(dest ...interface{}) error
+}) (*Conversation, error) {
 	var c Conversation
 	var agentID, lastAgentID sql.NullInt64
 	var lastMessage sql.NullString
@@ -30,11 +32,23 @@ func scanConversation(row interface{ Scan(dest ...interface{}) error }) (*Conver
 		return nil, err
 	}
 	c.TenantID = tenantID
-	if agentID.Valid { id := int(agentID.Int64); c.AgentID = &id }
-	if lastAgentID.Valid { id := int(lastAgentID.Int64); c.LastAgentID = &id }
-	if lastMessage.Valid { c.LastMessage = []byte(lastMessage.String) }
-	if lastActivity.Valid { c.LastActivity = &lastActivity.Time }
-	if lastSeen.Valid { c.LastSeen = &lastSeen.Time }
+	if agentID.Valid {
+		id := int(agentID.Int64)
+		c.AgentID = &id
+	}
+	if lastAgentID.Valid {
+		id := int(lastAgentID.Int64)
+		c.LastAgentID = &id
+	}
+	if lastMessage.Valid {
+		c.LastMessage = []byte(lastMessage.String)
+	}
+	if lastActivity.Valid {
+		c.LastActivity = &lastActivity.Time
+	}
+	if lastSeen.Valid {
+		c.LastSeen = &lastSeen.Time
+	}
 	return &c, nil
 }
 
@@ -85,7 +99,7 @@ func (r *conversationRepository) ListCursor(ctx context.Context, q DBTX, tenantI
 
 	where := strings.Join(conditions, " AND ")
 
-	query := fmt.Sprintf(`SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c LEFT JOIN profiles p ON p.id = c.profile_id INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.deleted_at IS NULL WHERE %s ORDER BY c.last_activity DESC NULLS LAST, c.id DESC LIMIT $%d`, where, argIdx)
+	query := fmt.Sprintf(`SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c INNER JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL WHERE %s ORDER BY c.last_activity DESC NULLS LAST, c.id DESC LIMIT $%d`, where, argIdx)
 	args = append(args, limit)
 
 	rows, err := q.QueryContext(ctx, query, args...)
@@ -105,7 +119,9 @@ func (r *conversationRepository) ListCursor(ctx context.Context, q DBTX, tenantI
 	return convs, rows.Err()
 }
 
-func scanConversationCursor(row interface{ Scan(dest ...interface{}) error }) (*Conversation, error) {
+func scanConversationCursor(row interface {
+	Scan(dest ...interface{}) error
+}) (*Conversation, error) {
 	var c Conversation
 	var agentID, lastAgentID sql.NullInt64
 	var lastMessage sql.NullString
@@ -124,11 +140,23 @@ func scanConversationCursor(row interface{ Scan(dest ...interface{}) error }) (*
 		return nil, err
 	}
 	c.TenantID = tenantID
-	if agentID.Valid { id := int(agentID.Int64); c.AgentID = &id }
-	if lastAgentID.Valid { id := int(lastAgentID.Int64); c.LastAgentID = &id }
-	if lastMessage.Valid { c.LastMessage = []byte(lastMessage.String) }
-	if lastActivity.Valid { c.LastActivity = &lastActivity.Time }
-	if lastSeen.Valid { c.LastSeen = &lastSeen.Time }
+	if agentID.Valid {
+		id := int(agentID.Int64)
+		c.AgentID = &id
+	}
+	if lastAgentID.Valid {
+		id := int(lastAgentID.Int64)
+		c.LastAgentID = &id
+	}
+	if lastMessage.Valid {
+		c.LastMessage = []byte(lastMessage.String)
+	}
+	if lastActivity.Valid {
+		c.LastActivity = &lastActivity.Time
+	}
+	if lastSeen.Valid {
+		c.LastSeen = &lastSeen.Time
+	}
 	if contactID.Valid {
 		contact := &ConversationContact{ID: int(contactID.Int64), FirstName: firstName.String}
 		if lastName.Valid {
@@ -144,7 +172,7 @@ func scanConversationCursor(row interface{ Scan(dest ...interface{}) error }) (*
 }
 
 func (r *conversationRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error) {
-	query := `SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c LEFT JOIN profiles p ON p.id = c.profile_id INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.deleted_at IS NULL WHERE c.id = $1 AND c.tenant_id = $2`
+	query := `SELECT c.id, c.tenant_id, c.status, c.profile_id, c.agent_id, c.channel_id, c.last_agent_id, c.unread_count, c.last_message, c.last_activity, c.last_seen, c.created_at, c.updated_at, ct.id, ct.first_name, ct.last_name, ct.avatar FROM conversations c INNER JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL INNER JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL WHERE c.id = $1 AND c.tenant_id = $2`
 	return scanConversationCursor(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
@@ -154,7 +182,7 @@ func (r *conversationRepository) FindOpenByProfileAndChannel(ctx context.Context
 }
 
 func (r *conversationRepository) Create(ctx context.Context, q DBTX, conv *Conversation) (int, error) {
-	query := `INSERT INTO conversations (tenant_id, status, profile_id, agent_id, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`
+	query := `INSERT INTO conversations (tenant_id, status, profile_id, agent_id, channel_id, created_at, updated_at) SELECT $1,$2,p.id,$4,$5,$6,$7 FROM profiles p JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = p.tenant_id WHERE p.id = $3 AND p.tenant_id = $1 AND p.channel_id = $5 AND p.deleted_at IS NULL AND ct.deleted_at IS NULL RETURNING id`
 	var id int
 	err := q.QueryRowContext(ctx, query, conv.TenantID, conv.Status, conv.ProfileID, conv.AgentID, conv.ChannelID, time.Now(), time.Now()).Scan(&id)
 	if err != nil {

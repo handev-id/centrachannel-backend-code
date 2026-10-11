@@ -16,31 +16,42 @@ func NewProfileRepository() ProfileRepository {
 	return &profileRepository{}
 }
 
-func scanProfile(row interface{ Scan(dest ...interface{}) error }) (*Profile, error) {
+func scanProfile(row interface {
+	Scan(dest ...interface{}) error
+}) (*Profile, error) {
 	var p Profile
 	var username, displayName, linkedDevice sql.NullString
 	var mergedFromID sql.NullInt64
 	var deletedAt utils.NullableTime
 
-	err := row.Scan(&p.ID, &p.ExternalID, &username, &displayName, &p.IsMain, &linkedDevice, &mergedFromID, &p.ContactID, &p.ChannelID, &deletedAt, &p.CreatedAt, &p.UpdatedAt)
+	err := row.Scan(&p.ID, &p.TenantID, &p.ExternalID, &username, &displayName, &p.IsMain, &linkedDevice, &mergedFromID, &p.ContactID, &p.ChannelID, &deletedAt, &p.CreatedAt, &p.UpdatedAt)
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("profile not found")
 	}
 	if err != nil {
 		return nil, err
 	}
-	if username.Valid { p.Username = &username.String }
-	if displayName.Valid { p.DisplayName = &displayName.String }
-	if linkedDevice.Valid { p.LinkedDeviceWhatsappID = &linkedDevice.String }
-	if mergedFromID.Valid { id := int(mergedFromID.Int64); p.MergedFromContactID = &id }
+	if username.Valid {
+		p.Username = &username.String
+	}
+	if displayName.Valid {
+		p.DisplayName = &displayName.String
+	}
+	if linkedDevice.Valid {
+		p.LinkedDeviceWhatsappID = &linkedDevice.String
+	}
+	if mergedFromID.Valid {
+		id := int(mergedFromID.Int64)
+		p.MergedFromContactID = &id
+	}
 	p.DeletedAt = deletedAt
 	return &p, nil
 }
 
-func (r *profileRepository) List(ctx context.Context, q DBTX, contactID, channelID int) ([]Profile, error) {
-	var conditions []string
-	var args []interface{}
-	argIdx := 1
+func (r *profileRepository) List(ctx context.Context, q DBTX, tenantID int, contactID, channelID int) ([]Profile, error) {
+	conditions := []string{"p.tenant_id = $1"}
+	args := []interface{}{tenantID}
+	argIdx := 2
 
 	conditions = append(conditions, "p.deleted_at IS NULL")
 
@@ -57,10 +68,10 @@ func (r *profileRepository) List(ctx context.Context, q DBTX, contactID, channel
 
 	where := ""
 	if len(conditions) > 0 {
-		where = "WHERE " + joinStrings(conditions, " AND ")
+		where = "WHERE " + strings.Join(conditions, " AND ")
 	}
 
-	query := fmt.Sprintf(`SELECT p.id, p.external_id, p.username, p.display_name, p.is_main, p.linked_device_whatsapp_id, p.merged_from_contact_id, p.contact_id, p.channel_id, p.deleted_at, p.created_at, p.updated_at FROM profiles p %s ORDER BY p.id`, where)
+	query := fmt.Sprintf(`SELECT p.id, p.tenant_id, p.external_id, p.username, p.display_name, p.is_main, p.linked_device_whatsapp_id, p.merged_from_contact_id, p.contact_id, p.channel_id, p.deleted_at, p.created_at, p.updated_at FROM profiles p %s ORDER BY p.id`, where)
 	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -78,42 +89,45 @@ func (r *profileRepository) List(ctx context.Context, q DBTX, contactID, channel
 	return profiles, rows.Err()
 }
 
-func (r *profileRepository) GetByID(ctx context.Context, q DBTX, id int) (*Profile, error) {
-	query := `SELECT id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE id = $1 AND deleted_at IS NULL`
-	return scanProfile(q.QueryRowContext(ctx, query, id))
+func (r *profileRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Profile, error) {
+	query := `SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`
+	return scanProfile(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
-func (r *profileRepository) GetByExternalIDAndChannelID(ctx context.Context, q DBTX, externalID string, channelID int) (*Profile, error) {
-	query := `SELECT id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE external_id = $1 AND channel_id = $2 AND deleted_at IS NULL`
-	return scanProfile(q.QueryRowContext(ctx, query, externalID, channelID))
+func (r *profileRepository) GetByExternalIDAndChannelID(ctx context.Context, q DBTX, tenantID int, externalID string, channelID int) (*Profile, error) {
+	query := `SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE external_id = $1 AND channel_id = $2 AND tenant_id = $3 AND deleted_at IS NULL`
+	return scanProfile(q.QueryRowContext(ctx, query, externalID, channelID, tenantID))
 }
 
 func (r *profileRepository) Create(ctx context.Context, q DBTX, profile *Profile) (int, error) {
-	query := `INSERT INTO profiles (external_id, username, display_name, is_main, linked_device_whatsapp_id, contact_id, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9) RETURNING id`
+	query := `INSERT INTO profiles (tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, contact_id, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`
 	var id int
-	err := q.QueryRowContext(ctx, query, profile.ExternalID, profile.Username, profile.DisplayName, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.ContactID, profile.ChannelID, time.Now(), time.Now()).Scan(&id)
+	err := q.QueryRowContext(ctx, query, profile.TenantID, profile.ExternalID, profile.Username, profile.DisplayName, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.ContactID, profile.ChannelID, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
 		return 0, err
 	}
 	return id, nil
 }
 
-func (r *profileRepository) Update(ctx context.Context, q DBTX, id int, profile *Profile) error {
-	query := `UPDATE profiles SET is_main=$1, linked_device_whatsapp_id=$2, display_name=$3, updated_at=$4 WHERE id=$5 AND deleted_at IS NULL`
-	result, err := q.ExecContext(ctx, query, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.DisplayName, time.Now(), id)
+func (r *profileRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, profile *Profile) error {
+	query := `UPDATE profiles SET is_main=$1, linked_device_whatsapp_id=$2, display_name=$3, updated_at=$4 WHERE id=$5 AND tenant_id=$6 AND deleted_at IS NULL`
+	result, err := q.ExecContext(ctx, query, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.DisplayName, time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}
-	rows, _ := result.RowsAffected()
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
 	if rows == 0 {
 		return fmt.Errorf("profile not found")
 	}
 	return nil
 }
 
-func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, contactID int) ([]Profile, error) {
-	query := `SELECT id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE contact_id = $1 AND deleted_at IS NULL ORDER BY id`
-	rows, err := q.QueryContext(ctx, query, contactID)
+func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, tenantID int, contactID int) ([]Profile, error) {
+	query := `SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE contact_id = $1 AND tenant_id = $2 AND deleted_at IS NULL ORDER BY id`
+	rows, err := q.QueryContext(ctx, query, contactID, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -130,19 +144,20 @@ func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, contactI
 	return profiles, rows.Err()
 }
 
-func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, contactIDs []int) (map[int][]Profile, error) {
+func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, tenantID int, contactIDs []int) (map[int][]Profile, error) {
 	if len(contactIDs) == 0 {
 		return map[int][]Profile{}, nil
 	}
 
 	placeholders := make([]string, len(contactIDs))
-	args := make([]interface{}, len(contactIDs))
+	args := make([]interface{}, len(contactIDs)+1)
+	args[0] = tenantID
 	for i, id := range contactIDs {
-		placeholders[i] = fmt.Sprintf("$%d", i+1)
-		args[i] = id
+		placeholders[i] = fmt.Sprintf("$%d", i+2)
+		args[i+1] = id
 	}
 
-	query := fmt.Sprintf(`SELECT id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE contact_id IN (%s) AND deleted_at IS NULL ORDER BY id`, strings.Join(placeholders, ","))
+	query := fmt.Sprintf(`SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE tenant_id = $1 AND contact_id IN (%s) AND deleted_at IS NULL ORDER BY id`, strings.Join(placeholders, ","))
 	rows, err := q.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, err
@@ -162,15 +177,4 @@ func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, contact
 	}
 
 	return result, nil
-}
-
-func joinStrings(strs []string, sep string) string {
-	result := ""
-	for i, s := range strs {
-		if i > 0 {
-			result += sep
-		}
-		result += s
-	}
-	return result
 }

@@ -39,7 +39,7 @@ func NewContactService(repo ContactRepository, profileRepo profile.ProfileReposi
 	return &contactService{repo: repo, profileRepo: profileRepo, db: db, cfg: cfg, logger: logger}
 }
 
-func (s *contactService) loadProfiles(ctx context.Context, contacts []*Contact) error {
+func (s *contactService) loadProfiles(ctx context.Context, tenantID int, contacts []*Contact) error {
 	if len(contacts) == 0 {
 		return nil
 	}
@@ -47,7 +47,7 @@ func (s *contactService) loadProfiles(ctx context.Context, contacts []*Contact) 
 	for i, c := range contacts {
 		ids[i] = c.ID
 	}
-	profileMap, err := s.profileRepo.GetByContactIDs(ctx, s.db, ids)
+	profileMap, err := s.profileRepo.GetByContactIDs(ctx, s.db, tenantID, ids)
 	if err != nil {
 		return err
 	}
@@ -65,7 +65,7 @@ func (s *contactService) loadProfile(ctx context.Context, contact *Contact) erro
 	if contact == nil {
 		return nil
 	}
-	profiles, err := s.profileRepo.GetByContactID(ctx, s.db, contact.ID)
+	profiles, err := s.profileRepo.GetByContactID(ctx, s.db, contact.TenantID, contact.ID)
 	if err != nil {
 		return err
 	}
@@ -87,7 +87,7 @@ func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant
 		return nil, 0, err
 	}
 
-	if err := s.loadProfiles(ctx, contacts); err != nil {
+	if err := s.loadProfiles(ctx, t.ID, contacts); err != nil {
 		return nil, 0, err
 	}
 
@@ -120,28 +120,28 @@ func (s *contactService) Create(ctx context.Context, req CreateContactRequest, t
 	}
 
 	contact := &Contact{
-		TenantID:  t.ID,
-		FirstName: req.FirstName,
-		LastName:  req.LastName,
-		Username:  req.Username,
-		Email:     req.Email,
-		Phone:     req.Phone,
-		Avatar:    req.Avatar,
-		Country:   req.Country,
-		Bio:       req.Bio,
-		Occupation: req.Occupation,
-		Category:  req.Category,
+		TenantID:            t.ID,
+		FirstName:           req.FirstName,
+		LastName:            req.LastName,
+		Username:            req.Username,
+		Email:               req.Email,
+		Phone:               req.Phone,
+		Avatar:              req.Avatar,
+		Country:             req.Country,
+		Bio:                 req.Bio,
+		Occupation:          req.Occupation,
+		Category:            req.Category,
 		CategoryDescription: req.CategoryDescription,
-		Gender:    req.Gender,
-		DateOfBirth: dob,
-		ProvinceOfOrigin: req.ProvinceOfOrigin,
-		Facebook:  req.Facebook,
-		Instagram: req.Instagram,
-		Whatsapp:  req.Whatsapp,
-		X:         req.X,
-		Tiktok:    req.Tiktok,
-		Status:    status,
-		InstitutionName: req.InstitutionName,
+		Gender:              req.Gender,
+		DateOfBirth:         dob,
+		ProvinceOfOrigin:    req.ProvinceOfOrigin,
+		Facebook:            req.Facebook,
+		Instagram:           req.Instagram,
+		Whatsapp:            req.Whatsapp,
+		X:                   req.X,
+		Tiktok:              req.Tiktok,
+		Status:              status,
+		InstitutionName:     req.InstitutionName,
 	}
 
 	id, err := s.repo.Create(ctx, s.db, contact)
@@ -166,31 +166,71 @@ func (s *contactService) Update(ctx context.Context, tenantID int, id int, req U
 		return nil, err
 	}
 
-	if req.FirstName != nil { existing.FirstName = *req.FirstName }
-	if req.LastName != nil { existing.LastName = req.LastName }
-	if req.Username != nil { existing.Username = req.Username }
-	if req.Email != nil { existing.Email = req.Email }
-	if req.Phone != nil { existing.Phone = req.Phone }
-	if len(req.Avatar) > 0 { existing.Avatar = req.Avatar }
-	if req.Country != nil { existing.Country = req.Country }
-	if req.Bio != nil { existing.Bio = req.Bio }
-	if req.Occupation != nil { existing.Occupation = req.Occupation }
-	if req.Category != nil { existing.Category = req.Category }
-	if req.CategoryDescription != nil { existing.CategoryDescription = req.CategoryDescription }
-	if req.Gender != nil { existing.Gender = req.Gender }
+	if req.FirstName != nil {
+		existing.FirstName = *req.FirstName
+	}
+	if req.LastName != nil {
+		existing.LastName = req.LastName
+	}
+	if req.Username != nil {
+		existing.Username = req.Username
+	}
+	if req.Email != nil {
+		existing.Email = req.Email
+	}
+	if req.Phone != nil {
+		existing.Phone = req.Phone
+	}
+	if len(req.Avatar) > 0 {
+		existing.Avatar = req.Avatar
+	}
+	if req.Country != nil {
+		existing.Country = req.Country
+	}
+	if req.Bio != nil {
+		existing.Bio = req.Bio
+	}
+	if req.Occupation != nil {
+		existing.Occupation = req.Occupation
+	}
+	if req.Category != nil {
+		existing.Category = req.Category
+	}
+	if req.CategoryDescription != nil {
+		existing.CategoryDescription = req.CategoryDescription
+	}
+	if req.Gender != nil {
+		existing.Gender = req.Gender
+	}
 	if req.DateOfBirth != nil {
 		if t, err := time.Parse("2006-01-02", *req.DateOfBirth); err == nil {
 			existing.DateOfBirth = &t
 		}
 	}
-	if req.ProvinceOfOrigin != nil { existing.ProvinceOfOrigin = req.ProvinceOfOrigin }
-	if req.Facebook != nil { existing.Facebook = req.Facebook }
-	if req.Instagram != nil { existing.Instagram = req.Instagram }
-	if req.Whatsapp != nil { existing.Whatsapp = req.Whatsapp }
-	if req.X != nil { existing.X = req.X }
-	if req.Tiktok != nil { existing.Tiktok = req.Tiktok }
-	if req.Status != nil { existing.Status = *req.Status }
-	if req.InstitutionName != nil { existing.InstitutionName = req.InstitutionName }
+	if req.ProvinceOfOrigin != nil {
+		existing.ProvinceOfOrigin = req.ProvinceOfOrigin
+	}
+	if req.Facebook != nil {
+		existing.Facebook = req.Facebook
+	}
+	if req.Instagram != nil {
+		existing.Instagram = req.Instagram
+	}
+	if req.Whatsapp != nil {
+		existing.Whatsapp = req.Whatsapp
+	}
+	if req.X != nil {
+		existing.X = req.X
+	}
+	if req.Tiktok != nil {
+		existing.Tiktok = req.Tiktok
+	}
+	if req.Status != nil {
+		existing.Status = *req.Status
+	}
+	if req.InstitutionName != nil {
+		existing.InstitutionName = req.InstitutionName
+	}
 
 	if err := s.repo.Update(ctx, s.db, tenantID, id, existing); err != nil {
 		return nil, err
@@ -251,9 +291,16 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 		if err := rows.Scan(&conv.ID, &conv.Status, &conv.ProfileID, &agentID, &conv.ChannelID, &conv.UnreadCount, &lastMessage, &lastActivity, &conv.CreatedAt); err != nil {
 			return nil, 0, err
 		}
-		if agentID.Valid { id := int(agentID.Int64); conv.AgentID = &id }
-		if lastMessage.Valid { conv.LastMessage = []byte(lastMessage.String) }
-		if lastActivity.Valid { conv.LastActivity = &lastActivity.Time }
+		if agentID.Valid {
+			id := int(agentID.Int64)
+			conv.AgentID = &id
+		}
+		if lastMessage.Valid {
+			conv.LastMessage = []byte(lastMessage.String)
+		}
+		if lastActivity.Valid {
+			conv.LastActivity = &lastActivity.Time
+		}
 
 		convs = append(convs, conv)
 	}
@@ -424,6 +471,8 @@ func getCol(row []string, colMap map[string]int, name string) string {
 }
 
 func optionalStr(v string) *string {
-	if v == "" { return nil }
+	if v == "" {
+		return nil
+	}
 	return &v
 }

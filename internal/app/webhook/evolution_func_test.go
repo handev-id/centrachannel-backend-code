@@ -44,7 +44,7 @@ func TestProcessEvolutionEvent_FromMe_Sync(t *testing.T) {
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
@@ -57,7 +57,9 @@ func TestProcessEvolutionEvent_FromMe_Sync(t *testing.T) {
 		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
 			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error { return nil },
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			return nil
+		},
 	}
 	msgRepo := &mockMsgRepo{
 		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
@@ -103,7 +105,7 @@ func TestHandleMessageUpsert_NewConversation(t *testing.T) {
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 			return nil, sql.ErrNoRows
 		},
 		createFunc: func(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) {
@@ -154,14 +156,24 @@ func TestHandleMessageUpsert_NewConversation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if createdContact == nil { t.Fatal("expected contact to be created") }
-	if createdProfile == nil { t.Fatal("expected profile to be created") }
-	if createdConv == nil { t.Fatal("expected conversation to be created") }
-	if createdMsg == nil { t.Fatal("expected message to be created") }
+	if createdContact == nil {
+		t.Fatal("expected contact to be created")
+	}
+	if createdProfile == nil {
+		t.Fatal("expected profile to be created")
+	}
+	if createdConv == nil {
+		t.Fatal("expected conversation to be created")
+	}
+	if createdMsg == nil {
+		t.Fatal("expected message to be created")
+	}
 	if createdMsg.Text == nil || *createdMsg.Text != "Hello, this is a test" {
 		t.Errorf("expected text 'Hello, this is a test', got %v", createdMsg.Text)
 	}
-	if createdMsg.Status != "unread" { t.Errorf("expected status 'unread', got %s", createdMsg.Status) }
+	if createdMsg.Status != "unread" {
+		t.Errorf("expected status 'unread', got %s", createdMsg.Status)
+	}
 }
 
 func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
@@ -176,7 +188,7 @@ func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
@@ -189,7 +201,9 @@ func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
 		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
 			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error { return nil },
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			return nil
+		},
 	}
 	msgRepo := &mockMsgRepo{
 		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
@@ -227,7 +241,7 @@ func TestHandleMessageUpsert_NotifiesNewMessage(t *testing.T) {
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
@@ -307,7 +321,7 @@ func TestProcessEvolutionEvent_FromMe_Sync_NotifiesNewMessage(t *testing.T) {
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
@@ -375,7 +389,9 @@ func TestHandleMessageUpdate_Delivered(t *testing.T) {
 	var capturedID, capturedStatus string
 	msgRepo := &mockMsgRepo{
 		updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
-			capturedID = webhookMessageID; capturedStatus = status; return nil
+			capturedID = webhookMessageID
+			capturedStatus = status
+			return nil
 		},
 	}
 	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
@@ -386,9 +402,15 @@ func TestHandleMessageUpdate_Delivered(t *testing.T) {
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{
 		Event: "messages.update", Instance: "instance_test", Data: data,
 	})
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
-	if capturedID != "webhook_001" { t.Errorf("expected webhook_001, got %s", capturedID) }
-	if capturedStatus != "delivered" { t.Errorf("expected 'delivered', got %s", capturedStatus) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if capturedID != "webhook_001" {
+		t.Errorf("expected webhook_001, got %s", capturedID)
+	}
+	if capturedStatus != "delivered" {
+		t.Errorf("expected 'delivered', got %s", capturedStatus)
+	}
 }
 
 func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
@@ -399,7 +421,8 @@ func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
 		var capturedStatus string
 		msgRepo := &mockMsgRepo{
 			updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
-				capturedStatus = status; return nil
+				capturedStatus = status
+				return nil
 			},
 		}
 		svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
@@ -407,7 +430,9 @@ func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
 			KeyID: "w_" + tt.status, Status: tt.status,
 		})
 		svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "messages.update", Instance: "test", Data: data})
-		if capturedStatus != tt.expected { t.Errorf("for %s: expected %s, got %s", tt.status, tt.expected, capturedStatus) }
+		if capturedStatus != tt.expected {
+			t.Errorf("for %s: expected %s, got %s", tt.status, tt.expected, capturedStatus)
+		}
 	}
 }
 
@@ -415,7 +440,8 @@ func TestHandleMessageUpdate_UnhandledStatus(t *testing.T) {
 	called := false
 	msgRepo := &mockMsgRepo{
 		updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
-			called = true; return nil
+			called = true
+			return nil
 		},
 	}
 	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
@@ -423,13 +449,17 @@ func TestHandleMessageUpdate_UnhandledStatus(t *testing.T) {
 		KeyID: "w_004", Status: "PENDING",
 	})
 	svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "messages.update", Instance: "test", Data: data})
-	if called { t.Error("expected no call for unhandled status") }
+	if called {
+		t.Error("expected no call for unhandled status")
+	}
 }
 
 func TestHandleMessageUpdate_NilData(t *testing.T) {
 	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "messages.update"})
-	if err != nil { t.Fatalf("expected nil error for nil data, got: %v", err) }
+	if err != nil {
+		t.Fatalf("expected nil error for nil data, got: %v", err)
+	}
 }
 
 func TestHandleConnectionUpdate_Open(t *testing.T) {
@@ -439,14 +469,17 @@ func TestHandleConnectionUpdate_Open(t *testing.T) {
 			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test", Status: "DISCONNECTED"}, nil
 		},
 		updateFunc: func(ctx context.Context, q whatsapp_device.DBTX, tenantID int, id int, device *whatsapp_device.WhatsAppDevice) error {
-			updatedDevice = device; return nil
+			updatedDevice = device
+			return nil
 		},
 	}
 	svc := newTestService(deviceRepo, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 
 	data, _ := json.Marshal(EvolutionConnectionUpdate{Instance: "instance_test", State: "open"})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "connection.update", Instance: "instance_test", Data: data})
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if updatedDevice == nil || updatedDevice.Status != "CONNECTED" {
 		t.Errorf("expected status CONNECTED, got %v", updatedDevice.Status)
 	}
@@ -459,14 +492,17 @@ func TestHandleConnectionUpdate_Disconnected(t *testing.T) {
 			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test", Status: "CONNECTED"}, nil
 		},
 		updateFunc: func(ctx context.Context, q whatsapp_device.DBTX, tenantID int, id int, device *whatsapp_device.WhatsAppDevice) error {
-			updatedDevice = device; return nil
+			updatedDevice = device
+			return nil
 		},
 	}
 	svc := newTestService(deviceRepo, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 
 	data, _ := json.Marshal(EvolutionConnectionUpdate{Instance: "instance_test", State: "close"})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "connection.update", Instance: "instance_test", Data: data})
-	if err != nil { t.Fatalf("unexpected error: %v", err) }
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
 	if updatedDevice == nil || updatedDevice.Status != "DISCONNECTED" {
 		t.Errorf("expected status DISCONNECTED, got %v", updatedDevice.Status)
 	}
@@ -475,5 +511,7 @@ func TestHandleConnectionUpdate_Disconnected(t *testing.T) {
 func TestHandleConnectionUpdate_NilData(t *testing.T) {
 	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, &mockMsgRepo{})
 	err := svc.ProcessEvolutionEvent(context.Background(), &EvolutionWebhookPayload{Event: "connection.update"})
-	if err != nil { t.Fatalf("expected nil error for nil data, got: %v", err) }
+	if err != nil {
+		t.Fatalf("expected nil error for nil data, got: %v", err)
+	}
 }

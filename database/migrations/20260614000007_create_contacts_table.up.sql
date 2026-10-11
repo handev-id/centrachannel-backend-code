@@ -26,7 +26,8 @@ CREATE TABLE IF NOT EXISTS contacts (
     deleted_at           TIMESTAMPTZ,
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_contacts_status CHECK (status IN ('individual', 'institution'))
+    CONSTRAINT chk_contacts_status CHECK (status IN ('individual', 'institution')),
+    CONSTRAINT contacts_tenant_id_id_key UNIQUE (tenant_id, id)
 );
 
 CREATE INDEX IF NOT EXISTS idx_contacts_tenant ON contacts(tenant_id);

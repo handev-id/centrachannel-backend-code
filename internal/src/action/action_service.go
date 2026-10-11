@@ -59,7 +59,7 @@ func (s *ActionService) sendWhatsAppReadReceipt(tenantID int, conversationID int
 		return
 	}
 
-	profile, err := s.profRepo.GetByID(ctx, s.db, conv.ProfileID)
+	profile, err := s.profRepo.GetByID(ctx, s.db, tenantID, conv.ProfileID)
 	if err != nil || profile == nil || profile.LinkedDeviceWhatsappID == nil {
 		return
 	}

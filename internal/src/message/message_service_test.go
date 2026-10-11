@@ -59,7 +59,7 @@ func (t *mockSQLTx) Rollback() error { return nil }
 type mockMessageRepository struct {
 	createFunc                  func(ctx context.Context, q DBTX, msg *Message) (int, error)
 	listCursorFunc              func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error)
-	updateStatusFunc            func(ctx context.Context, q DBTX, id int, status string) error
+	updateStatusFunc            func(ctx context.Context, q DBTX, tenantID int, id int, status string) error
 	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, webhookMessageID string, status string) error
 }
 
@@ -82,7 +82,7 @@ func (m *mockMessageRepository) UpdateStatusByWebhookID(ctx context.Context, q D
 	return nil
 }
 
-func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id int, webhookMessageID string) error {
+func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, tenantID int, id int, webhookMessageID string) error {
 	return nil
 }
 
@@ -140,28 +140,28 @@ func (m *mockConversationRepository) FindOpenByProfileAndChannel(ctx context.Con
 
 // mockProfileRepository
 type mockProfileRepository struct {
-	getByExternalIDAndChannelIDFunc func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error)
+	getByExternalIDAndChannelIDFunc func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error)
 	createFunc                      func(ctx context.Context, q profile.DBTX, profile *profile.Profile) (int, error)
 }
 
-func (m *mockProfileRepository) GetByContactIDs(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error) {
+func (m *mockProfileRepository) GetByContactIDs(ctx context.Context, q profile.DBTX, tenantID int, contactIDs []int) (map[int][]profile.Profile, error) {
 	return map[int][]profile.Profile{}, nil
 }
-func (m *mockProfileRepository) List(ctx context.Context, q profile.DBTX, contactID, channelID int) ([]profile.Profile, error) {
+func (m *mockProfileRepository) List(ctx context.Context, q profile.DBTX, tenantID int, contactID, channelID int) ([]profile.Profile, error) {
 	panic("unexpected call")
 }
-func (m *mockProfileRepository) GetByID(ctx context.Context, q profile.DBTX, id int) (*profile.Profile, error) {
+func (m *mockProfileRepository) GetByID(ctx context.Context, q profile.DBTX, tenantID int, id int) (*profile.Profile, error) {
 	return &profile.Profile{ExternalID: "test_external_id"}, nil
 }
-func (m *mockProfileRepository) Update(ctx context.Context, q profile.DBTX, id int, p *profile.Profile) error {
+func (m *mockProfileRepository) Update(ctx context.Context, q profile.DBTX, tenantID int, id int, p *profile.Profile) error {
 	panic("unexpected call")
 }
-func (m *mockProfileRepository) GetByContactID(ctx context.Context, q profile.DBTX, contactID int) ([]profile.Profile, error) {
+func (m *mockProfileRepository) GetByContactID(ctx context.Context, q profile.DBTX, tenantID int, contactID int) ([]profile.Profile, error) {
 	panic("unexpected call")
 }
-func (m *mockProfileRepository) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+func (m *mockProfileRepository) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 	if m.getByExternalIDAndChannelIDFunc != nil {
-		return m.getByExternalIDAndChannelIDFunc(ctx, q, externalID, channelID)
+		return m.getByExternalIDAndChannelIDFunc(ctx, q, tenantID, externalID, channelID)
 	}
 	return nil, nil
 }
@@ -603,7 +603,7 @@ func TestMessageService_UpdateStatus(t *testing.T) {
 		var capturedStatus string
 
 		msgRepo := &mockMessageRepository{
-			updateStatusFunc: func(ctx context.Context, q DBTX, id int, status string) error {
+			updateStatusFunc: func(ctx context.Context, q DBTX, tenantID int, id int, status string) error {
 				capturedID = id
 				capturedStatus = status
 				return nil

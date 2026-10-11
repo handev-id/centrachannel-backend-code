@@ -21,7 +21,7 @@ func TestProcessMetaEvent_NotifiesNewMessage(t *testing.T) {
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
 			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}

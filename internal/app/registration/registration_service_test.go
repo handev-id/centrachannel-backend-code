@@ -29,10 +29,10 @@ func (t *mockTx) Rollback() error { return nil }
 
 type mockStmt struct{}
 
-func (s *mockStmt) Close() error                                      { return nil }
-func (s *mockStmt) NumInput() int                                      { return -1 }
-func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error)   { return &mockResult{}, nil }
-func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error)    { return &mockRows{}, nil }
+func (s *mockStmt) Close() error                                    { return nil }
+func (s *mockStmt) NumInput() int                                   { return -1 }
+func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) { return &mockResult{}, nil }
+func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error)  { return &mockRows{}, nil }
 
 type mockResult struct{}
 
@@ -109,7 +109,7 @@ func TestOnboard(t *testing.T) {
 					t.Errorf("unexpected tenantID for role %s: %d", name, tenantID)
 				}
 				switch name {
-				case "super_admin":
+				case "super-admin":
 					return 10, nil
 				case "admin":
 					return 20, nil
@@ -135,7 +135,7 @@ func TestOnboard(t *testing.T) {
 					t.Errorf("unexpected userID for role attach: %d", userID)
 				}
 				if roleID != 10 {
-					t.Errorf("expected super_admin role (10), got %d", roleID)
+					t.Errorf("expected super-admin role (10), got %d", roleID)
 				}
 				if tenantID != 1 {
 					t.Errorf("expected tenantID 1, got %d", tenantID)
@@ -178,7 +178,7 @@ func TestOnboard(t *testing.T) {
 			t.Errorf("expected admin username admin, got %s", resp.Admin.Username)
 		}
 
-		expectedCalls := []string{"Create", "CreateRole:super_admin", "CreateRole:admin", "CreateRole:agent", "CreateUser", "AttachRole"}
+		expectedCalls := []string{"Create", "CreateRole:super-admin", "CreateRole:admin", "CreateRole:agent", "CreateUser", "AttachRole"}
 		if len(calls) != len(expectedCalls) {
 			t.Fatalf("expected %d calls, got %d: %v", len(expectedCalls), len(calls), calls)
 		}
@@ -199,7 +199,7 @@ func TestOnboard(t *testing.T) {
 			},
 			createRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID int, name string) (int, error) {
 				switch name {
-				case "super_admin":
+				case "super-admin":
 					return 10, nil
 				case "admin":
 					return 20, nil

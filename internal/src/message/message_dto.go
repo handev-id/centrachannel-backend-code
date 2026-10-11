@@ -16,7 +16,5 @@ type SendMessageRequest struct {
 }
 
 type UpdateMessageStatusRequest struct {
-	Status string `json:"status" validate:"required,oneof=sent delivered read unread"`
+	Status string `json:"status" validate:"required,oneof=sent delivered read unread failed"`
 }
-
-

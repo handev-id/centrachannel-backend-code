@@ -382,7 +382,9 @@ Agents must not create database code outside this location.
 
 # Migration Rules
 
-- Every schema change needs an up/down pair
+- While the project is in development, patch the existing CREATE/DROP migration pair for schema changes. Create a new migration only when an existing pair cannot reasonably express the change.
+- Fold avoidable ALTER TABLE operations into the original CREATE TABLE definition. Keep ALTER TABLE only when genuinely required by the schema dependencies or migration lifecycle.
+- Every schema change must be represented in an up/down pair
 - Up file: `{timestamp}_{action}_{table}.up.sql`
 - Down file: `{timestamp}_reverse-action_{table}.down.sql`
 - Use `CREATE` for up titles, `DROP` for down titles (ensures correct `ls` ordering)

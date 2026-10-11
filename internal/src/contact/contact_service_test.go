@@ -88,9 +88,9 @@ func (c *mockConn) QueryContext(ctx context.Context, query string, args []driver
 }
 
 var (
-	_ driver.Conn          = (*mockConn)(nil)
-	_ driver.ConnBeginTx   = (*mockConn)(nil)
-	_ driver.ExecerContext = (*mockConn)(nil)
+	_ driver.Conn           = (*mockConn)(nil)
+	_ driver.ConnBeginTx    = (*mockConn)(nil)
+	_ driver.ExecerContext  = (*mockConn)(nil)
 	_ driver.QueryerContext = (*mockConn)(nil)
 )
 
@@ -150,33 +150,47 @@ var _ driver.Result = (*mockResult)(nil)
 // ---- Profile Repository Mock ----
 
 type mockProfileRepo struct {
-	getByContactIDFunc  func(ctx context.Context, q profile.DBTX, contactID int) ([]profile.Profile, error)
-	getByContactIDsFunc func(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error)
+	getByContactIDFunc  func(ctx context.Context, q profile.DBTX, tenantID int, contactID int) ([]profile.Profile, error)
+	getByContactIDsFunc func(ctx context.Context, q profile.DBTX, tenantID int, contactIDs []int) (map[int][]profile.Profile, error)
 }
 
-func (m *mockProfileRepo) List(ctx context.Context, q profile.DBTX, contactID, channelID int) ([]profile.Profile, error) { return nil, nil }
-func (m *mockProfileRepo) GetByID(ctx context.Context, q profile.DBTX, id int) (*profile.Profile, error) { return nil, nil }
-func (m *mockProfileRepo) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, externalID string, channelID int) (*profile.Profile, error) { return nil, nil }
-func (m *mockProfileRepo) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) { return 0, nil }
-func (m *mockProfileRepo) Update(ctx context.Context, q profile.DBTX, id int, p *profile.Profile) error { return nil }
-func (m *mockProfileRepo) GetByContactID(ctx context.Context, q profile.DBTX, contactID int) ([]profile.Profile, error) {
-	if m.getByContactIDFunc != nil { return m.getByContactIDFunc(ctx, q, contactID) }
+func (m *mockProfileRepo) List(ctx context.Context, q profile.DBTX, tenantID int, contactID, channelID int) ([]profile.Profile, error) {
+	return nil, nil
+}
+func (m *mockProfileRepo) GetByID(ctx context.Context, q profile.DBTX, tenantID int, id int) (*profile.Profile, error) {
+	return nil, nil
+}
+func (m *mockProfileRepo) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
+	return nil, nil
+}
+func (m *mockProfileRepo) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) {
+	return 0, nil
+}
+func (m *mockProfileRepo) Update(ctx context.Context, q profile.DBTX, tenantID int, id int, p *profile.Profile) error {
+	return nil
+}
+func (m *mockProfileRepo) GetByContactID(ctx context.Context, q profile.DBTX, tenantID int, contactID int) ([]profile.Profile, error) {
+	if m.getByContactIDFunc != nil {
+		return m.getByContactIDFunc(ctx, q, tenantID, contactID)
+	}
 	return []profile.Profile{}, nil
 }
-func (m *mockProfileRepo) GetByContactIDs(ctx context.Context, q profile.DBTX, contactIDs []int) (map[int][]profile.Profile, error) {
-	if m.getByContactIDsFunc != nil { return m.getByContactIDsFunc(ctx, q, contactIDs) }
+func (m *mockProfileRepo) GetByContactIDs(ctx context.Context, q profile.DBTX, tenantID int, contactIDs []int) (map[int][]profile.Profile, error) {
+	if m.getByContactIDsFunc != nil {
+		return m.getByContactIDsFunc(ctx, q, tenantID, contactIDs)
+	}
 	return map[int][]profile.Profile{}, nil
 }
 
 // ---- Repository Mock ----
 
 type mockContactRepository struct {
-	listFunc        func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error)
-	getByIDFunc     func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error)
-	createFunc      func(ctx context.Context, q DBTX, contact *Contact) (int, error)
-	updateFunc      func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error
-	softDeleteFunc  func(ctx context.Context, q DBTX, tenantID int, id int) error
-	getByPhoneFunc  func(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error)
+	listFunc       func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error)
+	getByIDFunc    func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error)
+	createFunc     func(ctx context.Context, q DBTX, contact *Contact) (int, error)
+	updateFunc     func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error
+	softDeleteFunc func(ctx context.Context, q DBTX, tenantID int, id int) error
+	getByPhoneFunc func(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error)
 }
 
 func (m *mockContactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {

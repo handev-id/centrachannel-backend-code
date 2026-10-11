@@ -73,8 +73,8 @@ func (t *mockTx) Rollback() error {
 
 type mockStmt struct{}
 
-func (s *mockStmt) Close() error          { return nil }
-func (s *mockStmt) NumInput() int         { return -1 }
+func (s *mockStmt) Close() error  { return nil }
+func (s *mockStmt) NumInput() int { return -1 }
 func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) {
 	return &mockResult{}, nil
 }
@@ -106,7 +106,7 @@ func (r *mockRows) Next(dest []driver.Value) error {
 // ---- mock repository ----
 
 type mockChannelRepository struct {
-	getByIDFunc  func(ctx context.Context, q channel.DBTX, id int) (*channel.Channel, error)
+	getByIDFunc   func(ctx context.Context, q channel.DBTX, id int) (*channel.Channel, error)
 	getByTypeFunc func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error)
 }
 
@@ -129,29 +129,30 @@ func (m *mockChannelRepository) List(ctx context.Context, q channel.DBTX) ([]cha
 }
 
 type mockCampaignRepository struct {
-	listFunc                   func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error)
-	getByIDFunc                func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
-	createFunc                 func(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
-	updateFunc                 func(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error
-	deleteFunc                 func(ctx context.Context, q DBTX, tenantID int, id int) error
-	createRecipientFunc        func(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error)
-	updateRecipientStatusFunc  func(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error
-	countPendingRecipientsFunc func(ctx context.Context, q DBTX, campaignID int) (int, error)
+	updateStatusFunc                  func(ctx context.Context, q DBTX, tenantID int, id int, status string, sentCount *int) error
+	listFunc                          func(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error)
+	getByIDFunc                       func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
+	createFunc                        func(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
+	updateFunc                        func(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error
+	deleteFunc                        func(ctx context.Context, q DBTX, tenantID int, id int) error
+	createRecipientFunc               func(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error)
+	updateRecipientStatusFunc         func(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error
+	countPendingRecipientsFunc        func(ctx context.Context, q DBTX, campaignID int) (int, error)
 	getPendingRecipientsFunc          func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error)
 	getPendingRecipientsWithPhoneFunc func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipientWithPhone, error)
-	listTemplatesFunc          func(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error)
-	getTemplateByIDFunc        func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignTemplate, error)
-	createTemplateFunc         func(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error)
-	updateTemplateFunc         func(ctx context.Context, q DBTX, tenantID int, id int, template *CampaignTemplate) error
-	deleteTemplateFunc         func(ctx context.Context, q DBTX, tenantID int, id int) error
-	listRecipientListsFunc     func(ctx context.Context, q DBTX, tenantID int) ([]CampaignRecipientList, error)
-	getRecipientListByIDFunc   func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignRecipientList, error)
-	createRecipientListFunc    func(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error)
-	updateRecipientListFunc    func(ctx context.Context, q DBTX, tenantID int, id int, list *CampaignRecipientList) error
-	deleteRecipientListFunc    func(ctx context.Context, q DBTX, tenantID int, id int) error
-	listRecipientContactsFunc  func(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error)
-	createRecipientContactFunc func(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (int, error)
-	deleteRecipientContactFunc func(ctx context.Context, q DBTX, id int) error
+	listTemplatesFunc                 func(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error)
+	getTemplateByIDFunc               func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignTemplate, error)
+	createTemplateFunc                func(ctx context.Context, q DBTX, template *CampaignTemplate) (int, error)
+	updateTemplateFunc                func(ctx context.Context, q DBTX, tenantID int, id int, template *CampaignTemplate) error
+	deleteTemplateFunc                func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listRecipientListsFunc            func(ctx context.Context, q DBTX, tenantID int) ([]CampaignRecipientList, error)
+	getRecipientListByIDFunc          func(ctx context.Context, q DBTX, tenantID int, id int) (*CampaignRecipientList, error)
+	createRecipientListFunc           func(ctx context.Context, q DBTX, list *CampaignRecipientList) (int, error)
+	updateRecipientListFunc           func(ctx context.Context, q DBTX, tenantID int, id int, list *CampaignRecipientList) error
+	deleteRecipientListFunc           func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listRecipientContactsFunc         func(ctx context.Context, q DBTX, listID int) ([]CampaignRecipientContact, error)
+	createRecipientContactFunc        func(ctx context.Context, q DBTX, contact *CampaignRecipientContact) (int, error)
+	deleteRecipientContactFunc        func(ctx context.Context, q DBTX, id int) error
 }
 
 func (m *mockCampaignRepository) List(ctx context.Context, q DBTX, tenantID int, limit int, offset int, search string) ([]*Campaign, int, error) {
@@ -178,6 +179,13 @@ func (m *mockCampaignRepository) Create(ctx context.Context, q DBTX, campaign *C
 func (m *mockCampaignRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error {
 	if m.updateFunc != nil {
 		return m.updateFunc(ctx, q, tenantID, id, campaign)
+	}
+	return nil
+}
+
+func (m *mockCampaignRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string, sentCount *int) error {
+	if m.updateStatusFunc != nil {
+		return m.updateStatusFunc(ctx, q, tenantID, id, status, sentCount)
 	}
 	return nil
 }
@@ -825,8 +833,8 @@ func TestCampaignService(t *testing.T) {
 			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error) {
 				return &Campaign{ID: 1, Name: "Test", Status: "draft"}, nil
 			},
-			updateFunc: func(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error {
-				updateStatusCalls = append(updateStatusCalls, campaign.Status)
+			updateStatusFunc: func(ctx context.Context, q DBTX, tenantID int, id int, status string, sentCount *int) error {
+				updateStatusCalls = append(updateStatusCalls, status)
 				return nil
 			},
 			getPendingRecipientsFunc: func(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error) {

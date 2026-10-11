@@ -83,9 +83,10 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		c.ID = cid
 	}
 
-	p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, phone, ch.ID)
+	p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, tenantID, phone, ch.ID)
 	if err != nil {
 		p = &profile.Profile{
+			TenantID:               tenantID,
 			ExternalID:             phone,
 			Username:               &phone,
 			DisplayName:            &displayName,
@@ -272,9 +273,10 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		c.ID = cid
 	}
 
-	p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, phone, ch.ID)
+	p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, tenantID, phone, ch.ID)
 	if err != nil {
 		p = &profile.Profile{
+			TenantID:               tenantID,
 			ExternalID:             phone,
 			Username:               &phone,
 			DisplayName:            &displayName,

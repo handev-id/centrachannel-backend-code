@@ -16,6 +16,7 @@ type CampaignRepository interface {
 	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Campaign, error)
 	Create(ctx context.Context, q DBTX, campaign *Campaign) (int, error)
 	Update(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error
+	UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string, sentCount *int) error
 	Delete(ctx context.Context, q DBTX, tenantID int, id int) error
 	CreateRecipient(ctx context.Context, q DBTX, recipient *CampaignRecipient) (int, error)
 	UpdateRecipientStatus(ctx context.Context, q DBTX, id int, status string, failedReason *string, deliveryTime *sql.NullTime) error

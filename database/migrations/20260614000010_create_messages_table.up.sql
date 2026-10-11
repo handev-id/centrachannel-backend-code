@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS messages (
     conversation_id         INTEGER      NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
     created_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at              TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
-    CONSTRAINT chk_messages_status CHECK (status IN ('sent', 'delivered', 'read', 'unread')),
+    CONSTRAINT chk_messages_status CHECK (status IN ('sent', 'delivered', 'read', 'unread', 'failed')),
     CONSTRAINT chk_messages_sender_type CHECK (sender_type IN ('contact', 'user', 'ai'))
 );
 

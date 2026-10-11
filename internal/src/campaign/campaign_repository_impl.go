@@ -13,7 +13,9 @@ func NewCampaignRepository() CampaignRepository {
 	return &campaignRepository{}
 }
 
-func scanCampaign(row interface{ Scan(dest ...interface{}) error }) (*Campaign, error) {
+func scanCampaign(row interface {
+	Scan(dest ...interface{}) error
+}) (*Campaign, error) {
 	var c Campaign
 	var description, scheduledAt, sendingOption, stats sql.NullString
 	var agentID, senderID, recipientListID, templateID sql.NullInt64
@@ -26,22 +28,44 @@ func scanCampaign(row interface{ Scan(dest ...interface{}) error }) (*Campaign, 
 		return nil, err
 	}
 
-	if description.Valid { c.Description = &description.String }
+	if description.Valid {
+		c.Description = &description.String
+	}
 	if scheduledAt.Valid {
 		t, err := time.Parse(time.RFC3339, scheduledAt.String)
-		if err == nil { c.ScheduledAt = &t }
+		if err == nil {
+			c.ScheduledAt = &t
+		}
 	}
-	if sendingOption.Valid { c.SendingOption = []byte(sendingOption.String) }
-	if stats.Valid { c.Stats = []byte(stats.String) }
-	if agentID.Valid { id := int(agentID.Int64); c.AgentID = &id }
-	if senderID.Valid { id := int(senderID.Int64); c.SenderID = &id }
-	if recipientListID.Valid { id := int(recipientListID.Int64); c.RecipientListID = &id }
-	if templateID.Valid { id := int(templateID.Int64); c.TemplateID = &id }
+	if sendingOption.Valid {
+		c.SendingOption = []byte(sendingOption.String)
+	}
+	if stats.Valid {
+		c.Stats = []byte(stats.String)
+	}
+	if agentID.Valid {
+		id := int(agentID.Int64)
+		c.AgentID = &id
+	}
+	if senderID.Valid {
+		id := int(senderID.Int64)
+		c.SenderID = &id
+	}
+	if recipientListID.Valid {
+		id := int(recipientListID.Int64)
+		c.RecipientListID = &id
+	}
+	if templateID.Valid {
+		id := int(templateID.Int64)
+		c.TemplateID = &id
+	}
 
 	return &c, nil
 }
 
-func scanCampaignRecipient(row interface{ Scan(dest ...interface{}) error }) (*CampaignRecipient, error) {
+func scanCampaignRecipient(row interface {
+	Scan(dest ...interface{}) error
+}) (*CampaignRecipient, error) {
 	var r CampaignRecipient
 	var failedReason sql.NullString
 	var deliveryTime, openTime, clickTime sql.NullTime
@@ -54,15 +78,25 @@ func scanCampaignRecipient(row interface{ Scan(dest ...interface{}) error }) (*C
 		return nil, err
 	}
 
-	if failedReason.Valid { r.FailedReason = &failedReason.String }
-	if deliveryTime.Valid { r.DeliveryTime = &deliveryTime.Time }
-	if openTime.Valid { r.OpenTime = &openTime.Time }
-	if clickTime.Valid { r.ClickTime = &clickTime.Time }
+	if failedReason.Valid {
+		r.FailedReason = &failedReason.String
+	}
+	if deliveryTime.Valid {
+		r.DeliveryTime = &deliveryTime.Time
+	}
+	if openTime.Valid {
+		r.OpenTime = &openTime.Time
+	}
+	if clickTime.Valid {
+		r.ClickTime = &clickTime.Time
+	}
 
 	return &r, nil
 }
 
-func scanTemplate(row interface{ Scan(dest ...interface{}) error }) (*CampaignTemplate, error) {
+func scanTemplate(row interface {
+	Scan(dest ...interface{}) error
+}) (*CampaignTemplate, error) {
 	var t CampaignTemplate
 	var tp, templateType, category, lang, quality sql.NullString
 	var accountID sql.NullInt64
@@ -75,17 +109,32 @@ func scanTemplate(row interface{ Scan(dest ...interface{}) error }) (*CampaignTe
 		return nil, err
 	}
 
-	if tp.Valid { t.Type = &tp.String }
-	if templateType.Valid { t.TemplateType = &templateType.String }
-	if category.Valid { t.Category = &category.String }
-	if lang.Valid { t.Language = &lang.String }
-	if quality.Valid { t.Quality = &quality.String }
-	if accountID.Valid { id := int(accountID.Int64); t.AccountID = &id }
+	if tp.Valid {
+		t.Type = &tp.String
+	}
+	if templateType.Valid {
+		t.TemplateType = &templateType.String
+	}
+	if category.Valid {
+		t.Category = &category.String
+	}
+	if lang.Valid {
+		t.Language = &lang.String
+	}
+	if quality.Valid {
+		t.Quality = &quality.String
+	}
+	if accountID.Valid {
+		id := int(accountID.Int64)
+		t.AccountID = &id
+	}
 
 	return &t, nil
 }
 
-func scanRecipientList(row interface{ Scan(dest ...interface{}) error }) (*CampaignRecipientList, error) {
+func scanRecipientList(row interface {
+	Scan(dest ...interface{}) error
+}) (*CampaignRecipientList, error) {
 	var l CampaignRecipientList
 	var status sql.NullString
 	var channelID sql.NullInt64
@@ -98,13 +147,20 @@ func scanRecipientList(row interface{ Scan(dest ...interface{}) error }) (*Campa
 		return nil, err
 	}
 
-	if status.Valid { l.Status = &status.String }
-	if channelID.Valid { id := int(channelID.Int64); l.ChannelID = &id }
+	if status.Valid {
+		l.Status = &status.String
+	}
+	if channelID.Valid {
+		id := int(channelID.Int64)
+		l.ChannelID = &id
+	}
 
 	return &l, nil
 }
 
-func scanRecipientContact(row interface{ Scan(dest ...interface{}) error }) (*CampaignRecipientContact, error) {
+func scanRecipientContact(row interface {
+	Scan(dest ...interface{}) error
+}) (*CampaignRecipientContact, error) {
 	var c CampaignRecipientContact
 	var lastName, username, institution, email, phone sql.NullString
 	var masterContactID sql.NullInt64
@@ -117,12 +173,25 @@ func scanRecipientContact(row interface{ Scan(dest ...interface{}) error }) (*Ca
 		return nil, err
 	}
 
-	if lastName.Valid { c.LastName = &lastName.String }
-	if username.Valid { c.Username = &username.String }
-	if institution.Valid { c.Institution = &institution.String }
-	if email.Valid { c.Email = &email.String }
-	if phone.Valid { c.Phone = &phone.String }
-	if masterContactID.Valid { id := int(masterContactID.Int64); c.MasterContactID = &id }
+	if lastName.Valid {
+		c.LastName = &lastName.String
+	}
+	if username.Valid {
+		c.Username = &username.String
+	}
+	if institution.Valid {
+		c.Institution = &institution.String
+	}
+	if email.Valid {
+		c.Email = &email.String
+	}
+	if phone.Valid {
+		c.Phone = &phone.String
+	}
+	if masterContactID.Valid {
+		id := int(masterContactID.Int64)
+		c.MasterContactID = &id
+	}
 
 	return &c, nil
 }
@@ -145,8 +214,12 @@ func (r *campaignRepository) List(ctx context.Context, q DBTX, tenantID int, lim
 	var campaigns []*Campaign
 	for rows.Next() {
 		c, err := scanCampaign(rows)
-		if err != nil { return nil, 0, err }
-		if c != nil { campaigns = append(campaigns, c) }
+		if err != nil {
+			return nil, 0, err
+		}
+		if c != nil {
+			campaigns = append(campaigns, c)
+		}
 	}
 	return campaigns, total, rows.Err()
 }
@@ -160,7 +233,9 @@ func (r *campaignRepository) Create(ctx context.Context, q DBTX, campaign *Campa
 	query := `INSERT INTO campaigns (tenant_id, name, type, description, message_template, channel_id, status, sending_option, scheduled_at, sent_count, total_count, agent_id, sender_id, recipient_list_id, template_id, created_by, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18) RETURNING id`
 
 	var scheduledAt interface{}
-	if campaign.ScheduledAt != nil { scheduledAt = *campaign.ScheduledAt }
+	if campaign.ScheduledAt != nil {
+		scheduledAt = *campaign.ScheduledAt
+	}
 
 	var id int
 	err := q.QueryRowContext(ctx, query,
@@ -169,32 +244,63 @@ func (r *campaignRepository) Create(ctx context.Context, q DBTX, campaign *Campa
 		campaign.SentCount, campaign.TotalCount, campaign.AgentID, campaign.SenderID,
 		campaign.RecipientListID, campaign.TemplateID, campaign.CreatedBy, time.Now(), time.Now(),
 	).Scan(&id)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
 func (r *campaignRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, campaign *Campaign) error {
 	var scheduledAt interface{}
-	if campaign.ScheduledAt != nil { scheduledAt = *campaign.ScheduledAt }
+	if campaign.ScheduledAt != nil {
+		scheduledAt = *campaign.ScheduledAt
+	}
 
-	result, err := q.ExecContext(ctx, `UPDATE campaigns SET name=COALESCE($3,name), type=COALESCE($4,type), description=COALESCE($5,description), message_template=COALESCE($6,message_template), status=COALESCE($7,status), sending_option=COALESCE($8,sending_option), scheduled_at=COALESCE($9,scheduled_at), sent_count=COALESCE($10,sent_count), total_count=COALESCE($11,total_count), agent_id=COALESCE($12,agent_id), sender_id=COALESCE($13,sender_id), recipient_list_id=COALESCE($14,recipient_list_id), template_id=COALESCE($15,template_id), updated_at=$16 WHERE id=$1 AND tenant_id=$2`,
+	result, err := q.ExecContext(ctx, `UPDATE campaigns SET name=COALESCE($3,name), type=COALESCE($4,type), description=COALESCE($5,description), message_template=COALESCE($6,message_template), status=COALESCE($7,status), sending_option=COALESCE($8,sending_option), scheduled_at=COALESCE($9,scheduled_at), agent_id=COALESCE($10,agent_id), sender_id=COALESCE($11,sender_id), recipient_list_id=COALESCE($12,recipient_list_id), template_id=COALESCE($13,template_id), updated_at=$14 WHERE id=$1 AND tenant_id=$2`,
 		id, tenantID, campaign.Name, campaign.Type, campaign.Description, campaign.MessageTemplate,
-		campaign.Status, campaign.SendingOption, scheduledAt, campaign.SentCount, campaign.TotalCount,
+		campaign.Status, campaign.SendingOption, scheduledAt,
 		campaign.AgentID, campaign.SenderID, campaign.RecipientListID, campaign.TemplateID, time.Now(),
 	)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 
 	rows, err := result.RowsAffected()
-	if err != nil { return err }
-	if rows == 0 { return fmt.Errorf("campaign not found") }
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("campaign not found")
+	}
+	return nil
+}
+
+// UpdateStatus changes delivery state without overwriting campaign configuration.
+// A nil sentCount preserves the current count; a pointer permits an explicit zero.
+func (r *campaignRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string, sentCount *int) error {
+	result, err := q.ExecContext(ctx, `UPDATE campaigns SET status=$3, sent_count=COALESCE($4,sent_count), updated_at=$5 WHERE id=$1 AND tenant_id=$2`, id, tenantID, status, sentCount, time.Now())
+	if err != nil {
+		return err
+	}
+	rows, err := result.RowsAffected()
+	if err != nil {
+		return err
+	}
+	if rows == 0 {
+		return fmt.Errorf("campaign not found")
+	}
 	return nil
 }
 
 func (r *campaignRepository) Delete(ctx context.Context, q DBTX, tenantID int, id int) error {
 	result, err := q.ExecContext(ctx, `DELETE FROM campaigns WHERE id=$1 AND tenant_id=$2`, id, tenantID)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rows, _ := result.RowsAffected()
-	if rows == 0 { return fmt.Errorf("campaign not found") }
+	if rows == 0 {
+		return fmt.Errorf("campaign not found")
+	}
 	return nil
 }
 
@@ -202,7 +308,9 @@ func (r *campaignRepository) CreateRecipient(ctx context.Context, q DBTX, recipi
 	query := `INSERT INTO campaign_recipients (campaign_id, recipient_contact_id, status, created_at, updated_at) VALUES ($1,$2,$3,$4,$5) RETURNING id`
 	var id int
 	err := q.QueryRowContext(ctx, query, recipient.CampaignID, recipient.RecipientContactID, recipient.Status, time.Now(), time.Now()).Scan(&id)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
@@ -220,14 +328,20 @@ func (r *campaignRepository) CountPendingRecipients(ctx context.Context, q DBTX,
 
 func (r *campaignRepository) GetPendingRecipients(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipient, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, campaign_id, recipient_contact_id, status, failed_reason, delivery_time, open_time, click_time, created_at, updated_at FROM campaign_recipients WHERE campaign_id=$1 AND status='pending' LIMIT $2`, campaignID, limit)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var recipients []CampaignRecipient
 	for rows.Next() {
 		r, err := scanCampaignRecipient(rows)
-		if err != nil { return nil, err }
-		if r != nil { recipients = append(recipients, *r) }
+		if err != nil {
+			return nil, err
+		}
+		if r != nil {
+			recipients = append(recipients, *r)
+		}
 	}
 	return recipients, rows.Err()
 }
@@ -235,14 +349,18 @@ func (r *campaignRepository) GetPendingRecipients(ctx context.Context, q DBTX, c
 func (r *campaignRepository) GetPendingRecipientsWithPhone(ctx context.Context, q DBTX, campaignID int, limit int) ([]CampaignRecipientWithPhone, error) {
 	query := `SELECT r.id, r.campaign_id, r.recipient_contact_id, r.status, r.failed_reason, r.delivery_time, r.open_time, r.click_time, r.created_at, r.updated_at, COALESCE(c.phone, ''), '', COALESCE(c.first_name, '') FROM campaign_recipients r INNER JOIN campaign_recipient_contacts c ON c.id = r.recipient_contact_id WHERE r.campaign_id=$1 AND r.status='pending' LIMIT $2`
 	rows, err := q.QueryContext(ctx, query, campaignID, limit)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var recipients []CampaignRecipientWithPhone
 	for rows.Next() {
 		var r CampaignRecipientWithPhone
 		err := rows.Scan(&r.ID, &r.CampaignID, &r.RecipientContactID, &r.Status, &r.FailedReason, &r.DeliveryTime, &r.OpenTime, &r.ClickTime, &r.CreatedAt, &r.UpdatedAt, &r.Phone, &r.Message, &r.FirstName)
-		if err != nil { return nil, err }
+		if err != nil {
+			return nil, err
+		}
 		recipients = append(recipients, r)
 	}
 	return recipients, rows.Err()
@@ -250,14 +368,20 @@ func (r *campaignRepository) GetPendingRecipientsWithPhone(ctx context.Context, 
 
 func (r *campaignRepository) ListTemplates(ctx context.Context, q DBTX, tenantID int) ([]CampaignTemplate, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, type, template_type, category, language, content, variables, quality, account_id, created_at, updated_at FROM campaign_templates WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var templates []CampaignTemplate
 	for rows.Next() {
 		t, err := scanTemplate(rows)
-		if err != nil { return nil, err }
-		if t != nil { templates = append(templates, *t) }
+		if err != nil {
+			return nil, err
+		}
+		if t != nil {
+			templates = append(templates, *t)
+		}
 	}
 	return templates, rows.Err()
 }
@@ -274,7 +398,9 @@ func (r *campaignRepository) CreateTemplate(ctx context.Context, q DBTX, templat
 		template.Language, template.Content, template.Variables, template.Quality, template.AccountID,
 		time.Now(), time.Now(),
 	).Scan(&id)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
@@ -283,30 +409,44 @@ func (r *campaignRepository) UpdateTemplate(ctx context.Context, q DBTX, tenantI
 		id, tenantID, template.Name, template.Type, template.TemplateType, template.Category,
 		template.Language, template.Content, template.Variables, template.Quality, template.AccountID, time.Now(),
 	)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rows, _ := result.RowsAffected()
-	if rows == 0 { return fmt.Errorf("template not found") }
+	if rows == 0 {
+		return fmt.Errorf("template not found")
+	}
 	return nil
 }
 
 func (r *campaignRepository) DeleteTemplate(ctx context.Context, q DBTX, tenantID int, id int) error {
 	result, err := q.ExecContext(ctx, `DELETE FROM campaign_templates WHERE id=$1 AND tenant_id=$2`, id, tenantID)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rows, _ := result.RowsAffected()
-	if rows == 0 { return fmt.Errorf("template not found") }
+	if rows == 0 {
+		return fmt.Errorf("template not found")
+	}
 	return nil
 }
 
 func (r *campaignRepository) ListRecipientLists(ctx context.Context, q DBTX, tenantID int) ([]CampaignRecipientList, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, name, source, status, channel_id, created_at, updated_at FROM campaign_recipient_lists WHERE tenant_id=$1 ORDER BY name`, tenantID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var lists []CampaignRecipientList
 	for rows.Next() {
 		l, err := scanRecipientList(rows)
-		if err != nil { return nil, err }
-		if l != nil { lists = append(lists, *l) }
+		if err != nil {
+			return nil, err
+		}
+		if l != nil {
+			lists = append(lists, *l)
+		}
 	}
 	return lists, rows.Err()
 }
@@ -319,7 +459,9 @@ func (r *campaignRepository) CreateRecipientList(ctx context.Context, q DBTX, li
 	query := `INSERT INTO campaign_recipient_lists (tenant_id, name, source, status, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`
 	var id int
 	err := q.QueryRowContext(ctx, query, list.TenantID, list.Name, list.Source, list.Status, list.ChannelID, time.Now(), time.Now()).Scan(&id)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
@@ -327,30 +469,44 @@ func (r *campaignRepository) UpdateRecipientList(ctx context.Context, q DBTX, te
 	result, err := q.ExecContext(ctx, `UPDATE campaign_recipient_lists SET name=COALESCE($3,name), source=COALESCE($4,source), status=COALESCE($5,status), channel_id=COALESCE($6,channel_id), updated_at=$7 WHERE id=$1 AND tenant_id=$2`,
 		id, tenantID, list.Name, list.Source, list.Status, list.ChannelID, time.Now(),
 	)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rows, _ := result.RowsAffected()
-	if rows == 0 { return fmt.Errorf("recipient list not found") }
+	if rows == 0 {
+		return fmt.Errorf("recipient list not found")
+	}
 	return nil
 }
 
 func (r *campaignRepository) DeleteRecipientList(ctx context.Context, q DBTX, tenantID int, id int) error {
 	result, err := q.ExecContext(ctx, `DELETE FROM campaign_recipient_lists WHERE id=$1 AND tenant_id=$2`, id, tenantID)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rows, _ := result.RowsAffected()
-	if rows == 0 { return fmt.Errorf("recipient list not found") }
+	if rows == 0 {
+		return fmt.Errorf("recipient list not found")
+	}
 	return nil
 }
 
 func (r *campaignRepository) ListRecipientContacts(ctx context.Context, q DBTX, tenantID int, listID int) ([]CampaignRecipientContact, error) {
 	rows, err := q.QueryContext(ctx, `SELECT c.id, c.first_name, c.last_name, c.username, c.institution, c.email, c.phone, c.campaign_recipient_list_id, c.master_contact_id, c.created_at, c.updated_at FROM campaign_recipient_contacts c JOIN campaign_recipient_lists l ON l.id = c.campaign_recipient_list_id WHERE c.campaign_recipient_list_id=$1 AND l.tenant_id=$2 ORDER BY c.first_name`, listID, tenantID)
-	if err != nil { return nil, err }
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	var contacts []CampaignRecipientContact
 	for rows.Next() {
 		c, err := scanRecipientContact(rows)
-		if err != nil { return nil, err }
-		if c != nil { contacts = append(contacts, *c) }
+		if err != nil {
+			return nil, err
+		}
+		if c != nil {
+			contacts = append(contacts, *c)
+		}
 	}
 	return contacts, rows.Err()
 }
@@ -362,14 +518,20 @@ func (r *campaignRepository) CreateRecipientContact(ctx context.Context, q DBTX,
 		contact.FirstName, contact.LastName, contact.Username, contact.Institution, contact.Email,
 		contact.Phone, contact.CampaignRecipientListID, contact.MasterContactID, time.Now(), time.Now(),
 	).Scan(&id)
-	if err != nil { return 0, err }
+	if err != nil {
+		return 0, err
+	}
 	return id, nil
 }
 
 func (r *campaignRepository) DeleteRecipientContact(ctx context.Context, q DBTX, tenantID int, listID int, id int) error {
 	result, err := q.ExecContext(ctx, `DELETE FROM campaign_recipient_contacts c USING campaign_recipient_lists l WHERE c.id=$1 AND c.campaign_recipient_list_id=$2 AND l.id=c.campaign_recipient_list_id AND l.tenant_id=$3`, id, listID, tenantID)
-	if err != nil { return err }
+	if err != nil {
+		return err
+	}
 	rows, _ := result.RowsAffected()
-	if rows == 0 { return fmt.Errorf("recipient contact not found") }
+	if rows == 0 {
+		return fmt.Errorf("recipient contact not found")
+	}
 	return nil
 }

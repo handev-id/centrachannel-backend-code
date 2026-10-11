@@ -87,10 +87,11 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 			c.ID = cid
 		}
 
-		p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, externalID, channelID)
+		p, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, tenantID, externalID, channelID)
 		if err != nil {
 			displayName := externalID
 			p = &profile.Profile{
+				TenantID:    tenantID,
 				ExternalID:  externalID,
 				DisplayName: &displayName,
 				IsMain:      true,

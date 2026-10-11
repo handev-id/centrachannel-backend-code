@@ -156,7 +156,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 		return
 	}
 
-	prof, err := s.profileRepo.GetByID(ctx, s.db, conv.ProfileID)
+	prof, err := s.profileRepo.GetByID(ctx, s.db, tenantID, conv.ProfileID)
 	if err != nil {
 		s.logger.Error("failed to get profile for external delivery: %v", err)
 		return
@@ -244,7 +244,9 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 	extID, err := sender.Send(extMsg)
 	if err != nil {
 		s.logger.Error("failed to deliver message to %s (conv=%d): %v", ch.Type, conversationID, err)
-		_ = s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed")
+		if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed"); statusErr != nil {
+			s.logger.Error("failed to persist delivery failure for message %d: %v", msg.ID, statusErr)
+		}
 		return
 	}
 

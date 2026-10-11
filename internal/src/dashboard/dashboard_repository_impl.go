@@ -174,8 +174,8 @@ func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX
 			ct.id, ct.first_name, ct.last_name, ct.avatar
 		FROM conversations c
 		JOIN channels ch ON ch.id = c.channel_id
-		JOIN profiles p ON p.id = c.profile_id AND p.deleted_at IS NULL
-		JOIN contacts ct ON ct.id = p.contact_id AND ct.deleted_at IS NULL
+		JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL
+		JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL
 		LEFT JOIN users u ON u.id = c.agent_id AND u.deleted_at IS NULL
 		WHERE c.tenant_id = $1
 		ORDER BY c.last_activity DESC NULLS LAST, c.id DESC
