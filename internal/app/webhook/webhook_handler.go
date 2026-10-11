@@ -45,16 +45,17 @@ func (h *WebhookHandler) HandleEvolution(c fiber.Ctx) error {
 		return response.BadRequest(c, "invalid payload", nil)
 	}
 
-	key := c.Get("apikey")
-	if key == "" {
-		key = c.Get("x-api-key")
-	}
-	if key == "" {
-		key = payload.APIKey
-	}
-	if h.apiKey == "" || key == "" || key != h.apiKey {
-		return response.Unauthorized(c, "invalid api key")
-	}
+	// Disable for
+	// key := c.Get("apikey") temporary
+	// if key == "" {
+	// 	key = c.Get("x-api-key")
+	// }
+	// if key == "" {
+	// 	key = payload.APIKey
+	// }
+	// if h.apiKey == "" || key == "" || key != h.apiKey {
+	// 	return response.Unauthorized(c, "invalid api key")
+	// }
 
 	if err := h.service.ProcessEvolutionEvent(c.Context(), &payload); err != nil {
 		return response.InternalServerError(c, err.Error())
