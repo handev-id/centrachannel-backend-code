@@ -1,12 +1,16 @@
 package conversation_tag
 
-import "time"
+import (
+	"time"
+
+	"github.com/google/uuid"
+)
 
 type ConversationTag struct {
-	ID             int       `json:"id"`
-	TenantID       int       `json:"tenant_id"`
-	ConversationID int       `json:"conversation_id"`
-	TagID          int       `json:"tag_id"`
+	ID             uuid.UUID `json:"id"`
+	TenantID       uuid.UUID `json:"tenant_id"`
+	ConversationID uuid.UUID `json:"conversation_id"`
+	TagID          uuid.UUID `json:"tag_id"`
 	CreatedAt      time.Time `json:"created_at"`
 	UpdatedAt      time.Time `json:"updated_at"`
 }

@@ -6,15 +6,17 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
 )
 
 type mockDB struct {
-	beginTxCalled        bool
-	execContextCalled    bool
-	queryContextCalled   bool
+	beginTxCalled         bool
+	execContextCalled     bool
+	queryContextCalled    bool
 	queryRowContextCalled bool
 }
 
@@ -45,33 +47,33 @@ type mockConversationRepository struct {
 	createConv   *Conversation
 
 	updateStatusCalled bool
-	updateStatusID     int
+	updateStatusID     uuid.UUID
 	updateStatusString string
 
 	assignCalled   bool
-	assignTenantID int
-	assignConvID   int
-	assignAgentID  int
+	assignTenantID uuid.UUID
+	assignConvID   uuid.UUID
+	assignAgentID  uuid.UUID
 
 	unassignCalled   bool
-	unassignTenantID int
-	unassignConvID   int
+	unassignTenantID uuid.UUID
+	unassignConvID   uuid.UUID
 
 	markReadCalled   bool
-	markReadTenantID int
-	markReadConvID   int
+	markReadTenantID uuid.UUID
+	markReadConvID   uuid.UUID
 
 	listCursorCalled       bool
 	listCursorLimit        int
 	listCursorLastActivity *time.Time
-	listCursorLastID       int
+	listCursorLastID       uuid.UUID
 	listCursorConvs        []*Conversation
 	listCursorErr          error
 
 	getByIDConv *Conversation
 	getByIDErr  error
 
-	createID  int
+	createID  uuid.UUID
 	createErr error
 
 	updateStatusErr error
@@ -81,25 +83,25 @@ type mockConversationRepository struct {
 	markReadErr error
 }
 
-func (m *mockConversationRepository) GetByID(_ context.Context, _ DBTX, _, _ int) (*Conversation, error) {
+func (m *mockConversationRepository) GetByID(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) (*Conversation, error) {
 	m.getByIDCalled = true
 	return m.getByIDConv, m.getByIDErr
 }
 
-func (m *mockConversationRepository) Create(_ context.Context, _ DBTX, conv *Conversation) (int, error) {
+func (m *mockConversationRepository) Create(_ context.Context, _ DBTX, conv *Conversation) (uuid.UUID, error) {
 	m.createCalled = true
 	m.createConv = conv
 	return m.createID, m.createErr
 }
 
-func (m *mockConversationRepository) UpdateStatus(_ context.Context, _ DBTX, tenantID, id int, status string) error {
+func (m *mockConversationRepository) UpdateStatus(_ context.Context, _ DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error {
 	m.updateStatusCalled = true
 	m.updateStatusID = id
 	m.updateStatusString = status
 	return m.updateStatusErr
 }
 
-func (m *mockConversationRepository) Assign(_ context.Context, _ DBTX, tenantID, id, agentID int) error {
+func (m *mockConversationRepository) Assign(_ context.Context, _ DBTX, tenantID uuid.UUID, id uuid.UUID, agentID uuid.UUID) error {
 	m.assignCalled = true
 	m.assignTenantID = tenantID
 	m.assignConvID = id
@@ -107,25 +109,25 @@ func (m *mockConversationRepository) Assign(_ context.Context, _ DBTX, tenantID,
 	return m.assignErr
 }
 
-func (m *mockConversationRepository) Unassign(_ context.Context, _ DBTX, tenantID, id int) error {
+func (m *mockConversationRepository) Unassign(_ context.Context, _ DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	m.unassignCalled = true
 	m.unassignTenantID = tenantID
 	m.unassignConvID = id
 	return m.unassignErr
 }
 
-func (m *mockConversationRepository) GetTotalUnread(_ context.Context, _ DBTX, tenantID int) (int, error) {
+func (m *mockConversationRepository) GetTotalUnread(_ context.Context, _ DBTX, tenantID uuid.UUID) (int, error) {
 	return 0, nil
 }
 
-func (m *mockConversationRepository) MarkRead(_ context.Context, _ DBTX, tenantID, id int) error {
+func (m *mockConversationRepository) MarkRead(_ context.Context, _ DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	m.markReadCalled = true
 	m.markReadTenantID = tenantID
 	m.markReadConvID = id
 	return m.markReadErr
 }
 
-func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ int, limit int, _ string, _, _ int, _ string, lastActivity *time.Time, lastID int) ([]*Conversation, error) {
+func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ uuid.UUID, limit int, _ string, _ uuid.UUID, _ uuid.UUID, _ string, lastActivity *time.Time, lastID uuid.UUID) ([]*Conversation, error) {
 	m.listCursorCalled = true
 	m.listCursorLimit = limit
 	m.listCursorLastActivity = lastActivity
@@ -133,11 +135,11 @@ func (m *mockConversationRepository) ListCursor(_ context.Context, _ DBTX, _ int
 	return m.listCursorConvs, m.listCursorErr
 }
 
-func (m *mockConversationRepository) UpdateLastMessage(_ context.Context, _ DBTX, _, _ int, _ []byte, _ *int) error {
+func (m *mockConversationRepository) UpdateLastMessage(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID, _ []byte, _ *uuid.UUID) error {
 	return nil
 }
 
-func (m *mockConversationRepository) FindOpenByProfileAndChannel(_ context.Context, _ DBTX, _, _, _ int) (*Conversation, error) {
+func (m *mockConversationRepository) FindOpenByProfileAndChannel(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID, _ uuid.UUID) (*Conversation, error) {
 	return nil, nil
 }
 
@@ -150,7 +152,7 @@ func testLogger() *logger.Logger {
 }
 
 func testTenant() *tenant.Tenant {
-	return &tenant.Tenant{ID: 1, Name: "Test Tenant"}
+	return &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Test Tenant"}
 }
 
 func TestListCursor(t *testing.T) {
@@ -158,13 +160,13 @@ func TestListCursor(t *testing.T) {
 		activity := time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC)
 		mockRepo := &mockConversationRepository{
 			listCursorConvs: []*Conversation{
-				{ID: 20, TenantID: 1, LastActivity: &activity},
-				{ID: 19, TenantID: 1, LastActivity: &activity},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), LastActivity: &activity},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-000000000013"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), LastActivity: &activity},
 			},
 		}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		q := ListConversationQuery{Limit: 0, LastID: 20, LastActivity: activity.Format(time.RFC3339)}
+		q := ListConversationQuery{Limit: 0, LastID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), LastActivity: activity.Format(time.RFC3339)}
 		result, lastID, lastActivity, hasMore, err := svc.ListCursor(context.Background(), q, testTenant())
 		if err != nil {
 			t.Fatal(err)
@@ -176,8 +178,8 @@ func TestListCursor(t *testing.T) {
 		if mockRepo.listCursorLimit != 21 {
 			t.Errorf("expected limit+1 = 21, got %d", mockRepo.listCursorLimit)
 		}
-		if mockRepo.listCursorLastID != 20 {
-			t.Errorf("expected lastID 20, got %d", mockRepo.listCursorLastID)
+		if mockRepo.listCursorLastID != uuid.MustParse("00000000-0000-4000-8000-000000000014") {
+			t.Errorf("expected lastID 20, got %s", mockRepo.listCursorLastID)
 		}
 		if mockRepo.listCursorLastActivity == nil || !mockRepo.listCursorLastActivity.Equal(activity) {
 			t.Errorf("expected lastActivity %v, got %v", activity, mockRepo.listCursorLastActivity)
@@ -186,8 +188,8 @@ func TestListCursor(t *testing.T) {
 		if len(result) != 2 {
 			t.Errorf("expected 2 conversations, got %d", len(result))
 		}
-		if lastID != 19 {
-			t.Errorf("expected lastID 19, got %d", lastID)
+		if lastID != uuid.MustParse("00000000-0000-4000-8000-000000000013") {
+			t.Errorf("expected lastID 19, got %s", lastID)
 		}
 		if lastActivity != activity.Format(time.RFC3339) {
 			t.Errorf("expected lastActivity %s, got %s", activity.Format(time.RFC3339), lastActivity)
@@ -201,12 +203,12 @@ func TestListCursor(t *testing.T) {
 		activity := time.Date(2026, 8, 2, 10, 0, 0, 0, time.UTC)
 		convs := make([]*Conversation, 0, 21)
 		for i := 40; i >= 20; i-- {
-			convs = append(convs, &Conversation{ID: i, TenantID: 1, LastActivity: &activity})
+			convs = append(convs, &Conversation{ID: uuid.UUID{6: 0x40, 8: 0x80, 15: byte(i)}, TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), LastActivity: &activity})
 		}
 		mockRepo := &mockConversationRepository{listCursorConvs: convs}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		result, lastID, _, hasMore, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: 41, LastActivity: activity.Format(time.RFC3339)}, testTenant())
+		result, lastID, _, hasMore, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: uuid.MustParse("00000000-0000-4000-8000-000000000029"), LastActivity: activity.Format(time.RFC3339)}, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -216,8 +218,8 @@ func TestListCursor(t *testing.T) {
 		if !hasMore {
 			t.Error("expected hasMore true")
 		}
-		if lastID != 21 {
-			t.Errorf("expected lastID 21 (last kept item), got %d", lastID)
+		if lastID != uuid.MustParse("00000000-0000-4000-8000-000000000015") {
+			t.Errorf("expected lastID 21 (last kept item), got %s", lastID)
 		}
 	})
 
@@ -225,7 +227,7 @@ func TestListCursor(t *testing.T) {
 		mockRepo := &mockConversationRepository{}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		_, _, _, _, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: 10, LastActivity: "not-a-time"}, testTenant())
+		_, _, _, _, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), LastActivity: "not-a-time"}, testTenant())
 		if err == nil {
 			t.Error("expected error for invalid last_activity")
 		}
@@ -234,13 +236,15 @@ func TestListCursor(t *testing.T) {
 	t.Run("null_activity_tail_passes_id_only", func(t *testing.T) {
 		mockRepo := &mockConversationRepository{
 			listCursorConvs: []*Conversation{
-				{ID: 30, TenantID: 1}, // LastActivity nil
-				{ID: 29, TenantID: 1}, // LastActivity nil
+				{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001e"), TenantID: uuid.MustParse( // LastActivity nil
+					"00000000-0000-4000-8000-000000000001")},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001d"), TenantID: uuid.MustParse( // LastActivity nil
+					"00000000-0000-4000-8000-000000000001")},
 			},
 		}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		result, lastID, lastActivity, hasMore, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: 31, LastActivity: ""}, testTenant())
+		result, lastID, lastActivity, hasMore, err := svc.ListCursor(context.Background(), ListConversationQuery{Limit: 20, LastID: uuid.MustParse("00000000-0000-4000-8000-00000000001f"), LastActivity: ""}, testTenant())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -251,15 +255,15 @@ func TestListCursor(t *testing.T) {
 		if mockRepo.listCursorLastActivity != nil {
 			t.Errorf("expected nil lastActivity for null-activity tail, got %v", mockRepo.listCursorLastActivity)
 		}
-		if mockRepo.listCursorLastID != 31 {
-			t.Errorf("expected lastID 31, got %d", mockRepo.listCursorLastID)
+		if mockRepo.listCursorLastID != uuid.MustParse("00000000-0000-4000-8000-00000000001f") {
+			t.Errorf("expected lastID 31, got %s", mockRepo.listCursorLastID)
 		}
 
 		if len(result) != 2 {
 			t.Errorf("expected 2 conversations, got %d", len(result))
 		}
-		if lastID != 29 {
-			t.Errorf("expected lastID 29, got %d", lastID)
+		if lastID != uuid.MustParse("00000000-0000-4000-8000-00000000001d") {
+			t.Errorf("expected lastID 29, got %s", lastID)
 		}
 		if lastActivity != "" {
 			t.Errorf("expected empty lastActivity, got %q", lastActivity)
@@ -272,10 +276,10 @@ func TestListCursor(t *testing.T) {
 
 func TestCreate(t *testing.T) {
 	t.Run("unassigned", func(t *testing.T) {
-		mockRepo := &mockConversationRepository{createID: 10}
+		mockRepo := &mockConversationRepository{createID: uuid.MustParse("00000000-0000-4000-8000-00000000000a")}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		req := CreateConversationRequest{ProfileID: 1, ChannelID: 2}
+		req := CreateConversationRequest{ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), ChannelID: uuid.MustParse("00000000-0000-4000-8000-000000000002")}
 		conv, err := svc.Create(context.Background(), req, testTenant())
 		if err != nil {
 			t.Fatal(err)
@@ -290,18 +294,18 @@ func TestCreate(t *testing.T) {
 		if mockRepo.createConv.AgentID != nil {
 			t.Error("expected nil agent_id for unassigned conversation")
 		}
-		if mockRepo.createConv.ProfileID != 1 {
-			t.Errorf("expected profile_id 1, got %d", mockRepo.createConv.ProfileID)
+		if mockRepo.createConv.ProfileID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected profile_id 1, got %s", mockRepo.createConv.ProfileID)
 		}
-		if mockRepo.createConv.ChannelID != 2 {
-			t.Errorf("expected channel_id 2, got %d", mockRepo.createConv.ChannelID)
+		if mockRepo.createConv.ChannelID != uuid.MustParse("00000000-0000-4000-8000-000000000002") {
+			t.Errorf("expected channel_id 2, got %s", mockRepo.createConv.ChannelID)
 		}
-		if mockRepo.createConv.TenantID != 1 {
-			t.Errorf("expected tenant_id 1, got %d", mockRepo.createConv.TenantID)
+		if mockRepo.createConv.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenant_id 1, got %s", mockRepo.createConv.TenantID)
 		}
 
-		if conv.ID != 10 {
-			t.Errorf("expected returned id 10, got %d", conv.ID)
+		if conv.ID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Errorf("expected returned id 10, got %s", conv.ID)
 		}
 		if conv.CreatedAt.IsZero() {
 			t.Error("expected non-zero CreatedAt")
@@ -312,10 +316,10 @@ func TestCreate(t *testing.T) {
 	})
 
 	t.Run("assigned", func(t *testing.T) {
-		mockRepo := &mockConversationRepository{createID: 11}
+		mockRepo := &mockConversationRepository{createID: uuid.MustParse("00000000-0000-4000-8000-00000000000b")}
 		svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-		req := CreateConversationRequest{ProfileID: 1, ChannelID: 2, AgentID: 7}
+		req := CreateConversationRequest{ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), ChannelID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), AgentID: uuid.MustParse("00000000-0000-4000-8000-000000000007")}
 		conv, err := svc.Create(context.Background(), req, testTenant())
 		if err != nil {
 			t.Fatal(err)
@@ -330,18 +334,18 @@ func TestCreate(t *testing.T) {
 		if mockRepo.createConv.AgentID == nil {
 			t.Fatal("expected non-nil agent_id for assigned conversation")
 		}
-		if *mockRepo.createConv.AgentID != 7 {
-			t.Errorf("expected agent_id 7, got %d", *mockRepo.createConv.AgentID)
+		if *mockRepo.createConv.AgentID != uuid.MustParse("00000000-0000-4000-8000-000000000007") {
+			t.Errorf("expected agent_id 7, got %s", *mockRepo.createConv.AgentID)
 		}
-		if mockRepo.createConv.ProfileID != 1 {
-			t.Errorf("expected profile_id 1, got %d", mockRepo.createConv.ProfileID)
+		if mockRepo.createConv.ProfileID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected profile_id 1, got %s", mockRepo.createConv.ProfileID)
 		}
-		if mockRepo.createConv.ChannelID != 2 {
-			t.Errorf("expected channel_id 2, got %d", mockRepo.createConv.ChannelID)
+		if mockRepo.createConv.ChannelID != uuid.MustParse("00000000-0000-4000-8000-000000000002") {
+			t.Errorf("expected channel_id 2, got %s", mockRepo.createConv.ChannelID)
 		}
 
-		if conv.ID != 11 {
-			t.Errorf("expected returned id 11, got %d", conv.ID)
+		if conv.ID != uuid.MustParse("00000000-0000-4000-8000-00000000000b") {
+			t.Errorf("expected returned id 11, got %s", conv.ID)
 		}
 	})
 }
@@ -350,7 +354,7 @@ func TestAssign(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
 	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-	err := svc.Assign(context.Background(), 1, 42, 7)
+	err := svc.Assign(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"), uuid.MustParse("00000000-0000-4000-8000-000000000007"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,14 +362,14 @@ func TestAssign(t *testing.T) {
 	if !mockRepo.assignCalled {
 		t.Error("Assign was not called on repository")
 	}
-	if mockRepo.assignTenantID != 1 {
-		t.Errorf("expected tenant_id 1, got %d", mockRepo.assignTenantID)
+	if mockRepo.assignTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected tenant_id 1, got %s", mockRepo.assignTenantID)
 	}
-	if mockRepo.assignConvID != 42 {
-		t.Errorf("expected conversation id 42, got %d", mockRepo.assignConvID)
+	if mockRepo.assignConvID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+		t.Errorf("expected conversation id 42, got %s", mockRepo.assignConvID)
 	}
-	if mockRepo.assignAgentID != 7 {
-		t.Errorf("expected agent_id 7, got %d", mockRepo.assignAgentID)
+	if mockRepo.assignAgentID != uuid.MustParse("00000000-0000-4000-8000-000000000007") {
+		t.Errorf("expected agent_id 7, got %s", mockRepo.assignAgentID)
 	}
 }
 
@@ -373,7 +377,7 @@ func TestUnassign(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
 	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-	err := svc.Unassign(context.Background(), 1, 42)
+	err := svc.Unassign(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -381,11 +385,11 @@ func TestUnassign(t *testing.T) {
 	if !mockRepo.unassignCalled {
 		t.Error("Unassign was not called on repository")
 	}
-	if mockRepo.unassignTenantID != 1 {
-		t.Errorf("expected tenant_id 1, got %d", mockRepo.unassignTenantID)
+	if mockRepo.unassignTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected tenant_id 1, got %s", mockRepo.unassignTenantID)
 	}
-	if mockRepo.unassignConvID != 42 {
-		t.Errorf("expected conversation id 42, got %d", mockRepo.unassignConvID)
+	if mockRepo.unassignConvID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+		t.Errorf("expected conversation id 42, got %s", mockRepo.unassignConvID)
 	}
 }
 
@@ -393,7 +397,7 @@ func TestResolve(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
 	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-	err := svc.Resolve(context.Background(), 1, 42)
+	err := svc.Resolve(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -401,8 +405,8 @@ func TestResolve(t *testing.T) {
 	if !mockRepo.updateStatusCalled {
 		t.Error("UpdateStatus was not called on repository")
 	}
-	if mockRepo.updateStatusID != 42 {
-		t.Errorf("expected conversation id 42, got %d", mockRepo.updateStatusID)
+	if mockRepo.updateStatusID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+		t.Errorf("expected conversation id 42, got %s", mockRepo.updateStatusID)
 	}
 	if mockRepo.updateStatusString != "resolved" {
 		t.Errorf("expected status 'resolved', got %q", mockRepo.updateStatusString)
@@ -413,7 +417,7 @@ func TestReopen(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
 	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-	err := svc.Reopen(context.Background(), 1, 42)
+	err := svc.Reopen(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -421,8 +425,8 @@ func TestReopen(t *testing.T) {
 	if !mockRepo.updateStatusCalled {
 		t.Error("UpdateStatus was not called on repository")
 	}
-	if mockRepo.updateStatusID != 42 {
-		t.Errorf("expected conversation id 42, got %d", mockRepo.updateStatusID)
+	if mockRepo.updateStatusID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+		t.Errorf("expected conversation id 42, got %s", mockRepo.updateStatusID)
 	}
 	if mockRepo.updateStatusString != "unassigned" {
 		t.Errorf("expected status 'unassigned', got %q", mockRepo.updateStatusString)
@@ -433,7 +437,7 @@ func TestMarkRead(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
 	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
 
-	err := svc.MarkRead(context.Background(), 1, 42)
+	err := svc.MarkRead(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -441,10 +445,10 @@ func TestMarkRead(t *testing.T) {
 	if !mockRepo.markReadCalled {
 		t.Error("MarkRead was not called on repository")
 	}
-	if mockRepo.markReadTenantID != 1 {
-		t.Errorf("expected tenant_id 1, got %d", mockRepo.markReadTenantID)
+	if mockRepo.markReadTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected tenant_id 1, got %s", mockRepo.markReadTenantID)
 	}
-	if mockRepo.markReadConvID != 42 {
-		t.Errorf("expected conversation id 42, got %d", mockRepo.markReadConvID)
+	if mockRepo.markReadConvID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+		t.Errorf("expected conversation id 42, got %s", mockRepo.markReadConvID)
 	}
 }

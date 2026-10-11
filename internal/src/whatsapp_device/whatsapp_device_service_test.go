@@ -8,6 +8,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
 )
@@ -140,31 +142,31 @@ func (r *mockResult) RowsAffected() (int64, error) { return r.rowsAffected, nil 
 var _ driver.Result = (*mockResult)(nil)
 
 type mockWhatsAppDeviceRepository struct {
-	listFunc          func(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error)
-	getByIDFunc       func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error)
-	createFunc        func(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error)
-	updateFunc        func(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error
-	deleteFunc        func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]WhatsAppDevice, error)
+	getByIDFunc         func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error)
+	createFunc          func(ctx context.Context, q DBTX, device *WhatsAppDevice) (uuid.UUID, error)
+	updateFunc          func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, device *WhatsAppDevice) error
+	deleteFunc          func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 	getByWhatsappIDFunc func(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error)
 }
 
-func (m *mockWhatsAppDeviceRepository) List(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error) {
+func (m *mockWhatsAppDeviceRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]WhatsAppDevice, error) {
 	return m.listFunc(ctx, q, tenantID)
 }
 
-func (m *mockWhatsAppDeviceRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
+func (m *mockWhatsAppDeviceRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 	return m.getByIDFunc(ctx, q, tenantID, id)
 }
 
-func (m *mockWhatsAppDeviceRepository) Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error) {
+func (m *mockWhatsAppDeviceRepository) Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (uuid.UUID, error) {
 	return m.createFunc(ctx, q, device)
 }
 
-func (m *mockWhatsAppDeviceRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error {
+func (m *mockWhatsAppDeviceRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, device *WhatsAppDevice) error {
 	return m.updateFunc(ctx, q, tenantID, id, device)
 }
 
-func (m *mockWhatsAppDeviceRepository) Delete(ctx context.Context, q DBTX, tenantID int, id int) error {
+func (m *mockWhatsAppDeviceRepository) Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	return m.deleteFunc(ctx, q, tenantID, id)
 }
 
@@ -189,12 +191,12 @@ func newService(repo WhatsAppDeviceRepository, db *sql.DB) *whatsAppDeviceServic
 func TestWhatsAppDeviceService_List(t *testing.T) {
 	t.Run("pagination defaults", func(t *testing.T) {
 		devices := []WhatsAppDevice{
-			{ID: 1, Name: "Device 1", Status: "CONNECTED"},
-			{ID: 2, Name: "Device 2", Status: "DISCONNECTED"},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Device 1", Status: "CONNECTED"},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), Name: "Device 2", Status: "DISCONNECTED"},
 		}
-		var capturedTenantID int
+		var capturedTenantID uuid.UUID
 		repo := &mockWhatsAppDeviceRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]WhatsAppDevice, error) {
 				capturedTenantID = tenantID
 				return devices, nil
 			},
@@ -204,12 +206,12 @@ func TestWhatsAppDeviceService_List(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		result, err := svc.List(context.Background(), 1)
+		result, err := svc.List(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
 		if len(result) != 2 {
 			t.Fatalf("expected 2 devices, got %d", len(result))
@@ -224,9 +226,9 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 	t.Run("creates device with default status", func(t *testing.T) {
 		var captured *WhatsAppDevice
 		repo := &mockWhatsAppDeviceRepository{
-			createFunc: func(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error) {
+			createFunc: func(ctx context.Context, q DBTX, device *WhatsAppDevice) (uuid.UUID, error) {
 				captured = device
-				return 1, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		m := &mockConn{}
@@ -240,7 +242,7 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 			Phone:       "81234567890",
 		}
 
-		result, err := svc.Create(context.Background(), req, 1)
+		result, err := svc.Create(context.Background(), req, uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -256,18 +258,18 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 		if captured.Phone != "81234567890" {
 			t.Errorf("expected Phone '81234567890', got %q", captured.Phone)
 		}
-		expectedID := "1-test-device-81234567890"
+		expectedID := "00000000-0000-4000-8000-000000000001-test-device-81234567890"
 		if captured.WhatsappID != expectedID {
 			t.Errorf("expected WhatsappID %q, got %q", expectedID, captured.WhatsappID)
 		}
 		if captured.Status != "DISCONNECTED" {
 			t.Errorf("expected Status 'DISCONNECTED', got %q", captured.Status)
 		}
-		if captured.TenantID != 1 {
-			t.Errorf("expected TenantID 1, got %d", captured.TenantID)
+		if captured.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected TenantID 1, got %s", captured.TenantID)
 		}
-		if result.ID != 1 {
-			t.Errorf("expected ID 1, got %d", result.ID)
+		if result.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected ID 1, got %s", result.ID)
 		}
 		if result.CreatedAt.IsZero() {
 			t.Error("expected CreatedAt to be set")
@@ -281,16 +283,16 @@ func TestWhatsAppDeviceService_Create(t *testing.T) {
 func TestWhatsAppDeviceService_Update(t *testing.T) {
 	t.Run("partial field updates", func(t *testing.T) {
 		existing := &WhatsAppDevice{
-			ID: 1, TenantID: 1, Name: "Old Name",
+			ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Old Name",
 			CountryCode: "62", Phone: "81234567890",
 			WhatsappID: "whatsapp:old", Status: "CONNECTED",
 		}
 		var updated *WhatsAppDevice
 		repo := &mockWhatsAppDeviceRepository{
-			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
+			getByIDFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 				return existing, nil
 			},
-			updateFunc: func(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error {
+			updateFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, device *WhatsAppDevice) error {
 				updated = device
 				return nil
 			},
@@ -303,7 +305,7 @@ func TestWhatsAppDeviceService_Update(t *testing.T) {
 		newName := "New Device Name"
 		req := UpdateDeviceRequest{Name: &newName}
 
-		result, err := svc.Update(context.Background(), 1, 1, req)
+		result, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -324,12 +326,12 @@ func TestWhatsAppDeviceService_Update(t *testing.T) {
 
 func TestWhatsAppDeviceService_Delete(t *testing.T) {
 	t.Run("deletes device", func(t *testing.T) {
-		var capturedTenantID, capturedID int
+		var capturedTenantID, capturedID uuid.UUID
 		repo := &mockWhatsAppDeviceRepository{
-			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
+			getByIDFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 				return &WhatsAppDevice{ID: id, TenantID: tenantID, WhatsappID: "test-instance"}, nil
 			},
-			deleteFunc: func(ctx context.Context, q DBTX, tenantID int, id int) error {
+			deleteFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 				capturedTenantID = tenantID
 				capturedID = id
 				return nil
@@ -340,14 +342,14 @@ func TestWhatsAppDeviceService_Delete(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		if err := svc.Delete(context.Background(), 1, 5); err != nil {
+		if err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005")); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
-		if capturedID != 5 {
-			t.Errorf("expected id 5, got %d", capturedID)
+		if capturedID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected id 5, got %s", capturedID)
 		}
 	})
 }
@@ -355,14 +357,14 @@ func TestWhatsAppDeviceService_Delete(t *testing.T) {
 func TestWhatsAppDeviceService_Connect(t *testing.T) {
 	t.Run("returns pairing code", func(t *testing.T) {
 		existing := &WhatsAppDevice{
-			ID: 1, TenantID: 1, Name: "Device",
+			ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Device",
 			CountryCode: "62",
-			Phone: "81234567890",
-			WhatsappID: "device-test",
-			Status: "DISCONNECTED",
+			Phone:       "81234567890",
+			WhatsappID:  "device-test",
+			Status:      "DISCONNECTED",
 		}
 		repo := &mockWhatsAppDeviceRepository{
-			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
+			getByIDFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 				return existing, nil
 			},
 		}
@@ -371,7 +373,7 @@ func TestWhatsAppDeviceService_Connect(t *testing.T) {
 		defer db.Close()
 		svc := NewWhatsAppDeviceService(repo, db, &config.Config{}, logger.NewLogger("error", "json"), NewMockClient(logger.NewLogger("error", "json"))).(*whatsAppDeviceService)
 
-		pairingCode, err := svc.Connect(context.Background(), 1, 1)
+		pairingCode, err := svc.Connect(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -384,15 +386,15 @@ func TestWhatsAppDeviceService_Connect(t *testing.T) {
 func TestWhatsAppDeviceService_Disconnect(t *testing.T) {
 	t.Run("updates status to disconnected", func(t *testing.T) {
 		existing := &WhatsAppDevice{
-			ID: 1, TenantID: 1, Name: "Device",
+			ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Device",
 			Status: "CONNECTED",
 		}
 		var updated *WhatsAppDevice
 		repo := &mockWhatsAppDeviceRepository{
-			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error) {
+			getByIDFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 				return existing, nil
 			},
-			updateFunc: func(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error {
+			updateFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, device *WhatsAppDevice) error {
 				updated = device
 				return nil
 			},
@@ -402,7 +404,7 @@ func TestWhatsAppDeviceService_Disconnect(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		result, err := svc.Disconnect(context.Background(), 1, 1)
+		result, err := svc.Disconnect(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

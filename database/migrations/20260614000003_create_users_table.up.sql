@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS users (
-    id         SERIAL PRIMARY KEY,
-    tenant_id  INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id  UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     first_name VARCHAR(255) NOT NULL,
     last_name  VARCHAR(255),
     username   VARCHAR(50)  NOT NULL,

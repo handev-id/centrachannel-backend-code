@@ -6,12 +6,14 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/utils/logger"
 )
 
 var testDevice = &WhatsAppDevice{
-	ID:         1,
-	TenantID:   1,
+	ID:         uuid.MustParse("00000000-0000-4000-8000-000000000001"),
+	TenantID:   uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 	Name:       "Test Device",
 	WhatsappID: "instance_test",
 	Status:     "DISCONNECTED",

@@ -4,7 +4,7 @@
     "tags": ["Note"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Note ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Note ID" }
     ],
     "requestBody": {
       "required": true,
@@ -44,7 +44,7 @@
     "tags": ["Note"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Note ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Note ID" }
     ],
     "responses": {
       "200": {

@@ -3,11 +3,13 @@ package response
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 func TestSanitizeData(t *testing.T) {
 	t.Run("nil slice becomes empty array", func(t *testing.T) {
-		var items []int
+		var items []uuid.UUID
 		got := sanitizeData(items)
 		if got == nil {
 			t.Fatal("expected non-nil slice, got nil")
@@ -35,8 +37,8 @@ func TestSanitizeData(t *testing.T) {
 	})
 
 	t.Run("non-nil data untouched", func(t *testing.T) {
-		items := []int{1, 2}
-		if got := sanitizeData(items); len(got.([]int)) != 2 {
+		items := []uuid.UUID{uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000002")}
+		if got := sanitizeData(items); len(got.([]uuid.UUID)) != 2 {
 			t.Fatalf("expected original slice, got %v", got)
 		}
 	})
@@ -51,9 +53,9 @@ func TestSanitizeData(t *testing.T) {
 
 func TestCursorPaginatedEmptySliceMarshalsAsArray(t *testing.T) {
 	// Regression: GET /conversations with zero rows used to emit data: null.
-	var convs []*struct{ ID int }
+	var convs []*struct{ ID uuid.UUID }
 	b, err := json.Marshal(Response{
-		Meta: ResponseMeta{Message: "success", LastID: intPtr(0), HasMore: boolPtr(false)},
+		Meta: ResponseMeta{Message: "success", HasMore: boolPtr(false)},
 		Data: sanitizeData(convs),
 	})
 	if err != nil {
@@ -72,3 +74,31 @@ func TestCursorPaginatedEmptySliceMarshalsAsArray(t *testing.T) {
 
 func intPtr(i int) *int    { return &i }
 func boolPtr(b bool) *bool { return &b }
+
+func TestValidateUUIDFields(t *testing.T) {
+	type request struct {
+		ID       uuid.UUID   `validate:"required,uuid"`
+		Optional *uuid.UUID  `validate:"omitnil,required,uuid"`
+		Roles    []uuid.UUID `validate:"required,min=1,dive,required,uuid"`
+	}
+	valid := uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	zero := uuid.Nil
+	for _, tc := range []struct {
+		name      string
+		body      request
+		wantError bool
+	}{
+		{"valid with optional omitted", request{ID: valid, Roles: []uuid.UUID{valid}}, false},
+		{"valid optional", request{ID: valid, Optional: &valid, Roles: []uuid.UUID{valid}}, false},
+		{"nil required UUID", request{Roles: []uuid.UUID{valid}}, true},
+		{"explicit nil optional UUID", request{ID: valid, Optional: &zero, Roles: []uuid.UUID{valid}}, true},
+		{"nil role UUID", request{ID: valid, Roles: []uuid.UUID{zero}}, true},
+		{"empty roles", request{ID: valid, Roles: []uuid.UUID{}}, true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := Validate(&tc.body); (err != nil) != tc.wantError {
+				t.Fatalf("validation error=%v, want error=%v", err, tc.wantError)
+			}
+		})
+	}
+}

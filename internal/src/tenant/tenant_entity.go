@@ -3,10 +3,12 @@ package tenant
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type Tenant struct {
-	ID        int             `json:"id"`
+	ID        uuid.UUID       `json:"id"`
 	Name      string          `json:"name"`
 	Domain    string          `json:"domain"`
 	Logo      json.RawMessage `json:"logo,omitempty"`

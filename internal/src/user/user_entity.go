@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/utils"
 )
 
@@ -16,8 +18,8 @@ type Avatar struct {
 }
 
 type User struct {
-	ID        int                `json:"id"`
-	TenantID  int                `json:"tenant_id"`
+	ID        uuid.UUID          `json:"id"`
+	TenantID  uuid.UUID          `json:"tenant_id"`
 	FirstName string             `json:"first_name"`
 	LastName  *string            `json:"last_name,omitempty"`
 	Username  string             `json:"username"`
@@ -34,8 +36,8 @@ type User struct {
 }
 
 type Role struct {
-	ID        int       `json:"id"`
-	TenantID  int       `json:"tenant_id"`
+	ID        uuid.UUID `json:"id"`
+	TenantID  uuid.UUID `json:"tenant_id"`
 	Name      string    `json:"name"`
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`

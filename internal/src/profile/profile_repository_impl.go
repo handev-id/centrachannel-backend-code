@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/utils"
 )
 
@@ -21,7 +23,7 @@ func scanProfile(row interface {
 }) (*Profile, error) {
 	var p Profile
 	var username, displayName, linkedDevice sql.NullString
-	var mergedFromID sql.NullInt64
+	var mergedFromID uuid.NullUUID
 	var deletedAt utils.NullableTime
 
 	err := row.Scan(&p.ID, &p.TenantID, &p.ExternalID, &username, &displayName, &p.IsMain, &linkedDevice, &mergedFromID, &p.ContactID, &p.ChannelID, &deletedAt, &p.CreatedAt, &p.UpdatedAt)
@@ -41,26 +43,26 @@ func scanProfile(row interface {
 		p.LinkedDeviceWhatsappID = &linkedDevice.String
 	}
 	if mergedFromID.Valid {
-		id := int(mergedFromID.Int64)
+		id := mergedFromID.UUID
 		p.MergedFromContactID = &id
 	}
 	p.DeletedAt = deletedAt
 	return &p, nil
 }
 
-func (r *profileRepository) List(ctx context.Context, q DBTX, tenantID int, contactID, channelID int) ([]Profile, error) {
+func (r *profileRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID, contactID, channelID uuid.UUID) ([]Profile, error) {
 	conditions := []string{"p.tenant_id = $1"}
 	args := []interface{}{tenantID}
 	argIdx := 2
 
 	conditions = append(conditions, "p.deleted_at IS NULL")
 
-	if contactID > 0 {
+	if contactID != uuid.Nil {
 		conditions = append(conditions, fmt.Sprintf("p.contact_id = $%d", argIdx))
 		args = append(args, contactID)
 		argIdx++
 	}
-	if channelID > 0 {
+	if channelID != uuid.Nil {
 		conditions = append(conditions, fmt.Sprintf("p.channel_id = $%d", argIdx))
 		args = append(args, channelID)
 		argIdx++
@@ -89,27 +91,27 @@ func (r *profileRepository) List(ctx context.Context, q DBTX, tenantID int, cont
 	return profiles, rows.Err()
 }
 
-func (r *profileRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Profile, error) {
+func (r *profileRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Profile, error) {
 	query := `SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`
 	return scanProfile(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
-func (r *profileRepository) GetByExternalIDAndChannelID(ctx context.Context, q DBTX, tenantID int, externalID string, channelID int) (*Profile, error) {
+func (r *profileRepository) GetByExternalIDAndChannelID(ctx context.Context, q DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*Profile, error) {
 	query := `SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE external_id = $1 AND channel_id = $2 AND tenant_id = $3 AND deleted_at IS NULL`
 	return scanProfile(q.QueryRowContext(ctx, query, externalID, channelID, tenantID))
 }
 
-func (r *profileRepository) Create(ctx context.Context, q DBTX, profile *Profile) (int, error) {
+func (r *profileRepository) Create(ctx context.Context, q DBTX, profile *Profile) (uuid.UUID, error) {
 	query := `INSERT INTO profiles (tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, contact_id, channel_id, created_at, updated_at) VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10) RETURNING id`
-	var id int
+	var id uuid.UUID
 	err := q.QueryRowContext(ctx, query, profile.TenantID, profile.ExternalID, profile.Username, profile.DisplayName, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.ContactID, profile.ChannelID, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 	return id, nil
 }
 
-func (r *profileRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, profile *Profile) error {
+func (r *profileRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, profile *Profile) error {
 	query := `UPDATE profiles SET is_main=$1, linked_device_whatsapp_id=$2, display_name=$3, updated_at=$4 WHERE id=$5 AND tenant_id=$6 AND deleted_at IS NULL`
 	result, err := q.ExecContext(ctx, query, profile.IsMain, profile.LinkedDeviceWhatsappID, profile.DisplayName, time.Now(), id, tenantID)
 	if err != nil {
@@ -125,7 +127,7 @@ func (r *profileRepository) Update(ctx context.Context, q DBTX, tenantID int, id
 	return nil
 }
 
-func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, tenantID int, contactID int) ([]Profile, error) {
+func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, tenantID uuid.UUID, contactID uuid.UUID) ([]Profile, error) {
 	query := `SELECT id, tenant_id, external_id, username, display_name, is_main, linked_device_whatsapp_id, merged_from_contact_id, contact_id, channel_id, deleted_at, created_at, updated_at FROM profiles WHERE contact_id = $1 AND tenant_id = $2 AND deleted_at IS NULL ORDER BY id`
 	rows, err := q.QueryContext(ctx, query, contactID, tenantID)
 	if err != nil {
@@ -144,9 +146,9 @@ func (r *profileRepository) GetByContactID(ctx context.Context, q DBTX, tenantID
 	return profiles, rows.Err()
 }
 
-func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, tenantID int, contactIDs []int) (map[int][]Profile, error) {
+func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, tenantID uuid.UUID, contactIDs []uuid.UUID) (map[uuid.UUID][]Profile, error) {
 	if len(contactIDs) == 0 {
-		return map[int][]Profile{}, nil
+		return map[uuid.UUID][]Profile{}, nil
 	}
 
 	placeholders := make([]string, len(contactIDs))
@@ -164,7 +166,7 @@ func (r *profileRepository) GetByContactIDs(ctx context.Context, q DBTX, tenantI
 	}
 	defer rows.Close()
 
-	result := make(map[int][]Profile)
+	result := make(map[uuid.UUID][]Profile)
 	for rows.Next() {
 		p, err := scanProfile(rows)
 		if err != nil {

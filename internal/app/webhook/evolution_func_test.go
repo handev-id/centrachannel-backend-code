@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/conversation"
@@ -35,34 +37,36 @@ func TestProcessEvolutionEvent_NilData(t *testing.T) {
 func TestProcessEvolutionEvent_FromMe_Sync(t *testing.T) {
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test"}, nil
 		},
 	}
 	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
-			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Contact", Whatsapp: &phone}, nil
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID uuid.UUID, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Contact", Whatsapp: &phone}, nil
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
-			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
+			return &profile.Profile{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
 	channelRepo := &mockChannelRepo{
 		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+			return &channel.Channel{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Type: "whatsapp"}, nil
 		},
 	}
 	convRepo := &mockConvRepo{
-		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
-			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001e"), ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
 	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-000000000190"), nil
+		},
 	}
 
 	svc := newTestService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo)
@@ -92,48 +96,48 @@ func TestHandleMessageUpsert_NewConversation(t *testing.T) {
 
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test"}, nil
 		},
 	}
 	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID uuid.UUID, phone string) (*contact.Contact, error) {
 			return nil, sql.ErrNoRows
 		},
-		createFunc: func(ctx context.Context, q contact.DBTX, c *contact.Contact) (int, error) {
+		createFunc: func(ctx context.Context, q contact.DBTX, c *contact.Contact) (uuid.UUID, error) {
 			createdContact = c
-			return 100, nil
+			return uuid.MustParse("00000000-0000-4000-8000-000000000064"), nil
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
 			return nil, sql.ErrNoRows
 		},
-		createFunc: func(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) {
+		createFunc: func(ctx context.Context, q profile.DBTX, p *profile.Profile) (uuid.UUID, error) {
 			createdProfile = p
-			return 200, nil
+			return uuid.MustParse("00000000-0000-4000-8000-0000000000c8"), nil
 		},
 	}
 	channelRepo := &mockChannelRepo{
 		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: "whatsapp", Name: "WhatsApp"}, nil
+			return &channel.Channel{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Type: "whatsapp", Name: "WhatsApp"}, nil
 		},
 	}
 	convRepo := &mockConvRepo{
-		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
 			return nil, fmt.Errorf("not found")
 		},
-		createFunc: func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error) {
+		createFunc: func(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (uuid.UUID, error) {
 			createdConv = conv
-			return 300, nil
+			return uuid.MustParse("00000000-0000-4000-8000-00000000012c"), nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
 	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) {
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
 			createdMsg = msg
-			return 400, nil
+			return uuid.MustParse("00000000-0000-4000-8000-000000000190"), nil
 		},
 	}
 
@@ -179,34 +183,36 @@ func TestHandleMessageUpsert_NewConversation(t *testing.T) {
 func TestHandleMessageUpsert_ExistingContactProfileConversation(t *testing.T) {
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test"}, nil
 		},
 	}
 	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
-			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Existing", Whatsapp: &phone}, nil
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID uuid.UUID, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Existing", Whatsapp: &phone}, nil
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
-			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
+			return &profile.Profile{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
 	channelRepo := &mockChannelRepo{
 		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+			return &channel.Channel{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Type: "whatsapp"}, nil
 		},
 	}
 	convRepo := &mockConvRepo{
-		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
-			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001e"), ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
 	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-000000000190"), nil
+		},
 	}
 
 	svc := newTestService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo)
@@ -232,34 +238,36 @@ func TestHandleMessageUpsert_NotifiesNewMessage(t *testing.T) {
 
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test"}, nil
 		},
 	}
 	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
-			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Existing", Whatsapp: &phone}, nil
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID uuid.UUID, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Existing", Whatsapp: &phone}, nil
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
-			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
+			return &profile.Profile{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
 	channelRepo := &mockChannelRepo{
 		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+			return &channel.Channel{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Type: "whatsapp"}, nil
 		},
 	}
 	convRepo := &mockConvRepo{
-		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
-			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001e"), ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
 	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-000000000190"), nil
+		},
 	}
 
 	svc := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil, notifier)
@@ -283,8 +291,8 @@ func TestHandleMessageUpsert_NotifiesNewMessage(t *testing.T) {
 	if ev == nil {
 		t.Fatal("expected a websocket notification")
 	}
-	if ev.tenantID != 1 {
-		t.Errorf("expected tenantID 1, got %d", ev.tenantID)
+	if ev.tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected tenantID 1, got %s", ev.tenantID)
 	}
 	if ev.event != "new-message" {
 		t.Errorf("expected event 'new-message', got %q", ev.event)
@@ -293,11 +301,11 @@ func TestHandleMessageUpsert_NotifiesNewMessage(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected data *message.Message, got %T", ev.data)
 	}
-	if msg.ID != 400 {
-		t.Errorf("expected message id 400, got %d", msg.ID)
+	if msg.ID != uuid.MustParse("00000000-0000-4000-8000-000000000190") {
+		t.Errorf("expected message id 400, got %s", msg.ID)
 	}
-	if msg.ConversationID != 30 {
-		t.Errorf("expected conversation_id 30, got %d", msg.ConversationID)
+	if msg.ConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000001e") {
+		t.Errorf("expected conversation_id 30, got %s", msg.ConversationID)
 	}
 	if msg.SenderType != "contact" {
 		t.Errorf("expected sender_type contact, got %s", msg.SenderType)
@@ -312,34 +320,36 @@ func TestProcessEvolutionEvent_FromMe_Sync_NotifiesNewMessage(t *testing.T) {
 
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test"}, nil
 		},
 	}
 	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
-			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Contact", Whatsapp: &phone}, nil
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID uuid.UUID, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Contact", Whatsapp: &phone}, nil
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
-			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
+			return &profile.Profile{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
 	channelRepo := &mockChannelRepo{
 		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: "whatsapp"}, nil
+			return &channel.Channel{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Type: "whatsapp"}, nil
 		},
 	}
 	convRepo := &mockConvRepo{
-		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
-			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001e"), ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
 	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 400, nil },
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-000000000190"), nil
+		},
 	}
 
 	svc := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil, notifier)
@@ -364,8 +374,8 @@ func TestProcessEvolutionEvent_FromMe_Sync_NotifiesNewMessage(t *testing.T) {
 	if ev == nil {
 		t.Fatal("expected a websocket notification")
 	}
-	if ev.tenantID != 1 {
-		t.Errorf("expected tenantID 1, got %d", ev.tenantID)
+	if ev.tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected tenantID 1, got %s", ev.tenantID)
 	}
 	if ev.event != "new-message" {
 		t.Errorf("expected event 'new-message', got %q", ev.event)
@@ -374,11 +384,11 @@ func TestProcessEvolutionEvent_FromMe_Sync_NotifiesNewMessage(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected data *message.Message, got %T", ev.data)
 	}
-	if msg.ID != 400 {
-		t.Errorf("expected message id 400, got %d", msg.ID)
+	if msg.ID != uuid.MustParse("00000000-0000-4000-8000-000000000190") {
+		t.Errorf("expected message id 400, got %s", msg.ID)
 	}
-	if msg.ConversationID != 30 {
-		t.Errorf("expected conversation_id 30, got %d", msg.ConversationID)
+	if msg.ConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000001e") {
+		t.Errorf("expected conversation_id 30, got %s", msg.ConversationID)
 	}
 	if msg.SenderType != "user" {
 		t.Errorf("expected sender_type user, got %s", msg.SenderType)
@@ -387,14 +397,25 @@ func TestProcessEvolutionEvent_FromMe_Sync_NotifiesNewMessage(t *testing.T) {
 
 func TestHandleMessageUpdate_Delivered(t *testing.T) {
 	var capturedID, capturedStatus string
+	var capturedTenant uuid.UUID
+	tenantID := uuid.New()
 	msgRepo := &mockMsgRepo{
-		updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
+		updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error {
+			capturedTenant = tenantID
 			capturedID = webhookMessageID
 			capturedStatus = status
 			return nil
 		},
 	}
-	svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
+	deviceRepo := &mockDeviceRepo{
+		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, instance string) (*whatsapp_device.WhatsAppDevice, error) {
+			if instance != "instance_test" {
+				t.Fatalf("unexpected instance: %s", instance)
+			}
+			return &whatsapp_device.WhatsAppDevice{TenantID: tenantID}, nil
+		},
+	}
+	svc := newTestService(deviceRepo, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
 
 	data, _ := json.Marshal(EvolutionMessageUpdate{
 		KeyID: "webhook_001", Status: "DELIVERED",
@@ -411,6 +432,9 @@ func TestHandleMessageUpdate_Delivered(t *testing.T) {
 	if capturedStatus != "delivered" {
 		t.Errorf("expected 'delivered', got %s", capturedStatus)
 	}
+	if capturedTenant != tenantID {
+		t.Errorf("status update lost device tenant: got %s, want %s", capturedTenant, tenantID)
+	}
 }
 
 func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
@@ -420,12 +444,17 @@ func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
 	for _, tt := range tests {
 		var capturedStatus string
 		msgRepo := &mockMsgRepo{
-			updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
+			updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error {
 				capturedStatus = status
 				return nil
 			},
 		}
-		svc := newTestService(&mockDeviceRepo{}, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
+		deviceRepo := &mockDeviceRepo{
+			getByWhatsappIDFunc: func(context.Context, whatsapp_device.DBTX, string) (*whatsapp_device.WhatsAppDevice, error) {
+				return &whatsapp_device.WhatsAppDevice{TenantID: uuid.New()}, nil
+			},
+		}
+		svc := newTestService(deviceRepo, &mockContactRepo{}, &mockProfileRepo{}, &mockChannelRepo{}, &mockConvRepo{}, msgRepo)
 		data, _ := json.Marshal(EvolutionMessageUpdate{
 			KeyID: "w_" + tt.status, Status: tt.status,
 		})
@@ -439,7 +468,7 @@ func TestHandleMessageUpdate_Read_Failed_Sent(t *testing.T) {
 func TestHandleMessageUpdate_UnhandledStatus(t *testing.T) {
 	called := false
 	msgRepo := &mockMsgRepo{
-		updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, webhookMessageID string, status string) error {
+		updateStatusByWebhookIDFunc: func(ctx context.Context, q message.DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error {
 			called = true
 			return nil
 		},
@@ -466,9 +495,9 @@ func TestHandleConnectionUpdate_Open(t *testing.T) {
 	var updatedDevice *whatsapp_device.WhatsAppDevice
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test", Status: "DISCONNECTED"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test", Status: "DISCONNECTED"}, nil
 		},
-		updateFunc: func(ctx context.Context, q whatsapp_device.DBTX, tenantID int, id int, device *whatsapp_device.WhatsAppDevice) error {
+		updateFunc: func(ctx context.Context, q whatsapp_device.DBTX, tenantID uuid.UUID, id uuid.UUID, device *whatsapp_device.WhatsAppDevice) error {
 			updatedDevice = device
 			return nil
 		},
@@ -489,9 +518,9 @@ func TestHandleConnectionUpdate_Disconnected(t *testing.T) {
 	var updatedDevice *whatsapp_device.WhatsAppDevice
 	deviceRepo := &mockDeviceRepo{
 		getByWhatsappIDFunc: func(ctx context.Context, q whatsapp_device.DBTX, whatsappID string) (*whatsapp_device.WhatsAppDevice, error) {
-			return &whatsapp_device.WhatsAppDevice{ID: 1, TenantID: 1, WhatsappID: "instance_test", Status: "CONNECTED"}, nil
+			return &whatsapp_device.WhatsAppDevice{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), WhatsappID: "instance_test", Status: "CONNECTED"}, nil
 		},
-		updateFunc: func(ctx context.Context, q whatsapp_device.DBTX, tenantID int, id int, device *whatsapp_device.WhatsAppDevice) error {
+		updateFunc: func(ctx context.Context, q whatsapp_device.DBTX, tenantID uuid.UUID, id uuid.UUID, device *whatsapp_device.WhatsAppDevice) error {
 			updatedDevice = device
 			return nil
 		},

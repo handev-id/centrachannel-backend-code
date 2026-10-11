@@ -5,6 +5,7 @@ import (
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"centrachannel/config"
@@ -42,10 +43,12 @@ func AuthMiddleware(cfg *config.Config, rdb *redis.Client) fiber.Handler {
 			}
 		}
 
-		subFloat, subOK := claims["sub"].(float64)
-		tenantFloat, tenantOK := claims["tenant"].(float64)
+		sub, subOK := claims["sub"].(string)
+		tenantClaim, tenantOK := claims["tenant"].(string)
+		userID, userErr := uuid.Parse(sub)
+		tenantID, tenantErr := uuid.Parse(tenantClaim)
 		currentTenant, currentTenantOK := c.Locals("tenant").(*tenant.Tenant)
-		if !subOK || !tenantOK || !currentTenantOK || int(tenantFloat) != currentTenant.ID {
+		if !subOK || !tenantOK || userErr != nil || tenantErr != nil || userID == uuid.Nil || tenantID == uuid.Nil || !currentTenantOK || currentTenant == nil || tenantID != currentTenant.ID {
 			return response.Unauthorized(c, "Invalid token tenant")
 		}
 
@@ -56,8 +59,8 @@ func AuthMiddleware(cfg *config.Config, rdb *redis.Client) fiber.Handler {
 		}
 
 		c.Locals("user", claims)
-		c.Locals("user_id", int(subFloat))
-		c.Locals("tenant_id", int(tenantFloat))
+		c.Locals("user_id", userID)
+		c.Locals("tenant_id", tenantID)
 		c.Locals("roles", roles)
 		return c.Next()
 	}

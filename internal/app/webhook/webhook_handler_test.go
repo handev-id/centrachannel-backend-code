@@ -3,6 +3,9 @@ package webhook
 import (
 	"bytes"
 	"context"
+	"crypto/hmac"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -32,7 +35,7 @@ func (m *mockWebhookService) ProcessMetaEvent(ctx context.Context, payload *Meta
 
 func setupApp(apiKey, metaSecret string) *fiber.App {
 	app := fiber.New()
-	handler := &WebhookHandler{service: &mockWebhookService{}, apiKey: apiKey, metaSecret: metaSecret}
+	handler := &WebhookHandler{service: &mockWebhookService{}, apiKey: apiKey, metaSecret: metaSecret, metaAppSecret: "test-meta-app-secret"}
 
 	app.Post("/webhook/evolution", handler.HandleEvolution)
 	app.Get("/webhook/meta", handler.HandleMetaVerify)
@@ -52,8 +55,8 @@ func TestHandleEvolution_NoAuth(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if resp.StatusCode != http.StatusOK {
-		t.Errorf("expected 200, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusUnauthorized {
+		t.Errorf("expected 401, got %d", resp.StatusCode)
 	}
 }
 
@@ -120,6 +123,9 @@ func TestHandleMetaWebhook_Success(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/webhook/meta", bytes.NewReader(body))
+	mac := hmac.New(sha256.New, []byte("test-meta-app-secret"))
+	_, _ = mac.Write(body)
+	req.Header.Set("x-hub-signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)
@@ -147,6 +153,9 @@ func TestHandleMetaWebhook_Instagram(t *testing.T) {
 	body, _ := json.Marshal(payload)
 
 	req := httptest.NewRequest(http.MethodPost, "/webhook/meta", bytes.NewReader(body))
+	mac := hmac.New(sha256.New, []byte("test-meta-app-secret"))
+	_, _ = mac.Write(body)
+	req.Header.Set("x-hub-signature-256", "sha256="+hex.EncodeToString(mac.Sum(nil)))
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := app.Test(req)

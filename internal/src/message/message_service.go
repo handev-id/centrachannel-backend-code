@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/redis/go-redis/v9"
 
 	"centrachannel/config"
@@ -20,9 +21,9 @@ import (
 )
 
 type MessageService interface {
-	ListCursor(ctx context.Context, tenantID int, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error)
-	Send(ctx context.Context, req SendMessageRequest, tenantID int, conversationID int) (*Message, error)
-	UpdateStatus(ctx context.Context, tenantID int, id int, status string) error
+	ListCursor(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, q ListMessageQuery) ([]*Message, uuid.UUID, bool, error)
+	Send(ctx context.Context, req SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*Message, error)
+	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status string) error
 }
 
 type messageService struct {
@@ -46,14 +47,14 @@ func NewMessageService(repo MessageRepository, convRepo conversation.Conversatio
 	return svc
 }
 
-func (s *messageService) ListCursor(ctx context.Context, tenantID int, conversationID int, q ListMessageQuery) ([]*Message, int, bool, error) {
+func (s *messageService) ListCursor(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, q ListMessageQuery) ([]*Message, uuid.UUID, bool, error) {
 	if q.Limit < 1 || q.Limit > 100 {
 		q.Limit = 50
 	}
 
 	msgs, err := s.repo.ListCursor(ctx, s.db, tenantID, conversationID, q.Limit+1, q.LastID)
 	if err != nil {
-		return nil, 0, false, err
+		return nil, uuid.Nil, false, err
 	}
 
 	hasMore := len(msgs) > q.Limit
@@ -61,7 +62,7 @@ func (s *messageService) ListCursor(ctx context.Context, tenantID int, conversat
 		msgs = msgs[:q.Limit]
 	}
 
-	cursorID := 0
+	cursorID := uuid.Nil
 	if len(msgs) > 0 {
 		cursorID = msgs[len(msgs)-1].ID
 	}
@@ -73,7 +74,7 @@ func (s *messageService) ListCursor(ctx context.Context, tenantID int, conversat
 	return msgs, cursorID, hasMore, nil
 }
 
-func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenantID int, conversationID int) (*Message, error) {
+func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*Message, error) {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return nil, err
@@ -108,7 +109,7 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	}
 	lastMsgJSON, _ = json.Marshal(lastMsg)
 
-	var lastAgentID *int
+	var lastAgentID *uuid.UUID
 	if req.SenderType == "user" {
 		lastAgentID = &req.SenderID
 	}
@@ -140,14 +141,14 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	return msg, nil
 }
 
-func (s *messageService) notifyNewMessage(tenantID int, msg *Message) {
+func (s *messageService) notifyNewMessage(tenantID uuid.UUID, msg *Message) {
 	if s.notifier == nil {
 		return
 	}
 	s.notifier.Notify(tenantID, "new-message", msg)
 }
 
-func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg *Message) {
+func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uuid.UUID, msg *Message) {
 	ctx := context.Background()
 
 	conv, err := s.convRepo.GetByID(ctx, s.db, tenantID, conversationID)
@@ -216,7 +217,7 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 		}
 	case "whatsapp":
 		if prof.LinkedDeviceWhatsappID == nil || *prof.LinkedDeviceWhatsappID == "" {
-			s.logger.Error("profile %d has no linked device for whatsapp delivery", prof.ID)
+			s.logger.Error("profile %s has no linked device for whatsapp delivery", prof.ID)
 			return
 		}
 		evoCfg := messenger.EvolutionConfig{
@@ -243,15 +244,15 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 
 	extID, err := sender.Send(extMsg)
 	if err != nil {
-		s.logger.Error("failed to deliver message to %s (conv=%d): %v", ch.Type, conversationID, err)
+		s.logger.Error("failed to deliver message to %s (conv=%s): %v", ch.Type, conversationID, err)
 		if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed"); statusErr != nil {
-			s.logger.Error("failed to persist delivery failure for message %d: %v", msg.ID, statusErr)
+			s.logger.Error("failed to persist delivery failure for message %s: %v", msg.ID, statusErr)
 		}
 		return
 	}
 
 	if extID != "sent" {
-		_ = s.repo.UpdateWebhookID(ctx, s.db, msg.ID, extID)
+		_ = s.repo.UpdateWebhookID(ctx, s.db, tenantID, msg.ID, extID)
 
 		if s.rdb != nil {
 			s.rdb.Set(ctx, "webhook_dedup:"+extID, 1, 60*time.Second)
@@ -259,6 +260,6 @@ func (s *messageService) deliverToExternal(tenantID int, conversationID int, msg
 	}
 }
 
-func (s *messageService) UpdateStatus(ctx context.Context, tenantID int, id int, status string) error {
+func (s *messageService) UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status string) error {
 	return s.repo.UpdateStatus(ctx, s.db, tenantID, id, status)
 }

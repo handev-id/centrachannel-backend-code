@@ -4,7 +4,7 @@
     "tags": ["Contact"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Contact ID" }
     ],
     "responses": {
       "200": {
@@ -30,7 +30,7 @@
     "tags": ["Contact"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Contact ID" }
     ],
     "requestBody": {
       "required": true,
@@ -89,7 +89,7 @@
     "tags": ["Contact"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Contact ID" }
     ],
     "responses": {
       "200": {

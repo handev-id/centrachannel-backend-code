@@ -6,8 +6,11 @@ import (
 	"database/sql/driver"
 	"fmt"
 	"io"
+	"strings"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 
 	"centrachannel/config"
 	"centrachannel/internal/src/profile"
@@ -150,70 +153,70 @@ var _ driver.Result = (*mockResult)(nil)
 // ---- Profile Repository Mock ----
 
 type mockProfileRepo struct {
-	getByContactIDFunc  func(ctx context.Context, q profile.DBTX, tenantID int, contactID int) ([]profile.Profile, error)
-	getByContactIDsFunc func(ctx context.Context, q profile.DBTX, tenantID int, contactIDs []int) (map[int][]profile.Profile, error)
+	getByContactIDFunc  func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactID uuid.UUID) ([]profile.Profile, error)
+	getByContactIDsFunc func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactIDs []uuid.UUID) (map[uuid.UUID][]profile.Profile, error)
 }
 
-func (m *mockProfileRepo) List(ctx context.Context, q profile.DBTX, tenantID int, contactID, channelID int) ([]profile.Profile, error) {
+func (m *mockProfileRepo) List(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactID, channelID uuid.UUID) ([]profile.Profile, error) {
 	return nil, nil
 }
-func (m *mockProfileRepo) GetByID(ctx context.Context, q profile.DBTX, tenantID int, id int) (*profile.Profile, error) {
+func (m *mockProfileRepo) GetByID(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, id uuid.UUID) (*profile.Profile, error) {
 	return nil, nil
 }
-func (m *mockProfileRepo) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
+func (m *mockProfileRepo) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
 	return nil, nil
 }
-func (m *mockProfileRepo) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) {
-	return 0, nil
+func (m *mockProfileRepo) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (uuid.UUID, error) {
+	return uuid.Nil, nil
 }
-func (m *mockProfileRepo) Update(ctx context.Context, q profile.DBTX, tenantID int, id int, p *profile.Profile) error {
+func (m *mockProfileRepo) Update(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, id uuid.UUID, p *profile.Profile) error {
 	return nil
 }
-func (m *mockProfileRepo) GetByContactID(ctx context.Context, q profile.DBTX, tenantID int, contactID int) ([]profile.Profile, error) {
+func (m *mockProfileRepo) GetByContactID(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactID uuid.UUID) ([]profile.Profile, error) {
 	if m.getByContactIDFunc != nil {
 		return m.getByContactIDFunc(ctx, q, tenantID, contactID)
 	}
 	return []profile.Profile{}, nil
 }
-func (m *mockProfileRepo) GetByContactIDs(ctx context.Context, q profile.DBTX, tenantID int, contactIDs []int) (map[int][]profile.Profile, error) {
+func (m *mockProfileRepo) GetByContactIDs(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactIDs []uuid.UUID) (map[uuid.UUID][]profile.Profile, error) {
 	if m.getByContactIDsFunc != nil {
 		return m.getByContactIDsFunc(ctx, q, tenantID, contactIDs)
 	}
-	return map[int][]profile.Profile{}, nil
+	return map[uuid.UUID][]profile.Profile{}, nil
 }
 
 // ---- Repository Mock ----
 
 type mockContactRepository struct {
-	listFunc       func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error)
-	getByIDFunc    func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error)
-	createFunc     func(ctx context.Context, q DBTX, contact *Contact) (int, error)
-	updateFunc     func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error
-	softDeleteFunc func(ctx context.Context, q DBTX, tenantID int, id int) error
-	getByPhoneFunc func(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error)
+	listFunc       func(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, f ListContactQuery) ([]*Contact, int, error)
+	getByIDFunc    func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Contact, error)
+	createFunc     func(ctx context.Context, q DBTX, contact *Contact) (uuid.UUID, error)
+	updateFunc     func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, contact *Contact) error
+	softDeleteFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
+	getByPhoneFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID, phone string) (*Contact, error)
 }
 
-func (m *mockContactRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
+func (m *mockContactRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, f ListContactQuery) ([]*Contact, int, error) {
 	return m.listFunc(ctx, q, tenantID, limit, offset, f)
 }
 
-func (m *mockContactRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error) {
+func (m *mockContactRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Contact, error) {
 	return m.getByIDFunc(ctx, q, tenantID, id)
 }
 
-func (m *mockContactRepository) Create(ctx context.Context, q DBTX, contact *Contact) (int, error) {
+func (m *mockContactRepository) Create(ctx context.Context, q DBTX, contact *Contact) (uuid.UUID, error) {
 	return m.createFunc(ctx, q, contact)
 }
 
-func (m *mockContactRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error {
+func (m *mockContactRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, contact *Contact) error {
 	return m.updateFunc(ctx, q, tenantID, id, contact)
 }
 
-func (m *mockContactRepository) SoftDelete(ctx context.Context, q DBTX, tenantID int, id int) error {
+func (m *mockContactRepository) SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	return m.softDeleteFunc(ctx, q, tenantID, id)
 }
 
-func (m *mockContactRepository) GetByPhone(ctx context.Context, q DBTX, tenantID int, phone string) (*Contact, error) {
+func (m *mockContactRepository) GetByPhone(ctx context.Context, q DBTX, tenantID uuid.UUID, phone string) (*Contact, error) {
 	return m.getByPhoneFunc(ctx, q, tenantID, phone)
 }
 
@@ -241,9 +244,9 @@ func TestContactService_Create(t *testing.T) {
 	t.Run("success with default status", func(t *testing.T) {
 		var captured *Contact
 		repo := &mockContactRepository{
-			createFunc: func(ctx context.Context, q DBTX, contact *Contact) (int, error) {
+			createFunc: func(ctx context.Context, q DBTX, contact *Contact) (uuid.UUID, error) {
 				captured = contact
-				return 1, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		m := &mockConn{}
@@ -252,7 +255,7 @@ func TestContactService_Create(t *testing.T) {
 		svc := newService(repo, db)
 
 		req := CreateContactRequest{FirstName: "John"}
-		ten := &tenant.Tenant{ID: 1}
+		ten := &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001")}
 
 		result, err := svc.Create(context.Background(), req, ten)
 		if err != nil {
@@ -277,16 +280,16 @@ func TestContactService_Update(t *testing.T) {
 	t.Run("partial field updates", func(t *testing.T) {
 		lastName := "Doe"
 		existing := &Contact{
-			ID: 1, TenantID: 1, FirstName: "John",
+			ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "John",
 			LastName: &lastName, Username: strPtr("johndoe"),
 			Status: "individual",
 		}
 		var updated *Contact
 		repo := &mockContactRepository{
-			getByIDFunc: func(ctx context.Context, q DBTX, tenantID int, id int) (*Contact, error) {
+			getByIDFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Contact, error) {
 				return existing, nil
 			},
-			updateFunc: func(ctx context.Context, q DBTX, tenantID int, id int, contact *Contact) error {
+			updateFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, contact *Contact) error {
 				updated = contact
 				return nil
 			},
@@ -303,7 +306,7 @@ func TestContactService_Update(t *testing.T) {
 			LastName:  &emptyLastName,
 		}
 
-		result, err := svc.Update(context.Background(), 1, 1, req)
+		result, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -332,9 +335,9 @@ func TestContactService_Update(t *testing.T) {
 
 func TestContactService_Delete(t *testing.T) {
 	t.Run("soft delete delegation", func(t *testing.T) {
-		var capturedTenantID, capturedID int
+		var capturedTenantID, capturedID uuid.UUID
 		repo := &mockContactRepository{
-			softDeleteFunc: func(ctx context.Context, q DBTX, tenantID int, id int) error {
+			softDeleteFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 				capturedTenantID = tenantID
 				capturedID = id
 				return nil
@@ -345,14 +348,14 @@ func TestContactService_Delete(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		if err := svc.Delete(context.Background(), 1, 5); err != nil {
+		if err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005")); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
-		if capturedID != 5 {
-			t.Errorf("expected id 5, got %d", capturedID)
+		if capturedID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected id 5, got %s", capturedID)
 		}
 	})
 }
@@ -365,7 +368,7 @@ func TestContactService_Merge(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		err := svc.Merge(context.Background(), 1, 5, 5)
+		err := svc.Merge(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), uuid.MustParse("00000000-0000-4000-8000-000000000005"))
 		if err == nil {
 			t.Fatal("expected error for self-merge")
 		}
@@ -386,17 +389,23 @@ func TestContactService_Merge(t *testing.T) {
 				execCalls++
 				return &mockResult{rowsAffected: 1}, nil
 			},
+			queryFunc: func(ctx context.Context, query string, args []driver.NamedValue) (driver.Rows, error) {
+				if strings.Contains(query, "SELECT EXISTS") {
+					return &mockRows{columns: []string{"exists"}, data: [][]driver.Value{{false}}}, nil
+				}
+				return &mockRows{columns: []string{"id"}, data: [][]driver.Value{{args[0].Value}, {args[1].Value}}}, nil
+			},
 		}
 		db := newMockDB(m)
 		defer db.Close()
 		repo := &mockContactRepository{}
 		svc := newService(repo, db)
 
-		if err := svc.Merge(context.Background(), 1, 5, 10); err != nil {
+		if err := svc.Merge(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), uuid.MustParse("00000000-0000-4000-8000-00000000000a")); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if execCalls != 3 {
-			t.Errorf("expected 3 exec calls, got %d", execCalls)
+		if execCalls != 2 {
+			t.Errorf("expected 2 exec calls, got %d", execCalls)
 		}
 	})
 }
@@ -420,7 +429,7 @@ func TestContactService_Unmerge(t *testing.T) {
 		repo := &mockContactRepository{}
 		svc := newService(repo, db)
 
-		if err := svc.Unmerge(context.Background(), 1, 5); err != nil {
+		if err := svc.Unmerge(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005")); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if execCalls != 2 {
@@ -431,10 +440,10 @@ func TestContactService_Unmerge(t *testing.T) {
 
 func TestContactService_List(t *testing.T) {
 	t.Run("pagination defaults", func(t *testing.T) {
-		contacts := []*Contact{{ID: 1, FirstName: "John"}}
+		contacts := []*Contact{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "John"}}
 		var capturedLimit, capturedOffset int
 		repo := &mockContactRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, f ListContactQuery) ([]*Contact, int, error) {
 				capturedLimit = limit
 				capturedOffset = offset
 				return contacts, 1, nil
@@ -446,17 +455,17 @@ func TestContactService_List(t *testing.T) {
 		svc := newService(repo, db)
 
 		q := ListContactQuery{Page: 0, Limit: 0}
-		ten := &tenant.Tenant{ID: 1}
+		ten := &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001")}
 
 		result, total, err := svc.List(context.Background(), q, ten)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if total != 0 {
-			t.Errorf("expected total 0, got %d", total)
+		if total != 1 {
+			t.Errorf("expected total 1, got %d", total)
 		}
-		if len(result) != 0 {
-			t.Errorf("expected 0 contacts, got %d", len(result))
+		if len(result) != 1 {
+			t.Errorf("expected 1 contact, got %d", len(result))
 		}
 		if capturedLimit != 20 {
 			t.Errorf("expected limit 20, got %d", capturedLimit)
@@ -469,7 +478,7 @@ func TestContactService_List(t *testing.T) {
 	t.Run("search status channel filters", func(t *testing.T) {
 		var capturedF ListContactQuery
 		repo := &mockContactRepository{
-			listFunc: func(ctx context.Context, q DBTX, tenantID int, limit, offset int, f ListContactQuery) ([]*Contact, int, error) {
+			listFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, f ListContactQuery) ([]*Contact, int, error) {
 				capturedF = f
 				return []*Contact{}, 0, nil
 			},
@@ -479,8 +488,8 @@ func TestContactService_List(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		q := ListContactQuery{Page: 1, Limit: 10, Search: "john", Status: "active", ChannelID: 3}
-		ten := &tenant.Tenant{ID: 1}
+		q := ListContactQuery{Page: 1, Limit: 10, Search: "john", Status: "active", ChannelID: uuid.MustParse("00000000-0000-4000-8000-000000000003")}
+		ten := &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001")}
 
 		_, _, err := svc.List(context.Background(), q, ten)
 		if err != nil {
@@ -492,8 +501,8 @@ func TestContactService_List(t *testing.T) {
 		if capturedF.Status != "active" {
 			t.Errorf("expected status 'active', got %q", capturedF.Status)
 		}
-		if capturedF.ChannelID != 3 {
-			t.Errorf("expected channelID 3, got %d", capturedF.ChannelID)
+		if capturedF.ChannelID != uuid.MustParse("00000000-0000-4000-8000-000000000003") {
+			t.Errorf("expected channelID 3, got %s", capturedF.ChannelID)
 		}
 	})
 }
@@ -515,8 +524,8 @@ func TestContactService_GetConversations(t *testing.T) {
 				return &mockRows{
 					columns: []string{"id", "status", "profile_id", "agent_id", "channel_id", "unread_count", "last_message", "last_activity", "created_at"},
 					data: [][]driver.Value{
-						{int64(1), "active", int64(10), int64(42), int64(5), int64(3), `{"text":"hello"}`, now, now},
-						{int64(2), "closed", int64(11), nil, int64(6), int64(0), nil, nil, now},
+						{"00000000-0000-4000-8000-000000000001", "active", "00000000-0000-4000-8000-00000000000a", "00000000-0000-4000-8000-00000000002a", "00000000-0000-4000-8000-000000000005", int64(3), `{"text":"hello"}`, now, now},
+						{"00000000-0000-4000-8000-000000000002", "closed", "00000000-0000-4000-8000-00000000000b", nil, "00000000-0000-4000-8000-000000000006", int64(0), nil, nil, now},
 					},
 				}, nil
 			},
@@ -526,7 +535,7 @@ func TestContactService_GetConversations(t *testing.T) {
 		repo := &mockContactRepository{}
 		svc := newService(repo, db)
 
-		convs, total, err := svc.GetConversations(context.Background(), 1, 1, 1, 20)
+		convs, total, err := svc.GetConversations(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 1, 20)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -539,8 +548,8 @@ func TestContactService_GetConversations(t *testing.T) {
 
 		// First conversation — has agent_id, last_message, last_activity
 		c0 := convs[0]
-		if c0.ID != 1 {
-			t.Errorf("expected ID 1, got %d", c0.ID)
+		if c0.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected ID 1, got %s", c0.ID)
 		}
 		if c0.Status != "active" {
 			t.Errorf("expected Status 'active', got %q", c0.Status)
@@ -550,14 +559,14 @@ func TestContactService_GetConversations(t *testing.T) {
 		}
 		if c0.AgentID == nil {
 			t.Error("expected AgentID to be non-nil for first conversation")
-		} else if *c0.AgentID != 42 {
-			t.Errorf("expected AgentID 42, got %d", *c0.AgentID)
+		} else if *c0.AgentID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+			t.Errorf("expected AgentID 42, got %s", *c0.AgentID)
 		}
 
 		// Second conversation — no agent_id, no last_message, no last_activity
 		c1 := convs[1]
-		if c1.ID != 2 {
-			t.Errorf("expected ID 2, got %d", c1.ID)
+		if c1.ID != uuid.MustParse("00000000-0000-4000-8000-000000000002") {
+			t.Errorf("expected ID 2, got %s", c1.ID)
 		}
 		if c1.Status != "closed" {
 			t.Errorf("expected Status 'closed', got %q", c1.Status)
@@ -566,4 +575,14 @@ func TestContactService_GetConversations(t *testing.T) {
 			t.Error("expected AgentID to be nil for second conversation")
 		}
 	})
+}
+
+func (m *mockContactRepository) ListConversations(ctx context.Context, q DBTX, tenantID, contactID uuid.UUID, limit, offset int) ([]ConversationBrief, int, error) {
+	return NewContactRepository().ListConversations(ctx, q, tenantID, contactID, limit, offset)
+}
+func (m *mockContactRepository) Merge(ctx context.Context, q DBTX, tenantID, sourceID, targetID uuid.UUID) error {
+	return NewContactRepository().Merge(ctx, q, tenantID, sourceID, targetID)
+}
+func (m *mockContactRepository) Unmerge(ctx context.Context, q DBTX, tenantID, id uuid.UUID) error {
+	return NewContactRepository().Unmerge(ctx, q, tenantID, id)
 }

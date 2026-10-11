@@ -144,7 +144,7 @@ Tenant resolved from `Host` header automatically. For local dev, use `X-Tenant-D
 | POST | `/api/user` | JWT | Create user with roles |
 | GET | `/api/user/:id` | JWT | User detail |
 | PUT | `/api/user/:id` | JWT | Update user + sync roles |
-| DELETE | `/api/user/:id` | JWT | Soft delete (protects id=1) |
+| DELETE | `/api/user/:id` | JWT | Soft delete (protects the super-admin role) |
 
 ## Docker
 
@@ -156,3 +156,9 @@ make docker-run
 ## License
 
 MIT
+
+## UUID identifiers
+
+All application primary keys and foreign keys use PostgreSQL `UUID`. Existing CREATE migrations generate IDs with `gen_random_uuid()` (PostgreSQL 13+). Go uses `uuid.UUID`; API IDs and JWT `sub`/`tenant` claims are UUID strings. Provider IDs remain strings. Super admin deletion is blocked by the tenant's `super-admin` role.
+
+These patched migrations describe a fresh development database. An already migrated integer-ID database is not converted by `make migrate-up`; recreate it using `make reset` only when its data may be discarded. Existing numeric-ID JWTs must be replaced by logging in again.

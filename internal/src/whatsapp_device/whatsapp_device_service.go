@@ -8,21 +8,23 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
 )
 
 type WhatsAppDeviceService interface {
-	List(ctx context.Context, tenantID int) ([]WhatsAppDevice, error)
-	GetByID(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error)
-	Create(ctx context.Context, req CreateDeviceRequest, tenantID int) (*WhatsAppDevice, error)
-	Update(ctx context.Context, tenantID int, id int, req UpdateDeviceRequest) (*WhatsAppDevice, error)
-	Delete(ctx context.Context, tenantID int, id int) error
-	Connect(ctx context.Context, tenantID int, id int) (string, error)
-	Disconnect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error)
-	CheckConnection(ctx context.Context, tenantID int, id int) (bool, error)
-	Scan(ctx context.Context, tenantID int, id int) (string, error)
-	SendMessage(ctx context.Context, tenantID int, deviceID int, to string, text string) (*MessageResult, error)
+	List(ctx context.Context, tenantID uuid.UUID) ([]WhatsAppDevice, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error)
+	Create(ctx context.Context, req CreateDeviceRequest, tenantID uuid.UUID) (*WhatsAppDevice, error)
+	Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateDeviceRequest) (*WhatsAppDevice, error)
+	Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	Connect(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (string, error)
+	Disconnect(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error)
+	CheckConnection(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (bool, error)
+	Scan(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (string, error)
+	SendMessage(ctx context.Context, tenantID uuid.UUID, deviceID uuid.UUID, to string, text string) (*MessageResult, error)
 }
 
 type whatsAppDeviceService struct {
@@ -41,15 +43,15 @@ func NewWhatsAppDeviceService(repo WhatsAppDeviceRepository, db *sql.DB, cfg *co
 	return svc
 }
 
-func (s *whatsAppDeviceService) List(ctx context.Context, tenantID int) ([]WhatsAppDevice, error) {
+func (s *whatsAppDeviceService) List(ctx context.Context, tenantID uuid.UUID) ([]WhatsAppDevice, error) {
 	return s.repo.List(ctx, s.db, tenantID)
 }
 
-func (s *whatsAppDeviceService) GetByID(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error) {
+func (s *whatsAppDeviceService) GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 	return s.repo.GetByID(ctx, s.db, tenantID, id)
 }
 
-func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequest, tenantID int) (*WhatsAppDevice, error) {
+func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequest, tenantID uuid.UUID) (*WhatsAppDevice, error) {
 	device := &WhatsAppDevice{
 		TenantID:    tenantID,
 		Name:        req.Name,
@@ -75,16 +77,24 @@ func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequ
 	return device, nil
 }
 
-func (s *whatsAppDeviceService) Update(ctx context.Context, tenantID int, id int, req UpdateDeviceRequest) (*WhatsAppDevice, error) {
+func (s *whatsAppDeviceService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateDeviceRequest) (*WhatsAppDevice, error) {
 	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
 	}
 
-	if req.Name != nil { existing.Name = *req.Name }
-	if req.CountryCode != nil { existing.CountryCode = *req.CountryCode }
-	if req.Phone != nil { existing.Phone = *req.Phone }
-	if req.Status != nil { existing.Status = *req.Status }
+	if req.Name != nil {
+		existing.Name = *req.Name
+	}
+	if req.CountryCode != nil {
+		existing.CountryCode = *req.CountryCode
+	}
+	if req.Phone != nil {
+		existing.Phone = *req.Phone
+	}
+	if req.Status != nil {
+		existing.Status = *req.Status
+	}
 
 	if err := s.repo.Update(ctx, s.db, tenantID, id, existing); err != nil {
 		return nil, err
@@ -93,7 +103,7 @@ func (s *whatsAppDeviceService) Update(ctx context.Context, tenantID int, id int
 	return existing, nil
 }
 
-func (s *whatsAppDeviceService) Delete(ctx context.Context, tenantID int, id int) error {
+func (s *whatsAppDeviceService) Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return err
@@ -108,7 +118,7 @@ func (s *whatsAppDeviceService) Delete(ctx context.Context, tenantID int, id int
 	return s.repo.Delete(ctx, s.db, tenantID, id)
 }
 
-func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id int) (string, error) {
+func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (string, error) {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return "", err
@@ -129,7 +139,7 @@ func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID int, id in
 	return pairingCode, nil
 }
 
-func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id int) (*WhatsAppDevice, error) {
+func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error) {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -146,7 +156,7 @@ func (s *whatsAppDeviceService) Disconnect(ctx context.Context, tenantID int, id
 	return device, nil
 }
 
-func (s *whatsAppDeviceService) CheckConnection(ctx context.Context, tenantID int, id int) (bool, error) {
+func (s *whatsAppDeviceService) CheckConnection(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (bool, error) {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return false, err
@@ -157,7 +167,7 @@ func (s *whatsAppDeviceService) CheckConnection(ctx context.Context, tenantID in
 	return false, fmt.Errorf("whatsapp client not configured")
 }
 
-func (s *whatsAppDeviceService) Scan(ctx context.Context, tenantID int, id int) (string, error) {
+func (s *whatsAppDeviceService) Scan(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (string, error) {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return "", err
@@ -168,7 +178,7 @@ func (s *whatsAppDeviceService) Scan(ctx context.Context, tenantID int, id int) 
 	return fmt.Sprintf("mock_qr_%d", time.Now().UnixMilli()), nil
 }
 
-func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID int, deviceID int, to string, text string) (*MessageResult, error) {
+func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID uuid.UUID, deviceID uuid.UUID, to string, text string) (*MessageResult, error) {
 	device, err := s.repo.GetByID(ctx, s.db, tenantID, deviceID)
 	if err != nil {
 		return nil, err
@@ -181,10 +191,10 @@ func (s *whatsAppDeviceService) SendMessage(ctx context.Context, tenantID int, d
 
 var nonAlphaNum = regexp.MustCompile(`[^a-z0-9]+`)
 
-func generateWhatsappID(name, phone string, tenantID int) string {
+func generateWhatsappID(name, phone string, tenantID uuid.UUID) string {
 	slug := strings.ToLower(name)
 	slug = nonAlphaNum.ReplaceAllString(slug, "-")
 	slug = strings.Trim(slug, "-")
 	cleanPhone := nonAlphaNum.ReplaceAllString(phone, "")
-	return fmt.Sprintf("%d-%s-%s", tenantID, slug, cleanPhone)
+	return fmt.Sprintf("%s-%s-%s", tenantID, slug, cleanPhone)
 }

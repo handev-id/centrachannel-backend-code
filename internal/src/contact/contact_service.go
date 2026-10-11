@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/src/tenant"
@@ -16,15 +18,15 @@ import (
 
 type ContactService interface {
 	List(ctx context.Context, q ListContactQuery, t *tenant.Tenant) ([]*Contact, int, error)
-	GetByID(ctx context.Context, tenantID int, id int) (*Contact, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Contact, error)
 	Create(ctx context.Context, req CreateContactRequest, t *tenant.Tenant) (*Contact, error)
-	Update(ctx context.Context, tenantID int, id int, req UpdateContactRequest) (*Contact, error)
-	Delete(ctx context.Context, tenantID int, id int) error
-	Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error
-	Unmerge(ctx context.Context, tenantID int, id int) error
-	GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) ([]ConversationBrief, int, error)
-	ImportCSV(ctx context.Context, tenantID int, records [][]string) (*CSVImportResult, error)
-	ExportCSV(ctx context.Context, tenantID int, search, status string) (string, error)
+	Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateContactRequest) (*Contact, error)
+	Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	Merge(ctx context.Context, tenantID uuid.UUID, sourceID uuid.UUID, targetID uuid.UUID) error
+	Unmerge(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	GetConversations(ctx context.Context, tenantID uuid.UUID, contactID uuid.UUID, page int, limit int) ([]ConversationBrief, int, error)
+	ImportCSV(ctx context.Context, tenantID uuid.UUID, records [][]string) (*CSVImportResult, error)
+	ExportCSV(ctx context.Context, tenantID uuid.UUID, search string, status string) (string, error)
 }
 
 type contactService struct {
@@ -39,11 +41,11 @@ func NewContactService(repo ContactRepository, profileRepo profile.ProfileReposi
 	return &contactService{repo: repo, profileRepo: profileRepo, db: db, cfg: cfg, logger: logger}
 }
 
-func (s *contactService) loadProfiles(ctx context.Context, tenantID int, contacts []*Contact) error {
+func (s *contactService) loadProfiles(ctx context.Context, tenantID uuid.UUID, contacts []*Contact) error {
 	if len(contacts) == 0 {
 		return nil
 	}
-	ids := make([]int, len(contacts))
+	ids := make([]uuid.UUID, len(contacts))
 	for i, c := range contacts {
 		ids[i] = c.ID
 	}
@@ -94,7 +96,7 @@ func (s *contactService) List(ctx context.Context, q ListContactQuery, t *tenant
 	return contacts, total, nil
 }
 
-func (s *contactService) GetByID(ctx context.Context, tenantID int, id int) (*Contact, error) {
+func (s *contactService) GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Contact, error) {
 	contact, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -160,7 +162,7 @@ func (s *contactService) Create(ctx context.Context, req CreateContactRequest, t
 	return contact, nil
 }
 
-func (s *contactService) Update(ctx context.Context, tenantID int, id int, req UpdateContactRequest) (*Contact, error) {
+func (s *contactService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateContactRequest) (*Contact, error) {
 	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -243,11 +245,11 @@ func (s *contactService) Update(ctx context.Context, tenantID int, id int, req U
 	return existing, nil
 }
 
-func (s *contactService) Delete(ctx context.Context, tenantID int, id int) error {
+func (s *contactService) Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	return s.repo.SoftDelete(ctx, s.db, tenantID, id)
 }
 
-func (s *contactService) GetConversations(ctx context.Context, tenantID int, contactID int, page, limit int) ([]ConversationBrief, int, error) {
+func (s *contactService) GetConversations(ctx context.Context, tenantID uuid.UUID, contactID uuid.UUID, page, limit int) ([]ConversationBrief, int, error) {
 	if page < 1 {
 		page = 1
 	}
@@ -256,62 +258,10 @@ func (s *contactService) GetConversations(ctx context.Context, tenantID int, con
 	}
 	offset := (page - 1) * limit
 
-	var total int
-	err := s.db.QueryRowContext(ctx, `
-		SELECT COUNT(*)
-		FROM conversations c
-		INNER JOIN profiles p ON p.id = c.profile_id
-		WHERE p.contact_id = $1 AND c.tenant_id = $2
-	`, contactID, tenantID).Scan(&total)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	rows, err := s.db.QueryContext(ctx, `
-		SELECT c.id, c.status, c.profile_id, c.agent_id, c.channel_id,
-		       c.unread_count, c.last_message, c.last_activity, c.created_at
-		FROM conversations c
-		INNER JOIN profiles p ON p.id = c.profile_id
-		WHERE p.contact_id = $1 AND c.tenant_id = $2
-		ORDER BY c.last_activity DESC NULLS LAST
-		LIMIT $3 OFFSET $4
-	`, contactID, tenantID, limit, offset)
-	if err != nil {
-		return nil, 0, err
-	}
-	defer rows.Close()
-
-	var convs []ConversationBrief
-	for rows.Next() {
-		var conv ConversationBrief
-		var agentID sql.NullInt64
-		var lastMessage sql.NullString
-		var lastActivity sql.NullTime
-
-		if err := rows.Scan(&conv.ID, &conv.Status, &conv.ProfileID, &agentID, &conv.ChannelID, &conv.UnreadCount, &lastMessage, &lastActivity, &conv.CreatedAt); err != nil {
-			return nil, 0, err
-		}
-		if agentID.Valid {
-			id := int(agentID.Int64)
-			conv.AgentID = &id
-		}
-		if lastMessage.Valid {
-			conv.LastMessage = []byte(lastMessage.String)
-		}
-		if lastActivity.Valid {
-			conv.LastActivity = &lastActivity.Time
-		}
-
-		convs = append(convs, conv)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, 0, err
-	}
-
-	return convs, total, nil
+	return s.repo.ListConversations(ctx, s.db, tenantID, contactID, limit, offset)
 }
 
-func (s *contactService) Merge(ctx context.Context, tenantID int, sourceID int, targetID int) error {
+func (s *contactService) Merge(ctx context.Context, tenantID uuid.UUID, sourceID uuid.UUID, targetID uuid.UUID) error {
 	if sourceID == targetID {
 		return fmt.Errorf("cannot merge contact into itself")
 	}
@@ -322,37 +272,28 @@ func (s *contactService) Merge(ctx context.Context, tenantID int, sourceID int, 
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `UPDATE contacts SET merged_to_id = $1, deleted_at = $2, updated_at = $2 WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL`, targetID, time.Now(), sourceID, tenantID); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE profiles SET merged_from_contact_id = $1 WHERE contact_id = $2`, sourceID, targetID); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE profiles SET contact_id = $1 WHERE contact_id = $2 AND deleted_at IS NULL`, targetID, sourceID); err != nil {
+	if err := s.repo.Merge(ctx, tx, tenantID, sourceID, targetID); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func (s *contactService) Unmerge(ctx context.Context, tenantID int, id int) error {
+func (s *contactService) Unmerge(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	tx, err := s.db.BeginTx(ctx, nil)
 	if err != nil {
 		return err
 	}
 	defer tx.Rollback()
 
-	if _, err := tx.ExecContext(ctx, `UPDATE contacts SET merged_to_id = NULL, deleted_at = NULL, updated_at = $1 WHERE id = $2 AND tenant_id = $3`, time.Now(), id, tenantID); err != nil {
-		return err
-	}
-	if _, err := tx.ExecContext(ctx, `UPDATE profiles SET merged_from_contact_id = NULL WHERE merged_from_contact_id = $1`, id); err != nil {
+	if err := s.repo.Unmerge(ctx, tx, tenantID, id); err != nil {
 		return err
 	}
 
 	return tx.Commit()
 }
 
-func (s *contactService) ImportCSV(ctx context.Context, tenantID int, records [][]string) (*CSVImportResult, error) {
+func (s *contactService) ImportCSV(ctx context.Context, tenantID uuid.UUID, records [][]string) (*CSVImportResult, error) {
 	if len(records) < 2 {
 		return &CSVImportResult{Total: 0, Success: 0, Failed: 0}, nil
 	}
@@ -400,7 +341,7 @@ func (s *contactService) ImportCSV(ctx context.Context, tenantID int, records []
 	return result, nil
 }
 
-func (s *contactService) ExportCSV(ctx context.Context, tenantID int, search, status string) (string, error) {
+func (s *contactService) ExportCSV(ctx context.Context, tenantID uuid.UUID, search, status string) (string, error) {
 	f := ListContactQuery{Search: search, Status: status}
 	contacts, _, err := s.repo.List(ctx, s.db, tenantID, 0, 0, f)
 	if err != nil {

@@ -62,7 +62,7 @@ func TestSend_Text_EvolutionError(t *testing.T) {
 
 	s := NewEvolutionSender(EvolutionConfig{APIURL: server.URL, APIKey: "key123", DeviceID: "dev1"}, testLogger)
 	text := "Hello"
-	_, err := s.Send(&OutgoingMessage{RecipientID: "invalid", Text: &text})
+	_, err := s.Send(&OutgoingMessage{RecipientID: `invalid`, Text: &text})
 	if err == nil {
 		t.Fatal("expected error")
 	}
@@ -120,7 +120,7 @@ func TestSend_Attachment_Success(t *testing.T) {
 
 func TestSend_Attachment_InvalidAttachment(t *testing.T) {
 	s := NewEvolutionSender(EvolutionConfig{APIURL: "http://example.com", APIKey: "key123", DeviceID: "dev1"}, testLogger)
-	_, err := s.Send(&OutgoingMessage{RecipientID: "5511999999999", Attachment: json.RawMessage(`invalid`)},)
+	_, err := s.Send(&OutgoingMessage{RecipientID: "5511999999999", Attachment: json.RawMessage(`invalid`)})
 	if err == nil {
 		t.Fatal("expected error for invalid attachment data")
 	}

@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/src/message"
 	"centrachannel/internal/src/profile"
@@ -41,7 +43,7 @@ func NewActionService(
 	}
 }
 
-func (s *ActionService) MarkConversationRead(ctx context.Context, tenantID int, conversationID int) error {
+func (s *ActionService) MarkConversationRead(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID) error {
 	if err := s.convRepo.MarkRead(ctx, s.db, tenantID, conversationID); err != nil {
 		return err
 	}
@@ -51,7 +53,7 @@ func (s *ActionService) MarkConversationRead(ctx context.Context, tenantID int, 
 	return nil
 }
 
-func (s *ActionService) sendWhatsAppReadReceipt(tenantID int, conversationID int) {
+func (s *ActionService) sendWhatsAppReadReceipt(tenantID uuid.UUID, conversationID uuid.UUID) {
 	ctx := context.Background()
 
 	conv, err := s.convRepo.GetByID(ctx, s.db, tenantID, conversationID)

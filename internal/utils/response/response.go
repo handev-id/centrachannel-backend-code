@@ -5,9 +5,20 @@ import (
 
 	"github.com/go-playground/validator/v10"
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 )
 
 var validate = validator.New()
+
+func init() {
+	validate.RegisterCustomTypeFunc(func(field reflect.Value) interface{} {
+		id := field.Interface().(uuid.UUID)
+		if id == uuid.Nil {
+			return ""
+		}
+		return id.String()
+	}, uuid.UUID{})
+}
 
 // sanitizeData guarantees array/map responses serialize as [] / {} instead of
 // null when the underlying Go value is a nil slice or map (json.Marshal emits
@@ -32,11 +43,12 @@ func sanitizeData(data interface{}) interface{} {
 	return data
 }
 
-func Validate(c fiber.Ctx, req interface{}) error {
-	if err := validate.Struct(req); err != nil {
-		return UnprocessableEntity(c, "Validation failed", formatValidationErrors(err))
-	}
-	return nil
+func Validate(req interface{}) error {
+	return validate.Struct(req)
+}
+
+func ValidationFailed(c fiber.Ctx, err error) error {
+	return UnprocessableEntity(c, "Validation failed", formatValidationErrors(err))
 }
 
 func UnprocessableEntity(c fiber.Ctx, message string, errors interface{}) error {
@@ -59,16 +71,16 @@ type ErrorBody struct {
 }
 
 type ResponseMeta struct {
-	Message      string `json:"message"`
-	Total        *int   `json:"total,omitempty"`
-	PerPage      *int   `json:"per_page,omitempty"`
-	CurrentPage  *int   `json:"current_page,omitempty"`
-	LastPage     *int   `json:"last_page,omitempty"`
-	From         *int   `json:"from,omitempty"`
-	To           *int   `json:"to,omitempty"`
-	LastID       *int   `json:"last_id,omitempty"`
-	LastActivity string `json:"last_activity,omitempty"`
-	HasMore      *bool  `json:"has_more,omitempty"`
+	Message      string     `json:"message"`
+	Total        *int       `json:"total,omitempty"`
+	PerPage      *int       `json:"per_page,omitempty"`
+	CurrentPage  *int       `json:"current_page,omitempty"`
+	LastPage     *int       `json:"last_page,omitempty"`
+	From         *int       `json:"from,omitempty"`
+	To           *int       `json:"to,omitempty"`
+	LastID       *uuid.UUID `json:"last_id,omitempty"`
+	LastActivity *string    `json:"last_activity,omitempty"`
+	HasMore      *bool      `json:"has_more,omitempty"`
 }
 
 type Response struct {
@@ -92,12 +104,15 @@ func Paginated(c fiber.Ctx, message string, data interface{}, total, page, limit
 	})
 }
 
-func CursorPaginated(c fiber.Ctx, message string, data interface{}, lastID int, hasMore bool, lastActivity ...string) error {
+func CursorPaginated(c fiber.Ctx, message string, data interface{}, lastID uuid.UUID, hasMore bool, lastActivity ...string) error {
 	li := lastID
 	hm := hasMore
-	m := ResponseMeta{Message: message, LastID: &li, HasMore: &hm}
+	m := ResponseMeta{Message: message, HasMore: &hm}
+	if lastID != uuid.Nil {
+		m.LastID = &li
+	}
 	if len(lastActivity) > 0 {
-		m.LastActivity = lastActivity[0]
+		m.LastActivity = &lastActivity[0]
 	}
 	return c.Status(fiber.StatusOK).JSON(Response{
 		Meta: m,

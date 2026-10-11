@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
@@ -13,22 +15,22 @@ import (
 )
 
 type ConversationService interface {
-	ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error)
-	GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error)
+	ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, uuid.UUID, string, bool, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Conversation, error)
 	Create(ctx context.Context, req CreateConversationRequest, t *tenant.Tenant) (*Conversation, error)
-	Assign(ctx context.Context, tenantID int, id int, agentID int) error
-	Unassign(ctx context.Context, tenantID int, id int) error
-	Resolve(ctx context.Context, tenantID int, id int) error
-	Reopen(ctx context.Context, tenantID int, id int) error
-	MarkRead(ctx context.Context, tenantID int, id int) error
-	GetTotalUnread(ctx context.Context, tenantID int) (int, error)
+	Assign(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, agentID uuid.UUID) error
+	Unassign(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	Resolve(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	Reopen(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	MarkRead(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	GetTotalUnread(ctx context.Context, tenantID uuid.UUID) (int, error)
 }
 
 type conversationService struct {
-	repo   ConversationRepository
-	db     *sql.DB
-	cfg    *config.Config
-	logger *logger.Logger
+	repo     ConversationRepository
+	db       *sql.DB
+	cfg      *config.Config
+	logger   *logger.Logger
 	notifier ws.Notifier
 }
 
@@ -40,23 +42,23 @@ func NewConversationService(repo ConversationRepository, db *sql.DB, cfg *config
 	return svc
 }
 
-func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, int, string, bool, error) {
+func (s *conversationService) ListCursor(ctx context.Context, q ListConversationQuery, t *tenant.Tenant) ([]*Conversation, uuid.UUID, string, bool, error) {
 	if q.Limit < 1 || q.Limit > 100 {
 		q.Limit = 20
 	}
 
 	var lastActivityTime *time.Time
 	if q.LastActivity != "" {
-		parsed, err := time.Parse(time.RFC3339, q.LastActivity)
+		parsed, err := time.Parse(time.RFC3339Nano, q.LastActivity)
 		if err != nil {
-			return nil, 0, "", false, fmt.Errorf("invalid last_activity: %w", err)
+			return nil, uuid.Nil, "", false, fmt.Errorf("invalid last_activity: %w", err)
 		}
 		lastActivityTime = &parsed
 	}
 
 	convs, err := s.repo.ListCursor(ctx, s.db, t.ID, q.Limit+1, q.Status, q.ChannelID, q.AgentID, q.Search, lastActivityTime, q.LastID)
 	if err != nil {
-		return nil, 0, "", false, err
+		return nil, uuid.Nil, "", false, err
 	}
 
 	hasMore := len(convs) > q.Limit
@@ -64,20 +66,20 @@ func (s *conversationService) ListCursor(ctx context.Context, q ListConversation
 		convs = convs[:q.Limit]
 	}
 
-	var lastID int
+	var lastID uuid.UUID
 	var lastActivityStr string
 	if len(convs) > 0 {
 		last := convs[len(convs)-1]
 		lastID = last.ID
 		if last.LastActivity != nil {
-			lastActivityStr = last.LastActivity.Format(time.RFC3339)
+			lastActivityStr = last.LastActivity.Format(time.RFC3339Nano)
 		}
 	}
 
 	return convs, lastID, lastActivityStr, hasMore, nil
 }
 
-func (s *conversationService) GetByID(ctx context.Context, tenantID int, id int) (*Conversation, error) {
+func (s *conversationService) GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Conversation, error) {
 	return s.repo.GetByID(ctx, s.db, tenantID, id)
 }
 
@@ -88,7 +90,7 @@ func (s *conversationService) Create(ctx context.Context, req CreateConversation
 		ProfileID: req.ProfileID,
 		ChannelID: req.ChannelID,
 	}
-	if req.AgentID > 0 {
+	if req.AgentID != uuid.Nil {
 		conv.Status = "assigned"
 		conv.AgentID = &req.AgentID
 	}
@@ -104,7 +106,7 @@ func (s *conversationService) Create(ctx context.Context, req CreateConversation
 	return conv, nil
 }
 
-func (s *conversationService) Assign(ctx context.Context, tenantID int, id int, agentID int) error {
+func (s *conversationService) Assign(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, agentID uuid.UUID) error {
 	if err := s.repo.Assign(ctx, s.db, tenantID, id, agentID); err != nil {
 		return err
 	}
@@ -112,7 +114,7 @@ func (s *conversationService) Assign(ctx context.Context, tenantID int, id int, 
 	return nil
 }
 
-func (s *conversationService) Unassign(ctx context.Context, tenantID int, id int) error {
+func (s *conversationService) Unassign(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	if err := s.repo.Unassign(ctx, s.db, tenantID, id); err != nil {
 		return err
 	}
@@ -120,7 +122,7 @@ func (s *conversationService) Unassign(ctx context.Context, tenantID int, id int
 	return nil
 }
 
-func (s *conversationService) Resolve(ctx context.Context, tenantID int, id int) error {
+func (s *conversationService) Resolve(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, "resolved"); err != nil {
 		return err
 	}
@@ -128,7 +130,7 @@ func (s *conversationService) Resolve(ctx context.Context, tenantID int, id int)
 	return nil
 }
 
-func (s *conversationService) Reopen(ctx context.Context, tenantID int, id int) error {
+func (s *conversationService) Reopen(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, "unassigned"); err != nil {
 		return err
 	}
@@ -136,7 +138,7 @@ func (s *conversationService) Reopen(ctx context.Context, tenantID int, id int) 
 	return nil
 }
 
-func (s *conversationService) notifyConversationUpdated(tenantID int, conversationID int) {
+func (s *conversationService) notifyConversationUpdated(tenantID uuid.UUID, conversationID uuid.UUID) {
 	if s.notifier == nil {
 		return
 	}
@@ -148,10 +150,10 @@ func (s *conversationService) notifyConversationUpdated(tenantID int, conversati
 	s.notifier.Notify(tenantID, "conversation-updated", conv)
 }
 
-func (s *conversationService) MarkRead(ctx context.Context, tenantID int, id int) error {
+func (s *conversationService) MarkRead(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	return s.repo.MarkRead(ctx, s.db, tenantID, id)
 }
 
-func (s *conversationService) GetTotalUnread(ctx context.Context, tenantID int) (int, error) {
+func (s *conversationService) GetTotalUnread(ctx context.Context, tenantID uuid.UUID) (int, error) {
 	return s.repo.GetTotalUnread(ctx, s.db, tenantID)
 }

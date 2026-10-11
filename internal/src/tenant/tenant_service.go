@@ -5,12 +5,14 @@ import (
 	"database/sql"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
 )
 
 type TenantService interface {
-	GetByID(ctx context.Context, id int) (*Tenant, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*Tenant, error)
 	Update(ctx context.Context, tenant *Tenant) error
 }
 
@@ -25,7 +27,7 @@ func NewTenantService(repo TenantRepository, db *sql.DB, cfg *config.Config, log
 	return &tenantService{repo: repo, db: db, cfg: cfg, logger: logger}
 }
 
-func (s *tenantService) GetByID(ctx context.Context, id int) (*Tenant, error) {
+func (s *tenantService) GetByID(ctx context.Context, id uuid.UUID) (*Tenant, error) {
 	return s.repo.GetByID(ctx, s.db, id)
 }
 

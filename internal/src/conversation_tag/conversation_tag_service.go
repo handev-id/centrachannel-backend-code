@@ -3,12 +3,14 @@ package conversation_tag
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type ConversationTagService interface {
-	ListByConversation(ctx context.Context, tenantID int, conversationID int) ([]ConversationTag, error)
-	Attach(ctx context.Context, tenantID int, conversationID int, tagID int) error
-	Detach(ctx context.Context, tenantID int, conversationID int, tagID int) error
+	ListByConversation(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error)
+	Attach(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error
+	Detach(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error
 }
 
 type conversationTagService struct {
@@ -20,14 +22,14 @@ func NewConversationTagService(repo ConversationTagRepository, db *sql.DB) Conve
 	return &conversationTagService{repo: repo, db: db}
 }
 
-func (s *conversationTagService) ListByConversation(ctx context.Context, tenantID int, conversationID int) ([]ConversationTag, error) {
+func (s *conversationTagService) ListByConversation(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error) {
 	return s.repo.ListByConversation(ctx, s.db, tenantID, conversationID)
 }
 
-func (s *conversationTagService) Attach(ctx context.Context, tenantID int, conversationID int, tagID int) error {
+func (s *conversationTagService) Attach(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 	return s.repo.Attach(ctx, s.db, tenantID, conversationID, tagID)
 }
 
-func (s *conversationTagService) Detach(ctx context.Context, tenantID int, conversationID int, tagID int) error {
+func (s *conversationTagService) Detach(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 	return s.repo.Detach(ctx, s.db, tenantID, conversationID, tagID)
 }

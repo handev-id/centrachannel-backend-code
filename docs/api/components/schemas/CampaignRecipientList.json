@@ -1,12 +1,12 @@
 {
   "type": "object",
   "properties": {
-    "id": { "type": "integer", "example": 1 },
-    "tenant_id": { "type": "integer", "example": 1 },
+    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+    "tenant_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
     "name": { "type": "string", "example": "Newsletter Subscribers" },
     "source": { "type": "string", "example": "manual" },
     "status": { "type": "string", "example": "ready" },
-    "channel_id": { "type": "integer", "example": 1 },
+    "channel_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
     "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
     "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" }
   }

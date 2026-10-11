@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 var mockDriverInst = &mockDriver{}
@@ -137,20 +139,20 @@ func (r *mockResult) RowsAffected() (int64, error) { return r.rowsAffected, nil 
 var _ driver.Result = (*mockResult)(nil)
 
 type mockConversationTagRepository struct {
-	listByConversationFunc func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]ConversationTag, error)
-	attachFunc             func(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error
-	detachFunc             func(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error
+	listByConversationFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error)
+	attachFunc             func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error
+	detachFunc             func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error
 }
 
-func (m *mockConversationTagRepository) ListByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]ConversationTag, error) {
+func (m *mockConversationTagRepository) ListByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error) {
 	return m.listByConversationFunc(ctx, q, tenantID, conversationID)
 }
 
-func (m *mockConversationTagRepository) Attach(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error {
+func (m *mockConversationTagRepository) Attach(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 	return m.attachFunc(ctx, q, tenantID, conversationID, tagID)
 }
 
-func (m *mockConversationTagRepository) Detach(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error {
+func (m *mockConversationTagRepository) Detach(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 	return m.detachFunc(ctx, q, tenantID, conversationID, tagID)
 }
 
@@ -170,9 +172,9 @@ func newService(repo ConversationTagRepository, db *sql.DB) ConversationTagServi
 
 func TestConversationTagService_Attach(t *testing.T) {
 	t.Run("creates tag-conversation link", func(t *testing.T) {
-		var capturedTenantID, capturedConversationID, capturedTagID int
+		var capturedTenantID, capturedConversationID, capturedTagID uuid.UUID
 		repo := &mockConversationTagRepository{
-			attachFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error {
+			attachFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 				capturedTenantID = tenantID
 				capturedConversationID = conversationID
 				capturedTagID = tagID
@@ -184,27 +186,27 @@ func TestConversationTagService_Attach(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		err := svc.Attach(context.Background(), 1, 10, 5)
+		err := svc.Attach(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), uuid.MustParse("00000000-0000-4000-8000-000000000005"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
-		if capturedConversationID != 10 {
-			t.Errorf("expected conversationID 10, got %d", capturedConversationID)
+		if capturedConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Errorf("expected conversationID 10, got %s", capturedConversationID)
 		}
-		if capturedTagID != 5 {
-			t.Errorf("expected tagID 5, got %d", capturedTagID)
+		if capturedTagID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected tagID 5, got %s", capturedTagID)
 		}
 	})
 }
 
 func TestConversationTagService_Detach(t *testing.T) {
 	t.Run("removes tag-conversation link", func(t *testing.T) {
-		var capturedTenantID, capturedConversationID, capturedTagID int
+		var capturedTenantID, capturedConversationID, capturedTagID uuid.UUID
 		repo := &mockConversationTagRepository{
-			detachFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error {
+			detachFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 				capturedTenantID = tenantID
 				capturedConversationID = conversationID
 				capturedTagID = tagID
@@ -216,18 +218,18 @@ func TestConversationTagService_Detach(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		err := svc.Detach(context.Background(), 1, 10, 5)
+		err := svc.Detach(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), uuid.MustParse("00000000-0000-4000-8000-000000000005"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
-		if capturedConversationID != 10 {
-			t.Errorf("expected conversationID 10, got %d", capturedConversationID)
+		if capturedConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Errorf("expected conversationID 10, got %s", capturedConversationID)
 		}
-		if capturedTagID != 5 {
-			t.Errorf("expected tagID 5, got %d", capturedTagID)
+		if capturedTagID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected tagID 5, got %s", capturedTagID)
 		}
 	})
 }
@@ -235,12 +237,12 @@ func TestConversationTagService_Detach(t *testing.T) {
 func TestConversationTagService_ListByConversation(t *testing.T) {
 	t.Run("returns tags for a conversation", func(t *testing.T) {
 		tags := []ConversationTag{
-			{ID: 1, TagID: 5, ConversationID: 10, TenantID: 1},
-			{ID: 2, TagID: 8, ConversationID: 10, TenantID: 1},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TagID: uuid.MustParse("00000000-0000-4000-8000-000000000005"), ConversationID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001")},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), TagID: uuid.MustParse("00000000-0000-4000-8000-000000000008"), ConversationID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001")},
 		}
-		var capturedTenantID, capturedConversationID int
+		var capturedTenantID, capturedConversationID uuid.UUID
 		repo := &mockConversationTagRepository{
-			listByConversationFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]ConversationTag, error) {
+			listByConversationFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error) {
 				capturedTenantID = tenantID
 				capturedConversationID = conversationID
 				return tags, nil
@@ -251,24 +253,24 @@ func TestConversationTagService_ListByConversation(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		result, err := svc.ListByConversation(context.Background(), 1, 10)
+		result, err := svc.ListByConversation(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
-		if capturedConversationID != 10 {
-			t.Errorf("expected conversationID 10, got %d", capturedConversationID)
+		if capturedConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Errorf("expected conversationID 10, got %s", capturedConversationID)
 		}
 		if len(result) != 2 {
 			t.Fatalf("expected 2 tags, got %d", len(result))
 		}
-		if result[0].TagID != 5 {
-			t.Errorf("expected TagID 5, got %d", result[0].TagID)
+		if result[0].TagID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected TagID 5, got %s", result[0].TagID)
 		}
-		if result[1].TagID != 8 {
-			t.Errorf("expected TagID 8, got %d", result[1].TagID)
+		if result[1].TagID != uuid.MustParse("00000000-0000-4000-8000-000000000008") {
+			t.Errorf("expected TagID 8, got %s", result[1].TagID)
 		}
 	})
 }

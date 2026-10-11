@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+
+	"github.com/google/uuid"
 )
 
 type channelRepository struct{}
@@ -13,7 +15,7 @@ func NewChannelRepository() ChannelRepository {
 	return &channelRepository{}
 }
 
-func (r *channelRepository) GetByID(ctx context.Context, q DBTX, id int) (*Channel, error) {
+func (r *channelRepository) GetByID(ctx context.Context, q DBTX, id uuid.UUID) (*Channel, error) {
 	query := `SELECT id, name, type, logo, created_at, updated_at FROM channels WHERE id = $1`
 	var c Channel
 	var logo sql.NullString

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/src/tenant"
@@ -30,11 +31,13 @@ func (h *UserHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
 
-	var roleID *int
+	var roleID *uuid.UUID
 	if rid := c.Query("role_id"); rid != "" {
-		if v, err := strconv.Atoi(rid); err == nil {
-			roleID = &v
+		v, err := uuid.Parse(rid)
+		if err != nil || v == uuid.Nil {
+			return response.BadRequest(c, "Invalid role_id", nil)
 		}
+		roleID = &v
 	}
 
 	q := ListUserQuery{
@@ -66,8 +69,8 @@ func (h *UserHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *UserHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -84,8 +87,8 @@ func (h *UserHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	user, err := h.service.Create(c.Context(), req, t)
@@ -97,8 +100,8 @@ func (h *UserHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *UserHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -106,8 +109,8 @@ func (h *UserHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	user, err := h.service.Update(c.Context(), t.ID, id, req)
@@ -119,13 +122,13 @@ func (h *UserHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *UserHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
 	if err := h.service.Delete(c.Context(), t.ID, id); err != nil {
-		if err.Error() == "forbidden: you can not delete super admin" {
+		if err.Error() == "You can not delete super admin" {
 			return response.Forbidden(c, err.Error())
 		}
 		return response.BadRequest(c, err.Error(), nil)

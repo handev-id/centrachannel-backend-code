@@ -4,6 +4,8 @@ import (
 	"context"
 	"database/sql"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -13,14 +15,14 @@ type DBTX interface {
 }
 
 type ConversationRepository interface {
-	ListCursor(ctx context.Context, q DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*Conversation, error)
-	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Conversation, error)
-	FindOpenByProfileAndChannel(ctx context.Context, q DBTX, tenantID int, profileID int, channelID int) (*Conversation, error)
-	Create(ctx context.Context, q DBTX, conv *Conversation) (int, error)
-	UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error
-	Assign(ctx context.Context, q DBTX, tenantID int, id int, agentID int) error
-	Unassign(ctx context.Context, q DBTX, tenantID int, id int) error
-	MarkRead(ctx context.Context, q DBTX, tenantID int, id int) error
-	UpdateLastMessage(ctx context.Context, q DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
-	GetTotalUnread(ctx context.Context, q DBTX, tenantID int) (int, error)
+	ListCursor(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, status string, channelID uuid.UUID, agentID uuid.UUID, search string, lastActivity *time.Time, lastID uuid.UUID) ([]*Conversation, error)
+	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Conversation, error)
+	FindOpenByProfileAndChannel(ctx context.Context, q DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*Conversation, error)
+	Create(ctx context.Context, q DBTX, conv *Conversation) (uuid.UUID, error)
+	UpdateStatus(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error
+	Assign(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, agentID uuid.UUID) error
+	Unassign(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
+	MarkRead(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
+	UpdateLastMessage(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error
+	GetTotalUnread(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
 }

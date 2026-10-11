@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"io"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 var mockDriverInst = &mockDriver{}
@@ -137,94 +139,94 @@ func (r *mockResult) RowsAffected() (int64, error) { return r.rowsAffected, nil 
 var _ driver.Result = (*mockResult)(nil)
 
 type mockDashboardRepository struct {
-	getTotalContactsFunc            func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getNewContactsFunc              func(ctx context.Context, q DBTX, tenantID int, days int) (int, error)
-	getTotalConversationsFunc       func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getActiveConversationsFunc      func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getNewConversationsFunc         func(ctx context.Context, q DBTX, tenantID int, days int) (int, error)
-	getResolvedTodayFunc            func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getUnassignedCountFunc          func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getTotalUnreadConversationsFunc func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getTotalUnreadMessagesFunc      func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getTotalMessagesFunc            func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getMessagesTodayFunc            func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getTotalCampaignsFunc           func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getConnectedWhatsappDevicesFunc func(ctx context.Context, q DBTX, tenantID int) (int, error)
-	getConversationsByStatusFunc    func(ctx context.Context, q DBTX, tenantID int) (*ConversationsByStatus, error)
-	getConversationsByChannelFunc   func(ctx context.Context, q DBTX, tenantID int) ([]ConversationsByChannel, error)
-	getRecentConversationsFunc      func(ctx context.Context, q DBTX, tenantID int, limit int) ([]RecentConversation, error)
-	getConversationChartFunc        func(ctx context.Context, q DBTX, tenantID int, days int) ([]ChartDataPoint, error)
-	getContactsByStatusFunc         func(ctx context.Context, q DBTX, tenantID int) (*ContactsByStatus, error)
-	getMessagesBySenderTypeFunc     func(ctx context.Context, q DBTX, tenantID int) (*MessagesBySenderType, error)
-	getMessagesByDateFunc           func(ctx context.Context, q DBTX, tenantID int, days int) ([]MessagesByDate, error)
-	getCampaignsByStatusFunc        func(ctx context.Context, q DBTX, tenantID int) (map[string]int, error)
-	getAgentWorkloadFunc            func(ctx context.Context, q DBTX, tenantID int) ([]AgentWorkload, error)
+	getTotalContactsFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getNewContactsFunc              func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error)
+	getTotalConversationsFunc       func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getActiveConversationsFunc      func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getNewConversationsFunc         func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error)
+	getResolvedTodayFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getUnassignedCountFunc          func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getTotalUnreadConversationsFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getTotalUnreadMessagesFunc      func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getTotalMessagesFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getMessagesTodayFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getTotalCampaignsFunc           func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getConnectedWhatsappDevicesFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error)
+	getConversationsByStatusFunc    func(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ConversationsByStatus, error)
+	getConversationsByChannelFunc   func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]ConversationsByChannel, error)
+	getRecentConversationsFunc      func(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int) ([]RecentConversation, error)
+	getConversationChartFunc        func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error)
+	getContactsByStatusFunc         func(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ContactsByStatus, error)
+	getMessagesBySenderTypeFunc     func(ctx context.Context, q DBTX, tenantID uuid.UUID) (*MessagesBySenderType, error)
+	getMessagesByDateFunc           func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]MessagesByDate, error)
+	getCampaignsByStatusFunc        func(ctx context.Context, q DBTX, tenantID uuid.UUID) (map[string]int, error)
+	getAgentWorkloadFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]AgentWorkload, error)
 }
 
-func (m *mockDashboardRepository) GetTotalContacts(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetTotalContacts(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getTotalContactsFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetNewContacts(ctx context.Context, q DBTX, tenantID int, days int) (int, error) {
+func (m *mockDashboardRepository) GetNewContacts(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
 	return m.getNewContactsFunc(ctx, q, tenantID, days)
 }
-func (m *mockDashboardRepository) GetTotalConversations(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetTotalConversations(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getTotalConversationsFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetActiveConversations(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetActiveConversations(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getActiveConversationsFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetNewConversations(ctx context.Context, q DBTX, tenantID int, days int) (int, error) {
+func (m *mockDashboardRepository) GetNewConversations(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
 	return m.getNewConversationsFunc(ctx, q, tenantID, days)
 }
-func (m *mockDashboardRepository) GetResolvedToday(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetResolvedToday(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getResolvedTodayFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetUnassignedCount(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetUnassignedCount(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getUnassignedCountFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetTotalUnreadConversations(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetTotalUnreadConversations(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getTotalUnreadConversationsFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetTotalUnreadMessages(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetTotalUnreadMessages(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getTotalUnreadMessagesFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetTotalMessages(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetTotalMessages(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getTotalMessagesFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetMessagesToday(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetMessagesToday(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getMessagesTodayFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetTotalCampaigns(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetTotalCampaigns(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getTotalCampaignsFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetConnectedWhatsappDevices(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (m *mockDashboardRepository) GetConnectedWhatsappDevices(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	return m.getConnectedWhatsappDevicesFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetConversationsByStatus(ctx context.Context, q DBTX, tenantID int) (*ConversationsByStatus, error) {
+func (m *mockDashboardRepository) GetConversationsByStatus(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ConversationsByStatus, error) {
 	return m.getConversationsByStatusFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetConversationsByChannel(ctx context.Context, q DBTX, tenantID int) ([]ConversationsByChannel, error) {
+func (m *mockDashboardRepository) GetConversationsByChannel(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]ConversationsByChannel, error) {
 	return m.getConversationsByChannelFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetRecentConversations(ctx context.Context, q DBTX, tenantID int, limit int) ([]RecentConversation, error) {
+func (m *mockDashboardRepository) GetRecentConversations(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int) ([]RecentConversation, error) {
 	return m.getRecentConversationsFunc(ctx, q, tenantID, limit)
 }
-func (m *mockDashboardRepository) GetConversationChart(ctx context.Context, q DBTX, tenantID int, days int) ([]ChartDataPoint, error) {
+func (m *mockDashboardRepository) GetConversationChart(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error) {
 	return m.getConversationChartFunc(ctx, q, tenantID, days)
 }
-func (m *mockDashboardRepository) GetContactsByStatus(ctx context.Context, q DBTX, tenantID int) (*ContactsByStatus, error) {
+func (m *mockDashboardRepository) GetContactsByStatus(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ContactsByStatus, error) {
 	return m.getContactsByStatusFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetMessagesBySenderType(ctx context.Context, q DBTX, tenantID int) (*MessagesBySenderType, error) {
+func (m *mockDashboardRepository) GetMessagesBySenderType(ctx context.Context, q DBTX, tenantID uuid.UUID) (*MessagesBySenderType, error) {
 	return m.getMessagesBySenderTypeFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetMessagesByDate(ctx context.Context, q DBTX, tenantID int, days int) ([]MessagesByDate, error) {
+func (m *mockDashboardRepository) GetMessagesByDate(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]MessagesByDate, error) {
 	return m.getMessagesByDateFunc(ctx, q, tenantID, days)
 }
-func (m *mockDashboardRepository) GetCampaignsByStatus(ctx context.Context, q DBTX, tenantID int) (map[string]int, error) {
+func (m *mockDashboardRepository) GetCampaignsByStatus(ctx context.Context, q DBTX, tenantID uuid.UUID) (map[string]int, error) {
 	return m.getCampaignsByStatusFunc(ctx, q, tenantID)
 }
-func (m *mockDashboardRepository) GetAgentWorkload(ctx context.Context, q DBTX, tenantID int) ([]AgentWorkload, error) {
+func (m *mockDashboardRepository) GetAgentWorkload(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]AgentWorkload, error) {
 	return m.getAgentWorkloadFunc(ctx, q, tenantID)
 }
 
@@ -244,59 +246,85 @@ func newService(repo DashboardRepository, db *sql.DB) DashboardService {
 
 func defaultMockRepo() *mockDashboardRepository {
 	return &mockDashboardRepository{
-		getTotalContactsFunc:            func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 100, nil },
-		getNewContactsFunc:              func(ctx context.Context, q DBTX, tenantID int, days int) (int, error) { return 10, nil },
-		getTotalConversationsFunc:       func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 200, nil },
-		getActiveConversationsFunc:      func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 50, nil },
-		getNewConversationsFunc:         func(ctx context.Context, q DBTX, tenantID int, days int) (int, error) { return 20, nil },
-		getResolvedTodayFunc:            func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 15, nil },
-		getUnassignedCountFunc:          func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 10, nil },
-		getTotalUnreadConversationsFunc: func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 30, nil },
-		getTotalUnreadMessagesFunc:      func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 75, nil },
-		getTotalMessagesFunc:            func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 5000, nil },
-		getMessagesTodayFunc:            func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 45, nil },
-		getTotalCampaignsFunc:           func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 12, nil },
-		getConnectedWhatsappDevicesFunc: func(ctx context.Context, q DBTX, tenantID int) (int, error) { return 2, nil },
-		getConversationsByStatusFunc: func(ctx context.Context, q DBTX, tenantID int) (*ConversationsByStatus, error) {
+		getTotalContactsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 100, nil
+		},
+		getNewContactsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
+			return 10, nil
+		},
+		getTotalConversationsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 200, nil
+		},
+		getActiveConversationsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 50, nil
+		},
+		getNewConversationsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
+			return 20, nil
+		},
+		getResolvedTodayFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 15, nil
+		},
+		getUnassignedCountFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 10, nil
+		},
+		getTotalUnreadConversationsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 30, nil
+		},
+		getTotalUnreadMessagesFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 75, nil
+		},
+		getTotalMessagesFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 5000, nil
+		},
+		getMessagesTodayFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 45, nil
+		},
+		getTotalCampaignsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 12, nil
+		},
+		getConnectedWhatsappDevicesFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
+			return 2, nil
+		},
+		getConversationsByStatusFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ConversationsByStatus, error) {
 			return &ConversationsByStatus{Unassigned: 10, Assigned: 40, Resolved: 150}, nil
 		},
-		getConversationsByChannelFunc: func(ctx context.Context, q DBTX, tenantID int) ([]ConversationsByChannel, error) {
+		getConversationsByChannelFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]ConversationsByChannel, error) {
 			return []ConversationsByChannel{
-				{ChannelID: 1, ChannelName: "whatsapp", Total: 150, Unread: 60},
-				{ChannelID: 2, ChannelName: "facebook", Total: 50, Unread: 15},
+				{ChannelID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), ChannelName: "whatsapp", Total: 150, Unread: 60},
+				{ChannelID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), ChannelName: "facebook", Total: 50, Unread: 15},
 			}, nil
 		},
-		getRecentConversationsFunc: func(ctx context.Context, q DBTX, tenantID int, limit int) ([]RecentConversation, error) {
+		getRecentConversationsFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int) ([]RecentConversation, error) {
 			return []RecentConversation{
-				{ID: 1, Status: "assigned", UnreadCount: 2},
-				{ID: 2, Status: "unassigned", UnreadCount: 0},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Status: "assigned", UnreadCount: 2},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), Status: "unassigned", UnreadCount: 0},
 			}, nil
 		},
-		getConversationChartFunc: func(ctx context.Context, q DBTX, tenantID int, days int) ([]ChartDataPoint, error) {
+		getConversationChartFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error) {
 			return []ChartDataPoint{
 				{Date: "2026-06-15", Count: 5},
 				{Date: "2026-06-16", Count: 8},
 			}, nil
 		},
-		getContactsByStatusFunc: func(ctx context.Context, q DBTX, tenantID int) (*ContactsByStatus, error) {
+		getContactsByStatusFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ContactsByStatus, error) {
 			return &ContactsByStatus{Individual: 80, Institution: 20}, nil
 		},
-		getMessagesBySenderTypeFunc: func(ctx context.Context, q DBTX, tenantID int) (*MessagesBySenderType, error) {
+		getMessagesBySenderTypeFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (*MessagesBySenderType, error) {
 			return &MessagesBySenderType{Contact: 3000, User: 2000}, nil
 		},
-		getMessagesByDateFunc: func(ctx context.Context, q DBTX, tenantID int, days int) ([]MessagesByDate, error) {
+		getMessagesByDateFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]MessagesByDate, error) {
 			return []MessagesByDate{
 				{Date: "2026-06-15", Count: 50},
 				{Date: "2026-06-16", Count: 45},
 			}, nil
 		},
-		getCampaignsByStatusFunc: func(ctx context.Context, q DBTX, tenantID int) (map[string]int, error) {
+		getCampaignsByStatusFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) (map[string]int, error) {
 			return map[string]int{"draft": 3, "inprogress": 2, "completed": 7}, nil
 		},
-		getAgentWorkloadFunc: func(ctx context.Context, q DBTX, tenantID int) ([]AgentWorkload, error) {
+		getAgentWorkloadFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]AgentWorkload, error) {
 			return []AgentWorkload{
-				{ID: 1, FirstName: "Alice", OngoingConversations: 12},
-				{ID: 2, FirstName: "Bob", OngoingConversations: 8},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Alice", OngoingConversations: 12},
+				{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), FirstName: "Bob", OngoingConversations: 8},
 			}, nil
 		},
 	}
@@ -304,15 +332,15 @@ func defaultMockRepo() *mockDashboardRepository {
 
 func TestDashboardService_GetStats(t *testing.T) {
 	t.Run("returns complete stats response with correct values and uses tenant_id", func(t *testing.T) {
-		var capturedTenantID int
+		var capturedTenantID uuid.UUID
 		var capturedDays int
 
 		repo := defaultMockRepo()
-		repo.getTotalContactsFunc = func(ctx context.Context, q DBTX, tenantID int) (int, error) {
+		repo.getTotalContactsFunc = func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 			capturedTenantID = tenantID
 			return 100, nil
 		}
-		repo.getNewContactsFunc = func(ctx context.Context, q DBTX, tenantID int, days int) (int, error) {
+		repo.getNewContactsFunc = func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
 			capturedDays = days
 			return 10, nil
 		}
@@ -322,13 +350,13 @@ func TestDashboardService_GetStats(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		result, err := svc.GetStats(context.Background(), 1, 30)
+		result, err := svc.GetStats(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 30)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
 		if capturedDays != 30 {
 			t.Errorf("expected days 30, got %d", capturedDays)
@@ -446,7 +474,7 @@ func TestDashboardService_GetStats(t *testing.T) {
 		var capturedDays int
 
 		repo := defaultMockRepo()
-		repo.getNewContactsFunc = func(ctx context.Context, q DBTX, tenantID int, days int) (int, error) {
+		repo.getNewContactsFunc = func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
 			capturedDays = days
 			return 0, nil
 		}
@@ -456,7 +484,7 @@ func TestDashboardService_GetStats(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		_, err := svc.GetStats(context.Background(), 1, 0)
+		_, err := svc.GetStats(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -467,7 +495,7 @@ func TestDashboardService_GetStats(t *testing.T) {
 
 	t.Run("returns error when repository fails", func(t *testing.T) {
 		repo := defaultMockRepo()
-		repo.getTotalContactsFunc = func(ctx context.Context, q DBTX, tenantID int) (int, error) {
+		repo.getTotalContactsFunc = func(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 			return 0, fmt.Errorf("db error")
 		}
 
@@ -476,7 +504,7 @@ func TestDashboardService_GetStats(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		_, err := svc.GetStats(context.Background(), 1, 30)
+		_, err := svc.GetStats(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 30)
 		if err == nil {
 			t.Fatal("expected error, got nil")
 		}
@@ -485,13 +513,14 @@ func TestDashboardService_GetStats(t *testing.T) {
 
 func TestDashboardService_GetChart(t *testing.T) {
 	t.Run("returns chart data with correct values and uses tenant_id", func(t *testing.T) {
-		var capturedTenantID, capturedDays int
+		var capturedTenantID uuid.UUID
+		var capturedDays int
 		data := []ChartDataPoint{
 			{Date: "2026-06-10", Count: 5},
 			{Date: "2026-06-11", Count: 8},
 		}
 		repo := &mockDashboardRepository{
-			getConversationChartFunc: func(ctx context.Context, q DBTX, tenantID int, days int) ([]ChartDataPoint, error) {
+			getConversationChartFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error) {
 				capturedTenantID = tenantID
 				capturedDays = days
 				return data, nil
@@ -502,12 +531,12 @@ func TestDashboardService_GetChart(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		result, err := svc.GetChart(context.Background(), 1, 30)
+		result, err := svc.GetChart(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 30)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capturedTenantID)
 		}
 		if capturedDays != 30 {
 			t.Errorf("expected days 30, got %d", capturedDays)
@@ -532,7 +561,7 @@ func TestDashboardService_GetChart(t *testing.T) {
 	t.Run("defaults to 30 days when out of range", func(t *testing.T) {
 		var capturedDays int
 		repo := &mockDashboardRepository{
-			getConversationChartFunc: func(ctx context.Context, q DBTX, tenantID int, days int) ([]ChartDataPoint, error) {
+			getConversationChartFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error) {
 				capturedDays = days
 				return []ChartDataPoint{}, nil
 			},
@@ -542,7 +571,7 @@ func TestDashboardService_GetChart(t *testing.T) {
 		defer db.Close()
 		svc := newService(repo, db)
 
-		_, err := svc.GetChart(context.Background(), 1, 0)
+		_, err := svc.GetChart(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 0)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}

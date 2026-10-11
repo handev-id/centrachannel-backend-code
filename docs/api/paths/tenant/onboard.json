@@ -32,7 +32,7 @@
                 "admin": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "integer", "example": 1 },
+                    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
                     "first_name": { "type": "string", "example": "Admin" },
                     "email": { "type": "string", "example": "admin@acme.com" },
                     "username": { "type": "string", "example": "admin" }

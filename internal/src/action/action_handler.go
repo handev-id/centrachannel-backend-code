@@ -1,9 +1,8 @@
 package action
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/src/conversation"
@@ -29,8 +28,8 @@ func NewActionHandler(c *di.Container) *ActionHandler {
 }
 
 func (h *ActionHandler) MarkConversationRead(c fiber.Ctx, t *tenant.Tenant) error {
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 

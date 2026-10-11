@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS tags (
-    id         SERIAL PRIMARY KEY,
-    tenant_id  INTEGER      NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id  UUID      NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     name       VARCHAR(255) NOT NULL,
     color      VARCHAR(255),
     created_at TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

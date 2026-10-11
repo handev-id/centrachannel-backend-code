@@ -4,20 +4,21 @@ import (
 	"strings"
 	"time"
 
+	fasthttpws "github.com/fasthttp/websocket"
 	"github.com/gofiber/fiber/v3"
 	"github.com/golang-jwt/jwt/v5"
-	fasthttpws "github.com/fasthttp/websocket"
+	"github.com/google/uuid"
 	"github.com/valyala/fasthttp"
 
 	"centrachannel/internal/utils/logger"
 )
 
 const (
-	writeWait         = 10 * time.Second
-	pongWait          = 60 * time.Second
-	pingPeriod        = (pongWait * 9) / 10
-	maxMessageSize    = 512
-	TokenCookieName   = "CrmToken"
+	writeWait       = 10 * time.Second
+	pongWait        = 60 * time.Second
+	pingPeriod      = (pongWait * 9) / 10
+	maxMessageSize  = 512
+	TokenCookieName = "CrmToken"
 )
 
 type WSHandler struct {
@@ -85,7 +86,7 @@ func (h *WSHandler) extractToken(c fiber.Ctx) string {
 	return tokenStr
 }
 
-func (h *WSHandler) validateToken(tokenStr string) (int, error) {
+func (h *WSHandler) validateToken(tokenStr string) (uuid.UUID, error) {
 	token, err := jwt.Parse(tokenStr, func(tk *jwt.Token) (interface{}, error) {
 		if _, ok := tk.Method.(*jwt.SigningMethodHMAC); !ok {
 			return nil, nil
@@ -93,20 +94,25 @@ func (h *WSHandler) validateToken(tokenStr string) (int, error) {
 		return []byte(h.jwtSecret), nil
 	})
 	if err != nil || !token.Valid {
-		return 0, fiber.ErrUnauthorized
+		return uuid.Nil, fiber.ErrUnauthorized
 	}
 
 	claims, ok := token.Claims.(jwt.MapClaims)
 	if !ok {
-		return 0, fiber.ErrUnauthorized
+		return uuid.Nil, fiber.ErrUnauthorized
 	}
 
-	tenantFloat, ok := claims["tenant"].(float64)
-	if !ok {
-		return 0, fiber.ErrUnauthorized
+	tenantClaim, ok := claims["tenant"].(string)
+	tenantID, parseErr := uuid.Parse(tenantClaim)
+	if !ok || parseErr != nil || tenantID == uuid.Nil {
+		return uuid.Nil, fiber.ErrUnauthorized
 	}
-
-	return int(tenantFloat), nil
+	sub, ok := claims["sub"].(string)
+	userID, parseErr := uuid.Parse(sub)
+	if !ok || parseErr != nil || userID == uuid.Nil {
+		return uuid.Nil, fiber.ErrUnauthorized
+	}
+	return tenantID, nil
 }
 
 func (h *WSHandler) readPump(c *fasthttpws.Conn, client *Client) {

@@ -8,8 +8,10 @@ import (
 	"strings"
 	"time"
 
-	"centrachannel/internal/utils"
+	"github.com/google/uuid"
 	"github.com/lib/pq"
+
+	"centrachannel/internal/utils"
 )
 
 type userRepository struct{}
@@ -18,13 +20,15 @@ func NewUserRepository() UserRepository {
 	return &userRepository{}
 }
 
-func scanUser(row interface{ Scan(dest ...interface{}) error }) (*User, error) {
+func scanUser(row interface {
+	Scan(dest ...interface{}) error
+}) (*User, error) {
 	var u User
 	var lastName, phone sql.NullString
 	var avatar sql.NullString
 	var lastLogin sql.NullTime
 	var deletedAt utils.NullableTime
-	var tenantID int
+	var tenantID uuid.UUID
 
 	err := row.Scan(&u.ID, &tenantID, &u.FirstName, &lastName, &u.Username, &u.Email, &phone, &u.Password, &avatar, &lastLogin, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
@@ -50,7 +54,7 @@ func scanUser(row interface{ Scan(dest ...interface{}) error }) (*User, error) {
 	return &u, nil
 }
 
-func (r *userRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, search string, roleID *int) ([]*User, int, error) {
+func (r *userRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit, offset int, search string, roleID *uuid.UUID) ([]*User, int, error) {
 	var conditions []string
 	var args []interface{}
 	argIdx := 1
@@ -109,29 +113,29 @@ func (r *userRepository) List(ctx context.Context, q DBTX, tenantID int, limit, 
 	return users, total, nil
 }
 
-func (r *userRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*User, error) {
+func (r *userRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error) {
 	query := `SELECT id, tenant_id, first_name, last_name, username, email, phone, password, avatar, last_login, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`
 	return scanUser(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
-func (r *userRepository) Create(ctx context.Context, q DBTX, user *User) (int, error) {
+func (r *userRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
 	query := `INSERT INTO users (tenant_id, first_name, last_name, username, email, phone, password, avatar, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
 	var avatarBytes []byte
 	if user.Avatar != nil {
 		avatarBytes = user.Avatar
 	}
-	var id int
+	var id uuid.UUID
 	err := q.QueryRowContext(ctx, query,
 		user.TenantID, user.FirstName, user.LastName, user.Username, user.Email, user.Phone,
 		user.Password, avatarBytes, time.Now(), time.Now(),
 	).Scan(&id)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 	return id, nil
 }
 
-func (r *userRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, user *User) error {
+func (r *userRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, user *User) error {
 	query := `UPDATE users SET first_name = $1, last_name = $2, username = $3, email = $4, phone = $5, password = COALESCE(NULLIF($6, ''), password), avatar = COALESCE($7, avatar), updated_at = $8 WHERE id = $9 AND tenant_id = $10 AND deleted_at IS NULL`
 	var avatarBytes []byte
 	if user.Avatar != nil {
@@ -148,7 +152,7 @@ func (r *userRepository) Update(ctx context.Context, q DBTX, tenantID int, id in
 	return nil
 }
 
-func (r *userRepository) SoftDelete(ctx context.Context, q DBTX, tenantID int, id int) error {
+func (r *userRepository) SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	query := `UPDATE users SET deleted_at = $1, updated_at = $2 WHERE id = $3 AND tenant_id = $4 AND deleted_at IS NULL`
 	result, err := q.ExecContext(ctx, query, time.Now(), time.Now(), id, tenantID)
 	if err != nil {
@@ -161,7 +165,7 @@ func (r *userRepository) SoftDelete(ctx context.Context, q DBTX, tenantID int, i
 	return nil
 }
 
-func (r *userRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error) {
+func (r *userRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error) {
 	query := `SELECT r.id, r.tenant_id, r.name, r.created_at, r.updated_at FROM roles r INNER JOIN role_user ru ON ru.role_id = r.id WHERE ru.user_id = $1 AND r.tenant_id = $2`
 	rows, err := q.QueryContext(ctx, query, userID, tenantID)
 	if err != nil {
@@ -180,9 +184,9 @@ func (r *userRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID 
 	return roles, rows.Err()
 }
 
-func (r *userRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID int, userIDs []int) (map[int][]Role, error) {
+func (r *userRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID][]Role, error) {
 	if len(userIDs) == 0 {
-		return map[int][]Role{}, nil
+		return map[uuid.UUID][]Role{}, nil
 	}
 
 	query := `SELECT ru.user_id, r.id, r.tenant_id, r.name, r.created_at, r.updated_at FROM roles r INNER JOIN role_user ru ON ru.role_id = r.id WHERE ru.user_id = ANY($1) AND r.tenant_id = $2`
@@ -192,9 +196,9 @@ func (r *userRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID
 	}
 	defer rows.Close()
 
-	result := make(map[int][]Role, len(userIDs))
+	result := make(map[uuid.UUID][]Role, len(userIDs))
 	for rows.Next() {
-		var userID int
+		var userID uuid.UUID
 		var role Role
 		if err := rows.Scan(&userID, &role.ID, &role.TenantID, &role.Name, &role.CreatedAt, &role.UpdatedAt); err != nil {
 			return nil, err
@@ -204,7 +208,7 @@ func (r *userRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID
 	return result, rows.Err()
 }
 
-func (r *userRepository) AttachRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
+func (r *userRepository) AttachRoles(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) error {
 	if len(roleIDs) == 0 {
 		return nil
 	}
@@ -218,7 +222,7 @@ func (r *userRepository) AttachRoles(ctx context.Context, q DBTX, tenantID int, 
 	return nil
 }
 
-func (r *userRepository) SyncRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
+func (r *userRepository) SyncRoles(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) error {
 	if _, err := q.ExecContext(ctx, `DELETE FROM role_user WHERE tenant_id = $1 AND user_id = $2`, tenantID, userID); err != nil {
 		return err
 	}

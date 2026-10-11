@@ -1,9 +1,8 @@
 package note
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
@@ -28,8 +27,8 @@ func NewNoteHandlerWithService(service NoteService) *NoteHandler {
 
 func (h *NoteHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
-	conversationID, err := strconv.Atoi(c.Query("conversation_id"))
-	if err != nil {
+	conversationID, err := uuid.Parse(c.Query("conversation_id"))
+	if err != nil || conversationID == uuid.Nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
 	}
 
@@ -42,14 +41,16 @@ func (h *NoteHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	userID, err := middleware.GetUserID(c)
-	if err != nil { return response.Unauthorized(c, err.Error()) }
+	if err != nil {
+		return response.Unauthorized(c, err.Error())
+	}
 
 	var req CreateNoteRequest
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	note, err := h.service.Create(c.Context(), req, t.ID, req.ConversationID, userID)
@@ -61,8 +62,8 @@ func (h *NoteHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *NoteHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -70,8 +71,8 @@ func (h *NoteHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	note, err := h.service.Update(c.Context(), t.ID, id, req)
@@ -83,8 +84,8 @@ func (h *NoteHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *NoteHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 

@@ -9,6 +9,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/messenger"
 	"centrachannel/internal/src/channel"
@@ -57,119 +59,119 @@ func (t *mockSQLTx) Rollback() error { return nil }
 // mock repositories
 
 type mockMessageRepository struct {
-	createFunc                  func(ctx context.Context, q DBTX, msg *Message) (int, error)
-	listCursorFunc              func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error)
-	updateStatusFunc            func(ctx context.Context, q DBTX, tenantID int, id int, status string) error
-	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, webhookMessageID string, status string) error
+	createFunc                  func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error)
+	listCursorFunc              func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error)
+	updateStatusFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error
+	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error
 }
 
-func (m *mockMessageRepository) Create(ctx context.Context, q DBTX, msg *Message) (int, error) {
+func (m *mockMessageRepository) Create(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
 	return m.createFunc(ctx, q, msg)
 }
 
-func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
+func (m *mockMessageRepository) ListCursor(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error) {
 	return m.listCursorFunc(ctx, q, tenantID, conversationID, limit, lastID)
 }
 
-func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID int, id int, status string) error {
+func (m *mockMessageRepository) UpdateStatus(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error {
 	return m.updateStatusFunc(ctx, q, tenantID, id, status)
 }
 
-func (m *mockMessageRepository) UpdateStatusByWebhookID(ctx context.Context, q DBTX, webhookMessageID string, status string) error {
+func (m *mockMessageRepository) UpdateStatusByWebhookID(ctx context.Context, q DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error {
 	if m.updateStatusByWebhookIDFunc != nil {
-		return m.updateStatusByWebhookIDFunc(ctx, q, webhookMessageID, status)
+		return m.updateStatusByWebhookIDFunc(ctx, q, tenantID, webhookMessageID, status)
 	}
 	return nil
 }
 
-func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, id int, webhookMessageID string) error {
+func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, webhookMessageID string) error {
 	return nil
 }
 
-func (m *mockMessageRepository) MarkReadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) error {
+func (m *mockMessageRepository) MarkReadByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) error {
 	return nil
 }
 
-func (m *mockMessageRepository) GetUnreadByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]*Message, error) {
+func (m *mockMessageRepository) GetUnreadByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]*Message, error) {
 	return nil, nil
 }
 
 type mockConversationRepository struct {
-	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error
+	updateLastMessageFunc func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error
 }
 
-func (m *mockConversationRepository) GetByID(ctx context.Context, q conversation.DBTX, tenantID int, id int) (*conversation.Conversation, error) {
-	return &conversation.Conversation{ProfileID: 1, ChannelID: 1}, nil
+func (m *mockConversationRepository) GetByID(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID) (*conversation.Conversation, error) {
+	return &conversation.Conversation{ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), ChannelID: uuid.MustParse("00000000-0000-4000-8000-000000000001")}, nil
 }
 
-func (m *mockConversationRepository) Create(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (int, error) {
+func (m *mockConversationRepository) Create(ctx context.Context, q conversation.DBTX, conv *conversation.Conversation) (uuid.UUID, error) {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) UpdateStatus(ctx context.Context, q conversation.DBTX, tenantID int, id int, status string) error {
+func (m *mockConversationRepository) UpdateStatus(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) Assign(ctx context.Context, q conversation.DBTX, tenantID int, id int, agentID int) error {
+func (m *mockConversationRepository) Assign(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, agentID uuid.UUID) error {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) Unassign(ctx context.Context, q conversation.DBTX, tenantID int, id int) error {
+func (m *mockConversationRepository) Unassign(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) MarkRead(ctx context.Context, q conversation.DBTX, tenantID int, id int) error {
+func (m *mockConversationRepository) MarkRead(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) GetTotalUnread(ctx context.Context, q conversation.DBTX, tenantID int) (int, error) {
+func (m *mockConversationRepository) GetTotalUnread(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID) (int, error) {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) ListCursor(ctx context.Context, q conversation.DBTX, tenantID int, limit int, status string, channelID, agentID int, search string, lastActivity *time.Time, lastID int) ([]*conversation.Conversation, error) {
+func (m *mockConversationRepository) ListCursor(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, limit int, status string, channelID, agentID uuid.UUID, search string, lastActivity *time.Time, lastID uuid.UUID) ([]*conversation.Conversation, error) {
 	panic("unexpected call")
 }
 
-func (m *mockConversationRepository) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+func (m *mockConversationRepository) UpdateLastMessage(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 	return m.updateLastMessageFunc(ctx, q, tenantID, id, lastMessageJSON, lastAgentID)
 }
 
-func (m *mockConversationRepository) FindOpenByProfileAndChannel(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
+func (m *mockConversationRepository) FindOpenByProfileAndChannel(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
 	return nil, nil
 }
 
 // mockProfileRepository
 type mockProfileRepository struct {
-	getByExternalIDAndChannelIDFunc func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error)
-	createFunc                      func(ctx context.Context, q profile.DBTX, profile *profile.Profile) (int, error)
+	getByExternalIDAndChannelIDFunc func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error)
+	createFunc                      func(ctx context.Context, q profile.DBTX, profile *profile.Profile) (uuid.UUID, error)
 }
 
-func (m *mockProfileRepository) GetByContactIDs(ctx context.Context, q profile.DBTX, tenantID int, contactIDs []int) (map[int][]profile.Profile, error) {
-	return map[int][]profile.Profile{}, nil
+func (m *mockProfileRepository) GetByContactIDs(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactIDs []uuid.UUID) (map[uuid.UUID][]profile.Profile, error) {
+	return map[uuid.UUID][]profile.Profile{}, nil
 }
-func (m *mockProfileRepository) List(ctx context.Context, q profile.DBTX, tenantID int, contactID, channelID int) ([]profile.Profile, error) {
+func (m *mockProfileRepository) List(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactID, channelID uuid.UUID) ([]profile.Profile, error) {
 	panic("unexpected call")
 }
-func (m *mockProfileRepository) GetByID(ctx context.Context, q profile.DBTX, tenantID int, id int) (*profile.Profile, error) {
+func (m *mockProfileRepository) GetByID(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, id uuid.UUID) (*profile.Profile, error) {
 	return &profile.Profile{ExternalID: "test_external_id"}, nil
 }
-func (m *mockProfileRepository) Update(ctx context.Context, q profile.DBTX, tenantID int, id int, p *profile.Profile) error {
+func (m *mockProfileRepository) Update(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, id uuid.UUID, p *profile.Profile) error {
 	panic("unexpected call")
 }
-func (m *mockProfileRepository) GetByContactID(ctx context.Context, q profile.DBTX, tenantID int, contactID int) ([]profile.Profile, error) {
+func (m *mockProfileRepository) GetByContactID(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, contactID uuid.UUID) ([]profile.Profile, error) {
 	panic("unexpected call")
 }
-func (m *mockProfileRepository) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
+func (m *mockProfileRepository) GetByExternalIDAndChannelID(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
 	if m.getByExternalIDAndChannelIDFunc != nil {
 		return m.getByExternalIDAndChannelIDFunc(ctx, q, tenantID, externalID, channelID)
 	}
 	return nil, nil
 }
-func (m *mockProfileRepository) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (int, error) {
+func (m *mockProfileRepository) Create(ctx context.Context, q profile.DBTX, p *profile.Profile) (uuid.UUID, error) {
 	if m.createFunc != nil {
 		return m.createFunc(ctx, q, p)
 	}
-	return 0, nil
+	return uuid.Nil, nil
 }
 
 // mockChannelRepository
@@ -180,7 +182,7 @@ type mockChannelRepository struct {
 func (m *mockChannelRepository) List(ctx context.Context, q channel.DBTX) ([]channel.Channel, error) {
 	panic("unexpected call")
 }
-func (m *mockChannelRepository) GetByID(ctx context.Context, q channel.DBTX, id int) (*channel.Channel, error) {
+func (m *mockChannelRepository) GetByID(ctx context.Context, q channel.DBTX, id uuid.UUID) (*channel.Channel, error) {
 	return &channel.Channel{Type: "facebook"}, nil
 }
 func (m *mockChannelRepository) GetByType(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
@@ -193,22 +195,22 @@ func (m *mockChannelRepository) GetByType(ctx context.Context, q channel.DBTX, c
 // mockTenantRepository
 type mockTenantRepository struct{}
 
-func (m *mockTenantRepository) Create(ctx context.Context, q tenant.DBTX, tenant *tenant.Tenant) (int, error) {
+func (m *mockTenantRepository) Create(ctx context.Context, q tenant.DBTX, tenant *tenant.Tenant) (uuid.UUID, error) {
 	panic("unexpected call")
 }
-func (m *mockTenantRepository) CreateRole(ctx context.Context, q tenant.DBTX, tenantID int, name string) (int, error) {
+func (m *mockTenantRepository) CreateRole(ctx context.Context, q tenant.DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
 	panic("unexpected call")
 }
-func (m *mockTenantRepository) CreateUser(ctx context.Context, q tenant.DBTX, user *tenant.User) (int, error) {
+func (m *mockTenantRepository) CreateUser(ctx context.Context, q tenant.DBTX, user *tenant.User) (uuid.UUID, error) {
 	panic("unexpected call")
 }
-func (m *mockTenantRepository) AttachRole(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID int) error {
+func (m *mockTenantRepository) AttachRole(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID uuid.UUID) error {
 	panic("unexpected call")
 }
 func (m *mockTenantRepository) List(ctx context.Context, q tenant.DBTX) ([]tenant.Tenant, error) {
 	panic("unexpected call")
 }
-func (m *mockTenantRepository) GetByID(ctx context.Context, q tenant.DBTX, id int) (*tenant.Tenant, error) {
+func (m *mockTenantRepository) GetByID(ctx context.Context, q tenant.DBTX, id uuid.UUID) (*tenant.Tenant, error) {
 	return &tenant.Tenant{}, nil
 }
 func (m *mockTenantRepository) GetByMetaPageID(ctx context.Context, q tenant.DBTX, pageID string) (*tenant.Tenant, error) {
@@ -233,7 +235,7 @@ func (m *mockMessenger) Send(msg *messenger.OutgoingMessage) (string, error) {
 func strPtr(s string) *string { return &s }
 
 type notifiedEvent struct {
-	tenantID int
+	tenantID uuid.UUID
 	event    string
 	data     interface{}
 }
@@ -242,7 +244,7 @@ type mockNotifier struct {
 	events []notifiedEvent
 }
 
-func (m *mockNotifier) Notify(tenantID int, event string, data interface{}) {
+func (m *mockNotifier) Notify(tenantID uuid.UUID, event string, data interface{}) {
 	m.events = append(m.events, notifiedEvent{tenantID: tenantID, event: event, data: data})
 }
 
@@ -266,16 +268,16 @@ func TestMessageService_Send(t *testing.T) {
 
 	t.Run("sender type user passes lastAgentID to UpdateLastMessage", func(t *testing.T) {
 		var capturedCreateMsg *Message
-		var capturedLastAgentID *int
+		var capturedLastAgentID *uuid.UUID
 
 		msgRepo := &mockMessageRepository{
-			createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
+			createFunc: func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
 				capturedCreateMsg = msg
-				return 1, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				capturedLastAgentID = lastAgentID
 				return nil
 			},
@@ -284,49 +286,49 @@ func TestMessageService_Send(t *testing.T) {
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		req := SendMessageRequest{
 			Text:       strPtr("hello"),
-			SenderID:   42,
+			SenderID:   uuid.MustParse("00000000-0000-4000-8000-00000000002a"),
 			SenderType: "user",
 		}
-		msg, err := svc.Send(ctx, req, 1, 10)
+		msg, err := svc.Send(ctx, req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if msg.ID != 1 {
-			t.Errorf("expected ID 1, got %d", msg.ID)
+		if msg.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected ID 1, got %s", msg.ID)
 		}
 		if capturedCreateMsg == nil {
 			t.Fatal("expected Create to be called")
 		}
-		if capturedCreateMsg.TenantID != 1 {
-			t.Errorf("expected TenantID 1, got %d", capturedCreateMsg.TenantID)
+		if capturedCreateMsg.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected TenantID 1, got %s", capturedCreateMsg.TenantID)
 		}
-		if capturedCreateMsg.ConversationID != 10 {
-			t.Errorf("expected ConversationID 10, got %d", capturedCreateMsg.ConversationID)
+		if capturedCreateMsg.ConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Errorf("expected ConversationID 10, got %s", capturedCreateMsg.ConversationID)
 		}
 		if capturedCreateMsg.SenderType != "user" {
 			t.Errorf("expected SenderType user, got %s", capturedCreateMsg.SenderType)
 		}
-		if capturedCreateMsg.SenderID != 42 {
-			t.Errorf("expected SenderID 42, got %d", capturedCreateMsg.SenderID)
+		if capturedCreateMsg.SenderID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+			t.Errorf("expected SenderID 42, got %s", capturedCreateMsg.SenderID)
 		}
 		if capturedCreateMsg.Status != "sent" {
 			t.Errorf("expected Status sent, got %s", capturedCreateMsg.Status)
 		}
-		if capturedLastAgentID == nil || *capturedLastAgentID != 42 {
+		if capturedLastAgentID == nil || *capturedLastAgentID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
 			t.Errorf("expected lastAgentID 42 for user sender, got %v", capturedLastAgentID)
 		}
 	})
 
 	t.Run("sender type contact passes nil as lastAgentID", func(t *testing.T) {
-		var capturedLastAgentID *int
+		var capturedLastAgentID *uuid.UUID
 
 		msgRepo := &mockMessageRepository{
-			createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
-				return 1, nil
+			createFunc: func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				capturedLastAgentID = lastAgentID
 				return nil
 			},
@@ -335,15 +337,15 @@ func TestMessageService_Send(t *testing.T) {
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
 		req := SendMessageRequest{
 			Text:       strPtr("hello"),
-			SenderID:   99,
+			SenderID:   uuid.MustParse("00000000-0000-4000-8000-000000000063"),
 			SenderType: "contact",
 		}
-		_, err := svc.Send(ctx, req, 1, 10)
+		_, err := svc.Send(ctx, req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if capturedLastAgentID != nil {
-			t.Errorf("expected nil lastAgentID for contact sender, got %d", *capturedLastAgentID)
+			t.Errorf("expected nil lastAgentID for contact sender, got %s", *capturedLastAgentID)
 		}
 	})
 
@@ -351,12 +353,12 @@ func TestMessageService_Send(t *testing.T) {
 		var capturedLastMsgJSON []byte
 
 		msgRepo := &mockMessageRepository{
-			createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
-				return 1, nil
+			createFunc: func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				capturedLastMsgJSON = lastMessageJSON
 				return nil
 			},
@@ -366,10 +368,10 @@ func TestMessageService_Send(t *testing.T) {
 		req := SendMessageRequest{
 			Text:       strPtr("with attachment"),
 			Attachment: json.RawMessage(`{"url":"http://example.com/file.pdf","type":"pdf"}`),
-			SenderID:   1,
+			SenderID:   uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 			SenderType: "user",
 		}
-		_, err := svc.Send(ctx, req, 1, 10)
+		_, err := svc.Send(ctx, req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -398,12 +400,12 @@ func TestMessageService_Send(t *testing.T) {
 		var capturedLastMsgJSON []byte
 
 		msgRepo := &mockMessageRepository{
-			createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
-				return 1, nil
+			createFunc: func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				capturedLastMsgJSON = lastMessageJSON
 				return nil
 			},
@@ -413,10 +415,10 @@ func TestMessageService_Send(t *testing.T) {
 		req := SendMessageRequest{
 			Text:       strPtr("no attachment"),
 			Attachment: nil,
-			SenderID:   1,
+			SenderID:   uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 			SenderType: "user",
 		}
-		_, err := svc.Send(ctx, req, 1, 10)
+		_, err := svc.Send(ctx, req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -443,12 +445,12 @@ func TestMessageService_Send_NotifiesNewMessage(t *testing.T) {
 	ctx := context.Background()
 
 	msgRepo := &mockMessageRepository{
-		createFunc: func(ctx context.Context, q DBTX, msg *Message) (int, error) {
-			return 1, nil
+		createFunc: func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 		},
 	}
 	convRepo := &mockConversationRepository{
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
@@ -456,23 +458,23 @@ func TestMessageService_Send_NotifiesNewMessage(t *testing.T) {
 	svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, notifier)
 	req := SendMessageRequest{
 		Text:       strPtr("hello"),
-		SenderID:   42,
+		SenderID:   uuid.MustParse("00000000-0000-4000-8000-00000000002a"),
 		SenderType: "user",
 	}
-	msg, err := svc.Send(ctx, req, 7, 10)
+	msg, err := svc.Send(ctx, req, uuid.MustParse("00000000-0000-4000-8000-000000000007"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if msg.ID != 1 {
-		t.Errorf("expected ID 1, got %d", msg.ID)
+	if msg.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected ID 1, got %s", msg.ID)
 	}
 
 	ev := notifier.last()
 	if ev == nil {
 		t.Fatal("expected a websocket notification")
 	}
-	if ev.tenantID != 7 {
-		t.Errorf("expected tenantID 7, got %d", ev.tenantID)
+	if ev.tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000007") {
+		t.Errorf("expected tenantID 7, got %s", ev.tenantID)
 	}
 	if ev.event != "new-message" {
 		t.Errorf("expected event 'new-message', got %q", ev.event)
@@ -481,11 +483,11 @@ func TestMessageService_Send_NotifiesNewMessage(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected data *Message, got %T", ev.data)
 	}
-	if notified.ID != 1 {
-		t.Errorf("expected message id 1, got %d", notified.ID)
+	if notified.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected message id 1, got %s", notified.ID)
 	}
-	if notified.ConversationID != 10 {
-		t.Errorf("expected conversation_id 10, got %d", notified.ConversationID)
+	if notified.ConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+		t.Errorf("expected conversation_id 10, got %s", notified.ConversationID)
 	}
 	if notified.SenderType != "user" {
 		t.Errorf("expected sender_type user, got %s", notified.SenderType)
@@ -502,35 +504,37 @@ func TestMessageService_ListCursor(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("defaults_limit_and_passes_cursor", func(t *testing.T) {
-		var capturedLimit, capturedLastID, capturedTenantID int
+		var capturedLimit int
+		var capturedLastID uuid.UUID
+		var capturedTenantID uuid.UUID
 
 		msgRepo := &mockMessageRepository{
-			listCursorFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
+			listCursorFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error) {
 				capturedTenantID = tenantID
 				capturedLimit = limit
 				capturedLastID = lastID
-				return []*Message{{ID: 50}, {ID: 49}, {ID: 48}}, nil
+				return []*Message{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000032")}, {ID: uuid.MustParse("00000000-0000-4000-8000-000000000031")}, {ID: uuid.MustParse("00000000-0000-4000-8000-000000000030")}}, nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				return nil
 			},
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		result, lastID, hasMore, err := svc.ListCursor(ctx, 7, 1, ListMessageQuery{Limit: 0, LastID: 55})
+		result, lastID, hasMore, err := svc.ListCursor(ctx, uuid.MustParse("00000000-0000-4000-8000-000000000007"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), ListMessageQuery{Limit: 0, LastID: uuid.MustParse("00000000-0000-4000-8000-000000000037")})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedTenantID != 7 {
-			t.Errorf("expected tenantID 7, got %d", capturedTenantID)
+		if capturedTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000007") {
+			t.Errorf("expected tenantID 7, got %s", capturedTenantID)
 		}
 		if capturedLimit != 51 {
 			t.Errorf("expected limit+1 = 51, got %d", capturedLimit)
 		}
-		if capturedLastID != 55 {
-			t.Errorf("expected lastID 55, got %d", capturedLastID)
+		if capturedLastID != uuid.MustParse("00000000-0000-4000-8000-000000000037") {
+			t.Errorf("expected lastID 55, got %s", capturedLastID)
 		}
 		if hasMore {
 			t.Error("expected hasMore false")
@@ -539,11 +543,11 @@ func TestMessageService_ListCursor(t *testing.T) {
 		if len(result) != 3 {
 			t.Fatalf("expected 3 messages, got %d", len(result))
 		}
-		if result[0].ID != 48 || result[1].ID != 49 || result[2].ID != 50 {
-			t.Errorf("expected reversed ascending order [48,49,50], got [%d,%d,%d]", result[0].ID, result[1].ID, result[2].ID)
+		if result[0].ID != uuid.MustParse("00000000-0000-4000-8000-000000000030") || result[1].ID != uuid.MustParse("00000000-0000-4000-8000-000000000031") || result[2].ID != uuid.MustParse("00000000-0000-4000-8000-000000000032") {
+			t.Errorf("expected reversed ascending order [48,49,50], got [%s,%s,%s]", result[0].ID, result[1].ID, result[2].ID)
 		}
-		if lastID != 48 {
-			t.Errorf("expected cursor lastID 48 (oldest kept), got %d", lastID)
+		if lastID != uuid.MustParse("00000000-0000-4000-8000-000000000030") {
+			t.Errorf("expected cursor lastID 48 (oldest kept), got %s", lastID)
 		}
 	})
 
@@ -551,23 +555,23 @@ func TestMessageService_ListCursor(t *testing.T) {
 		var capturedLimit int
 		msgs := make([]*Message, 0, 51)
 		for i := 51; i >= 1; i-- {
-			msgs = append(msgs, &Message{ID: i})
+			msgs = append(msgs, &Message{ID: uuid.UUID{6: 0x40, 8: 0x80, 15: byte(i)}})
 		}
 
 		msgRepo := &mockMessageRepository{
-			listCursorFunc: func(ctx context.Context, q DBTX, tenantID int, conversationID int, limit int, lastID int) ([]*Message, error) {
+			listCursorFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error) {
 				capturedLimit = limit
 				return msgs, nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				return nil
 			},
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		result, lastID, hasMore, err := svc.ListCursor(ctx, 7, 1, ListMessageQuery{Limit: 50, LastID: 60})
+		result, lastID, hasMore, err := svc.ListCursor(ctx, uuid.MustParse("00000000-0000-4000-8000-000000000007"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), ListMessageQuery{Limit: 50, LastID: uuid.MustParse("00000000-0000-4000-8000-00000000003c")})
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -580,11 +584,11 @@ func TestMessageService_ListCursor(t *testing.T) {
 		if len(result) != 50 {
 			t.Fatalf("expected 50 messages, got %d", len(result))
 		}
-		if result[0].ID != 2 || result[49].ID != 51 {
-			t.Errorf("expected ascending [2..51], got first=%d last=%d", result[0].ID, result[49].ID)
+		if result[0].ID != uuid.MustParse("00000000-0000-4000-8000-000000000002") || result[49].ID != uuid.MustParse("00000000-0000-4000-8000-000000000033") {
+			t.Errorf("expected ascending [2..51], got first=%s last=%s", result[0].ID, result[49].ID)
 		}
-		if lastID != 2 {
-			t.Errorf("expected cursor lastID 2 (oldest kept), got %d", lastID)
+		if lastID != uuid.MustParse("00000000-0000-4000-8000-000000000002") {
+			t.Errorf("expected cursor lastID 2 (oldest kept), got %s", lastID)
 		}
 	})
 }
@@ -599,28 +603,28 @@ func TestMessageService_UpdateStatus(t *testing.T) {
 	ctx := context.Background()
 
 	t.Run("delegates to repository", func(t *testing.T) {
-		var capturedID int
+		var capturedID uuid.UUID
 		var capturedStatus string
 
 		msgRepo := &mockMessageRepository{
-			updateStatusFunc: func(ctx context.Context, q DBTX, tenantID int, id int, status string) error {
+			updateStatusFunc: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error {
 				capturedID = id
 				capturedStatus = status
 				return nil
 			},
 		}
 		convRepo := &mockConversationRepository{
-			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+			updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 				return nil
 			},
 		}
 
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
-		if err := svc.UpdateStatus(ctx, 1, 5, "read"); err != nil {
+		if err := svc.UpdateStatus(ctx, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), "read"); err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if capturedID != 5 {
-			t.Errorf("expected id 5, got %d", capturedID)
+		if capturedID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected id 5, got %s", capturedID)
 		}
 		if capturedStatus != "read" {
 			t.Errorf("expected status 'read', got %s", capturedStatus)

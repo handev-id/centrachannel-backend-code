@@ -1,9 +1,8 @@
 package tag
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/src/tenant"
@@ -39,8 +38,8 @@ func (h *TagHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	tag, err := h.service.Create(c.Context(), req, t.ID)
@@ -52,8 +51,8 @@ func (h *TagHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *TagHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -61,8 +60,8 @@ func (h *TagHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	tag, err := h.service.Update(c.Context(), t.ID, id, req)
@@ -74,8 +73,8 @@ func (h *TagHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *TagHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 

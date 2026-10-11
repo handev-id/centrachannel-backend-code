@@ -1,1 +1,1 @@
-CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id, id);
+CREATE INDEX IF NOT EXISTS idx_messages_conversation_id ON messages(conversation_id, created_at DESC, id DESC);

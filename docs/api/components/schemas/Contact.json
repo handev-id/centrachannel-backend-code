@@ -1,8 +1,8 @@
 {
   "type": "object",
   "properties": {
-    "id": { "type": "integer", "example": 1 },
-    "tenant_id": { "type": "integer", "example": 1 },
+    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+    "tenant_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
     "first_name": { "type": "string", "example": "Jane" },
     "last_name": { "type": "string", "example": "Smith" },
     "username": { "type": "string", "example": "janesmith" },
@@ -24,7 +24,7 @@
     "tiktok": { "type": "string", "example": "@janesmith_tk" },
     "status": { "type": "string", "example": "active" },
     "institution_name": { "type": "string", "example": "Tech Corp" },
-    "merged_to_id": { "type": "integer", "example": null },
+    "merged_to_id": { "type": "string", "format": "uuid", "example": null },
     "deleted_at": { "type": "string", "format": "date-time", "example": null },
     "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
     "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" },

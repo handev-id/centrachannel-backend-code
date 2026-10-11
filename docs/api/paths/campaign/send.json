@@ -4,7 +4,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Campaign ID" }
     ],
     "responses": {
       "200": {

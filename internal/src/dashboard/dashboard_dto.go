@@ -1,6 +1,10 @@
 package dashboard
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 type StatsResponse struct {
 	Summary       SummaryResponse       `json:"summary"`
@@ -33,41 +37,41 @@ type ConversationsByStatus struct {
 }
 
 type ConversationsByChannel struct {
-	ChannelID   int    `json:"channel_id"`
-	ChannelName string `json:"channel_name"`
-	Total       int    `json:"total"`
-	Unread      int    `json:"unread"`
+	ChannelID   uuid.UUID `json:"channel_id"`
+	ChannelName string    `json:"channel_name"`
+	Total       int       `json:"total"`
+	Unread      int       `json:"unread"`
 }
 
 type ChannelBrief struct {
-	ID   int              `json:"id"`
-	Name string           `json:"name"`
-	Logo json.RawMessage  `json:"logo"`
+	ID   uuid.UUID       `json:"id"`
+	Name string          `json:"name"`
+	Logo json.RawMessage `json:"logo"`
 }
 
 type AgentBrief struct {
-	ID        int              `json:"id"`
-	FirstName string           `json:"first_name"`
-	LastName  *string          `json:"last_name"`
-	Avatar    json.RawMessage  `json:"avatar"`
+	ID        uuid.UUID       `json:"id"`
+	FirstName string          `json:"first_name"`
+	LastName  *string         `json:"last_name"`
+	Avatar    json.RawMessage `json:"avatar"`
 }
 
 type ContactBrief struct {
-	ID        int              `json:"id"`
-	FirstName string           `json:"first_name"`
-	LastName  *string          `json:"last_name"`
-	Avatar    json.RawMessage  `json:"avatar"`
+	ID        uuid.UUID       `json:"id"`
+	FirstName string          `json:"first_name"`
+	LastName  *string         `json:"last_name"`
+	Avatar    json.RawMessage `json:"avatar"`
 }
 
 type RecentConversation struct {
-	ID           int                `json:"id"`
-	Status       string             `json:"status"`
-	UnreadCount  int                `json:"unread_count"`
-	LastActivity *string            `json:"last_activity"`
-	LastMessage  json.RawMessage    `json:"last_message"`
-	Channel      *ChannelBrief      `json:"channel"`
-	Agent        *AgentBrief        `json:"agent"`
-	Contact      *ContactBrief      `json:"contact"`
+	ID           uuid.UUID       `json:"id"`
+	Status       string          `json:"status"`
+	UnreadCount  int             `json:"unread_count"`
+	LastActivity *string         `json:"last_activity"`
+	LastMessage  json.RawMessage `json:"last_message"`
+	Channel      *ChannelBrief   `json:"channel"`
+	Agent        *AgentBrief     `json:"agent"`
+	Contact      *ContactBrief   `json:"contact"`
 }
 
 type ConversationsResponse struct {
@@ -98,10 +102,10 @@ type MessagesByDate struct {
 }
 
 type MessagesResponse struct {
-	Total        int                 `json:"total"`
-	Today        int                 `json:"today"`
+	Total        int                  `json:"total"`
+	Today        int                  `json:"today"`
 	BySenderType MessagesBySenderType `json:"by_sender_type"`
-	ByDate       []MessagesByDate    `json:"by_date"`
+	ByDate       []MessagesByDate     `json:"by_date"`
 }
 
 type CampaignsResponse struct {
@@ -110,11 +114,11 @@ type CampaignsResponse struct {
 }
 
 type AgentWorkload struct {
-	ID                   int              `json:"id"`
-	FirstName            string           `json:"first_name"`
-	LastName             *string          `json:"last_name"`
-	Avatar               json.RawMessage  `json:"avatar"`
-	OngoingConversations int              `json:"ongoing_conversations"`
+	ID                   uuid.UUID       `json:"id"`
+	FirstName            string          `json:"first_name"`
+	LastName             *string         `json:"last_name"`
+	Avatar               json.RawMessage `json:"avatar"`
+	OngoingConversations int             `json:"ongoing_conversations"`
 }
 
 type ChartDataPoint struct {

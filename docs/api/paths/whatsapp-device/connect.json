@@ -4,7 +4,7 @@
     "tags": ["WhatsApp Device"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Device ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Device ID" }
     ],
     "responses": {
       "200": {

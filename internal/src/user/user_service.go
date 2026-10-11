@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/hash"
@@ -13,15 +15,15 @@ import (
 )
 
 type OnlineChecker interface {
-	IsUserOnline(tenantID int, userID int) bool
+	IsUserOnline(tenantID uuid.UUID, userID uuid.UUID) bool
 }
 
 type UserService interface {
 	List(ctx context.Context, q ListUserQuery, t *tenant.Tenant) ([]*User, int, error)
-	GetByID(ctx context.Context, tenantID int, id int) (*User, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*User, error)
 	Create(ctx context.Context, req CreateUserRequest, t *tenant.Tenant) (*User, error)
-	Update(ctx context.Context, tenantID int, id int, req UpdateUserRequest) (*User, error)
-	Delete(ctx context.Context, tenantID int, id int) error
+	Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateUserRequest) (*User, error)
+	Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
 }
 
 type userService struct {
@@ -56,7 +58,7 @@ func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenan
 	}
 
 	if len(users) > 0 {
-		userIDs := make([]int, len(users))
+		userIDs := make([]uuid.UUID, len(users))
 		for i, u := range users {
 			userIDs[i] = u.ID
 		}
@@ -72,7 +74,7 @@ func (s *userService) List(ctx context.Context, q ListUserQuery, t *tenant.Tenan
 	return users, total, nil
 }
 
-func (s *userService) GetByID(ctx context.Context, tenantID int, id int) (*User, error) {
+func (s *userService) GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*User, error) {
 	user, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -129,7 +131,7 @@ func (s *userService) Create(ctx context.Context, req CreateUserRequest, t *tena
 	return user, nil
 }
 
-func (s *userService) Update(ctx context.Context, tenantID int, id int, req UpdateUserRequest) (*User, error) {
+func (s *userService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateUserRequest) (*User, error) {
 	user, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -174,9 +176,18 @@ func (s *userService) Update(ctx context.Context, tenantID int, id int, req Upda
 	return s.GetByID(ctx, tenantID, id)
 }
 
-func (s *userService) Delete(ctx context.Context, tenantID int, id int) error {
-	if id == 1 {
-		return fmt.Errorf("forbidden: you can not delete super admin")
+func (s *userService) Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
+	if _, err := s.repo.GetByID(ctx, s.db, tenantID, id); err != nil {
+		return err
+	}
+	roles, err := s.repo.GetRolesByUserID(ctx, s.db, tenantID, id)
+	if err != nil {
+		return err
+	}
+	for _, role := range roles {
+		if role.Name == "super-admin" {
+			return fmt.Errorf("You can not delete super admin")
+		}
 	}
 	return s.repo.SoftDelete(ctx, s.db, tenantID, id)
 }

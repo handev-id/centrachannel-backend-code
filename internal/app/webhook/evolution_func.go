@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/src/message"
@@ -134,7 +136,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		Text:             text,
 		Attachment:       attachment,
 		Status:           "unread",
-		SenderID:         0,
+		SenderID:         c.ID,
 		SenderType:       "contact",
 		WebhookMessageID: &data.Key.ID,
 		ConversationID:   conv.ID,
@@ -177,11 +179,26 @@ func (s *webhookService) handleMessageUpdate(ctx context.Context, payload *Evolu
 		return nil
 	}
 
-	if err := s.msgRepo.UpdateStatusByWebhookID(ctx, s.db, data.KeyID, msgStatus); err != nil {
+	tenantID, err := s.resolveTenantFromInstance(ctx, payload.Instance)
+	if err != nil {
+		return err
+	}
+	if err := s.msgRepo.UpdateStatusByWebhookID(ctx, s.db, tenantID, data.KeyID, msgStatus); err != nil {
 		s.logger.Debug("no message found for webhook id %s: %v", data.KeyID, err)
 	}
 
 	return nil
+}
+
+func (s *webhookService) resolveTenantFromInstance(ctx context.Context, instance string) (uuid.UUID, error) {
+	device, err := s.deviceRepo.GetByWhatsappID(ctx, s.db, instance)
+	if err != nil {
+		return uuid.Nil, fmt.Errorf("device not found for instance %s: %w", instance, err)
+	}
+	if device == nil || device.TenantID == uuid.Nil {
+		return uuid.Nil, fmt.Errorf("device not found for instance %s", instance)
+	}
+	return device.TenantID, nil
 }
 
 func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *EvolutionWebhookPayload) error {
@@ -324,7 +341,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		Text:             text,
 		Attachment:       attachment,
 		Status:           "sent",
-		SenderID:         0,
+		SenderID:         uuid.Nil,
 		SenderType:       "user",
 		WebhookMessageID: &data.Key.ID,
 		ConversationID:   conv.ID,
@@ -345,11 +362,11 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 }
 
 // kept here because it depends on conversation repo
-func (s *webhookService) findConversation(ctx context.Context, tenantID, profileID, channelID int) (*conversation.Conversation, error) {
+func (s *webhookService) findConversation(ctx context.Context, tenantID, profileID, channelID uuid.UUID) (*conversation.Conversation, error) {
 	return s.convRepo.FindOpenByProfileAndChannel(ctx, s.db, tenantID, profileID, channelID)
 }
 
-func (s *webhookService) notifyNewMessage(tenantID int, msg *message.Message) {
+func (s *webhookService) notifyNewMessage(tenantID uuid.UUID, msg *message.Message) {
 	if s.notifier == nil {
 		return
 	}

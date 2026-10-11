@@ -3,11 +3,13 @@ package dashboard
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DashboardService interface {
-	GetStats(ctx context.Context, tenantID int, days int) (*StatsResponse, error)
-	GetChart(ctx context.Context, tenantID int, days int) (*ChartResponse, error)
+	GetStats(ctx context.Context, tenantID uuid.UUID, days int) (*StatsResponse, error)
+	GetChart(ctx context.Context, tenantID uuid.UUID, days int) (*ChartResponse, error)
 }
 
 type dashboardService struct {
@@ -19,7 +21,7 @@ func NewDashboardService(repo DashboardRepository, db *sql.DB) DashboardService 
 	return &dashboardService{repo: repo, db: db}
 }
 
-func (s *dashboardService) GetStats(ctx context.Context, tenantID int, days int) (*StatsResponse, error) {
+func (s *dashboardService) GetStats(ctx context.Context, tenantID uuid.UUID, days int) (*StatsResponse, error) {
 	if days < 1 || days > 365 {
 		days = 30
 	}
@@ -152,7 +154,7 @@ func (s *dashboardService) GetStats(ctx context.Context, tenantID int, days int)
 	}, nil
 }
 
-func (s *dashboardService) GetChart(ctx context.Context, tenantID int, days int) (*ChartResponse, error) {
+func (s *dashboardService) GetChart(ctx context.Context, tenantID uuid.UUID, days int) (*ChartResponse, error) {
 	if days < 1 || days > 365 {
 		days = 30
 	}

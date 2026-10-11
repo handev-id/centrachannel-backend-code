@@ -44,11 +44,11 @@
               "type": { "type": "string", "example": "broadcast" },
               "description": { "type": "string", "example": "Welcome message for new users" },
               "message_template": { "type": "string", "example": "Hello {{name}}, welcome!" },
-              "channel_id": { "type": "integer", "example": 1 },
+              "channel_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
               "sending_option": { "type": "object" },
               "scheduled_at": { "type": "string", "format": "date-time" },
-              "recipient_list_id": { "type": "integer", "example": 1 },
-              "template_id": { "type": "integer", "example": 1 }
+              "recipient_list_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+              "template_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" }
             }
           }
         }

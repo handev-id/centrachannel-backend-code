@@ -7,6 +7,8 @@ import (
 	"io"
 	"reflect"
 	"testing"
+
+	"github.com/google/uuid"
 )
 
 type captureQueryDriver struct {
@@ -38,6 +40,15 @@ func (c *captureQueryConn) QueryContext(_ context.Context, query string, args []
 		c.args[i] = a.Value
 	}
 	return &emptyRows{}, nil
+}
+
+func (c *captureQueryConn) ExecContext(_ context.Context, query string, args []driver.NamedValue) (driver.Result, error) {
+	c.query = query
+	c.args = make([]interface{}, len(args))
+	for i, arg := range args {
+		c.args[i] = arg.Value
+	}
+	return driver.RowsAffected(1), nil
 }
 
 type emptyRows struct{}
@@ -76,7 +87,7 @@ func TestMessageRepository_ListCursor_scopesByTenant(t *testing.T) {
 	repo := NewMessageRepository()
 
 	t.Run("first page includes tenant_id filter", func(t *testing.T) {
-		msgs, err := repo.ListCursor(context.Background(), db, 7, 1, 50, 0)
+		msgs, err := repo.ListCursor(context.Background(), db, uuid.MustParse("00000000-0000-4000-8000-000000000007"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 50, uuid.Nil)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -90,14 +101,14 @@ func TestMessageRepository_ListCursor_scopesByTenant(t *testing.T) {
 		if !containsSubstring(captureDriver.conn.query, "conversation_id = $1") {
 			t.Errorf("query missing conversation_id filter, got: %s", captureDriver.conn.query)
 		}
-		wantArgs := []interface{}{int64(1), int64(7), int64(50)}
+		wantArgs := []interface{}{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000007", int64(50)}
 		if !reflect.DeepEqual(captureDriver.conn.args, wantArgs) {
 			t.Errorf("args = %v, want %v", captureDriver.conn.args, wantArgs)
 		}
 	})
 
 	t.Run("cursor page keeps correct arg order", func(t *testing.T) {
-		_, err := repo.ListCursor(context.Background(), db, 7, 1, 50, 99)
+		_, err := repo.ListCursor(context.Background(), db, uuid.MustParse("00000000-0000-4000-8000-000000000007"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), 50, uuid.MustParse("00000000-0000-4000-8000-000000000063"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -108,13 +119,13 @@ func TestMessageRepository_ListCursor_scopesByTenant(t *testing.T) {
 		if !containsSubstring(captureDriver.conn.query, "tenant_id = $2") {
 			t.Errorf("query missing tenant_id filter, got: %s", captureDriver.conn.query)
 		}
-		if !containsSubstring(captureDriver.conn.query, "AND id < $3") {
-			t.Errorf("query missing id cursor filter, got: %s", captureDriver.conn.query)
+		if !containsSubstring(captureDriver.conn.query, "AND (created_at, id) < (SELECT created_at, id FROM messages WHERE id = $3 AND tenant_id = $2 AND conversation_id = $1)") {
+			t.Errorf("query missing scoped timestamp/UUID cursor filter, got: %s", captureDriver.conn.query)
 		}
 		if !containsSubstring(captureDriver.conn.query, "LIMIT $4") {
 			t.Errorf("query missing LIMIT placeholder, got: %s", captureDriver.conn.query)
 		}
-		wantArgs := []interface{}{int64(1), int64(7), int64(99), int64(50)}
+		wantArgs := []interface{}{"00000000-0000-4000-8000-000000000001", "00000000-0000-4000-8000-000000000007", "00000000-0000-4000-8000-000000000063", int64(50)}
 		if !reflect.DeepEqual(captureDriver.conn.args, wantArgs) {
 			t.Errorf("args = %v, want %v", captureDriver.conn.args, wantArgs)
 		}
@@ -123,6 +134,35 @@ func TestMessageRepository_ListCursor_scopesByTenant(t *testing.T) {
 
 func containsSubstring(s, sub string) bool {
 	return len(s) >= len(sub) && indexOf(s, sub) >= 0
+}
+
+func TestMessageRepository_WebhookUpdatesScopeTenant(t *testing.T) {
+	tenantID := uuid.New()
+	id := uuid.New()
+	db := openCaptureDB(t)
+	repo := NewMessageRepository()
+	operations := map[string]func() error{
+		"message status": func() error {
+			return repo.UpdateStatusByWebhookID(context.Background(), db, tenantID, "shared-provider-id", "delivered")
+		},
+		"provider ID": func() error {
+			return repo.UpdateWebhookID(context.Background(), db, tenantID, id, "shared-provider-id")
+		},
+	}
+	for name, operation := range operations {
+		t.Run(name, func(t *testing.T) {
+			if err := operation(); err != nil {
+				t.Fatal(err)
+			}
+			if !containsSubstring(captureDriver.conn.query, "AND tenant_id=$4") {
+				t.Errorf("update must scope provider/message ID by tenant: %s", captureDriver.conn.query)
+			}
+			args := captureDriver.conn.args
+			if len(args) != 4 || args[3] != tenantID.String() {
+				t.Errorf("tenant must be passed as fourth argument: %v", args)
+			}
+		})
+	}
 }
 
 func indexOf(s, sub string) int {

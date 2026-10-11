@@ -10,6 +10,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
@@ -29,9 +31,9 @@ func (t *mockDriverTx) Rollback() error { t.rolledBack = true; return nil }
 
 type mockRows struct{}
 
-func (r *mockRows) Columns() []string                  { return nil }
-func (r *mockRows) Close() error                       { return nil }
-func (r *mockRows) Next(dest []driver.Value) error      { return io.EOF }
+func (r *mockRows) Columns() []string              { return nil }
+func (r *mockRows) Close() error                   { return nil }
+func (r *mockRows) Next(dest []driver.Value) error { return io.EOF }
 
 type mockResult struct{}
 
@@ -81,37 +83,37 @@ func newMockDB() *sql.DB {
 // ---------------------------------------------------------------------------
 
 type mockUserRepository struct {
-	listFunc              func(context.Context, DBTX, int, int, int, string, *int) ([]*User, int, error)
-	getByIDFunc           func(context.Context, DBTX, int, int) (*User, error)
-	createFunc            func(context.Context, DBTX, *User) (int, error)
-	updateFunc            func(context.Context, DBTX, int, int, *User) error
-	softDeleteFunc        func(context.Context, DBTX, int, int) error
-	getRolesByUserIDFunc  func(context.Context, DBTX, int, int) ([]Role, error)
-	getRolesByUserIDsFunc func(context.Context, DBTX, int, []int) (map[int][]Role, error)
-	attachRolesFunc       func(context.Context, DBTX, int, int, []int) error
-	syncRolesFunc         func(context.Context, DBTX, int, int, []int) error
+	listFunc              func(context.Context, DBTX, uuid.UUID, int, int, string, *uuid.UUID) ([]*User, int, error)
+	getByIDFunc           func(context.Context, DBTX, uuid.UUID, uuid.UUID) (*User, error)
+	createFunc            func(context.Context, DBTX, *User) (uuid.UUID, error)
+	updateFunc            func(context.Context, DBTX, uuid.UUID, uuid.UUID, *User) error
+	softDeleteFunc        func(context.Context, DBTX, uuid.UUID, uuid.UUID) error
+	getRolesByUserIDFunc  func(context.Context, DBTX, uuid.UUID, uuid.UUID) ([]Role, error)
+	getRolesByUserIDsFunc func(context.Context, DBTX, uuid.UUID, []uuid.UUID) (map[uuid.UUID][]Role, error)
+	attachRolesFunc       func(context.Context, DBTX, uuid.UUID, uuid.UUID, []uuid.UUID) error
+	syncRolesFunc         func(context.Context, DBTX, uuid.UUID, uuid.UUID, []uuid.UUID) error
 
-	createCalled         bool
-	createUser           *User
-	attachRolesCalled    bool
-	attachRolesUserID    int
-	attachRolesIDs       []int
-	updateCalled         bool
-	updateUser           *User
-	syncRolesCalled      bool
-	syncRolesUserID      int
-	syncRolesIDs         []int
-	softDeleteCalled     bool
-	softDeleteTenantID   int
-	softDeleteID         int
-	listCalled           bool
-	listLimit            int
-	listOffset           int
+	createCalled            bool
+	createUser              *User
+	attachRolesCalled       bool
+	attachRolesUserID       uuid.UUID
+	attachRolesIDs          []uuid.UUID
+	updateCalled            bool
+	updateUser              *User
+	syncRolesCalled         bool
+	syncRolesUserID         uuid.UUID
+	syncRolesIDs            []uuid.UUID
+	softDeleteCalled        bool
+	softDeleteTenantID      uuid.UUID
+	softDeleteID            uuid.UUID
+	listCalled              bool
+	listLimit               int
+	listOffset              int
 	getRolesByUserIDsCalled bool
-	getRolesByUserIDs    []int
+	getRolesByUserIDs       []uuid.UUID
 }
 
-func (m *mockUserRepository) List(ctx context.Context, q DBTX, tenantID int, limit, offset int, search string, roleID *int) ([]*User, int, error) {
+func (m *mockUserRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, search string, roleID *uuid.UUID) ([]*User, int, error) {
 	m.listCalled = true
 	m.listLimit = limit
 	m.listOffset = offset
@@ -121,23 +123,23 @@ func (m *mockUserRepository) List(ctx context.Context, q DBTX, tenantID int, lim
 	return nil, 0, nil
 }
 
-func (m *mockUserRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*User, error) {
+func (m *mockUserRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error) {
 	if m.getByIDFunc != nil {
 		return m.getByIDFunc(ctx, q, tenantID, id)
 	}
 	return nil, sql.ErrNoRows
 }
 
-func (m *mockUserRepository) Create(ctx context.Context, q DBTX, user *User) (int, error) {
+func (m *mockUserRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
 	m.createCalled = true
 	m.createUser = user
 	if m.createFunc != nil {
 		return m.createFunc(ctx, q, user)
 	}
-	return 0, nil
+	return uuid.Nil, nil
 }
 
-func (m *mockUserRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, user *User) error {
+func (m *mockUserRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, user *User) error {
 	m.updateCalled = true
 	m.updateUser = user
 	if m.updateFunc != nil {
@@ -146,7 +148,7 @@ func (m *mockUserRepository) Update(ctx context.Context, q DBTX, tenantID int, i
 	return nil
 }
 
-func (m *mockUserRepository) SoftDelete(ctx context.Context, q DBTX, tenantID int, id int) error {
+func (m *mockUserRepository) SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	m.softDeleteCalled = true
 	m.softDeleteTenantID = tenantID
 	m.softDeleteID = id
@@ -156,23 +158,23 @@ func (m *mockUserRepository) SoftDelete(ctx context.Context, q DBTX, tenantID in
 	return nil
 }
 
-func (m *mockUserRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error) {
+func (m *mockUserRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error) {
 	if m.getRolesByUserIDFunc != nil {
 		return m.getRolesByUserIDFunc(ctx, q, tenantID, userID)
 	}
 	return nil, nil
 }
 
-func (m *mockUserRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID int, userIDs []int) (map[int][]Role, error) {
+func (m *mockUserRepository) GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID][]Role, error) {
 	m.getRolesByUserIDsCalled = true
 	m.getRolesByUserIDs = userIDs
 	if m.getRolesByUserIDsFunc != nil {
 		return m.getRolesByUserIDsFunc(ctx, q, tenantID, userIDs)
 	}
-	return map[int][]Role{}, nil
+	return map[uuid.UUID][]Role{}, nil
 }
 
-func (m *mockUserRepository) AttachRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
+func (m *mockUserRepository) AttachRoles(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) error {
 	m.attachRolesCalled = true
 	m.attachRolesUserID = userID
 	m.attachRolesIDs = roleIDs
@@ -182,7 +184,7 @@ func (m *mockUserRepository) AttachRoles(ctx context.Context, q DBTX, tenantID i
 	return nil
 }
 
-func (m *mockUserRepository) SyncRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error {
+func (m *mockUserRepository) SyncRoles(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) error {
 	m.syncRolesCalled = true
 	m.syncRolesUserID = userID
 	m.syncRolesIDs = roleIDs
@@ -207,7 +209,7 @@ func newTestService(repo *mockUserRepository) *userService {
 
 func ptr(s string) *string { return &s }
 
-var testTenant = &tenant.Tenant{ID: 1, Name: "Test Tenant"}
+var testTenant = &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Test Tenant"}
 
 // ---------------------------------------------------------------------------
 // Tests — Create
@@ -224,14 +226,14 @@ func TestCreate(t *testing.T) {
 			Username:  "johndoe",
 			Email:     "john@example.com",
 			Password:  "password123",
-			Roles:     []int{1, 2},
+			Roles:     []uuid.UUID{uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000002")},
 		}
 
-		repo.createFunc = func(_ context.Context, _ DBTX, user *User) (int, error) {
-			return 10, nil
+		repo.createFunc = func(_ context.Context, _ DBTX, user *User) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-00000000000a"), nil
 		}
-		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _, _ int) ([]Role, error) {
-			return []Role{{ID: 1, Name: "Admin"}}, nil
+		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) ([]Role, error) {
+			return []Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Admin"}}, nil
 		}
 
 		user, err := svc.Create(context.Background(), req, testTenant)
@@ -249,15 +251,15 @@ func TestCreate(t *testing.T) {
 		if !repo.attachRolesCalled {
 			t.Fatal("AttachRoles was not called")
 		}
-		if repo.attachRolesUserID != 10 {
-			t.Fatalf("expected AttachRoles userID 10, got %d", repo.attachRolesUserID)
+		if repo.attachRolesUserID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Fatalf("expected AttachRoles userID 10, got %s", repo.attachRolesUserID)
 		}
-		if len(repo.attachRolesIDs) != 2 || repo.attachRolesIDs[0] != 1 || repo.attachRolesIDs[1] != 2 {
+		if len(repo.attachRolesIDs) != 2 || repo.attachRolesIDs[0] != uuid.MustParse("00000000-0000-4000-8000-000000000001") || repo.attachRolesIDs[1] != uuid.MustParse("00000000-0000-4000-8000-000000000002") {
 			t.Fatalf("unexpected role IDs: %v", repo.attachRolesIDs)
 		}
 
-		if user.ID != 10 {
-			t.Fatalf("expected user ID 10, got %d", user.ID)
+		if user.ID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Fatalf("expected user ID 10, got %s", user.ID)
 		}
 		if user.FirstName != "John" {
 			t.Fatalf("expected FirstName John, got %s", user.FirstName)
@@ -284,13 +286,13 @@ func TestCreate(t *testing.T) {
 			Email:     "jane@example.com",
 			Password:  "password456",
 			Avatar:    providedAvatar,
-			Roles:     []int{1},
+			Roles:     []uuid.UUID{uuid.MustParse("00000000-0000-4000-8000-000000000001")},
 		}
 
-		repo.createFunc = func(_ context.Context, _ DBTX, user *User) (int, error) {
-			return 20, nil
+		repo.createFunc = func(_ context.Context, _ DBTX, user *User) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-000000000014"), nil
 		}
-		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _, _ int) ([]Role, error) {
+		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) ([]Role, error) {
 			return nil, nil
 		}
 
@@ -305,8 +307,8 @@ func TestCreate(t *testing.T) {
 		if string(repo.createUser.Avatar) != string(providedAvatar) {
 			t.Fatalf("expected avatar %q, got %q", string(providedAvatar), string(repo.createUser.Avatar))
 		}
-		if user.ID != 20 {
-			t.Fatalf("expected user ID 20, got %d", user.ID)
+		if user.ID != uuid.MustParse("00000000-0000-4000-8000-000000000014") {
+			t.Fatalf("expected user ID 20, got %s", user.ID)
 		}
 	})
 }
@@ -317,8 +319,8 @@ func TestCreate(t *testing.T) {
 
 func TestUpdate(t *testing.T) {
 	existingUser := &User{
-		ID:        5,
-		TenantID:  1,
+		ID:        uuid.MustParse("00000000-0000-4000-8000-000000000005"),
+		TenantID:  uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 		FirstName: "Old",
 		Username:  "olduser",
 		Email:     "old@example.com",
@@ -334,12 +336,12 @@ func TestUpdate(t *testing.T) {
 		// GetByID is called twice: once at the start to load the existing user,
 		// and once at the end via s.GetByID after commit.
 		var getByIDCalls int
-		repo.getByIDFunc = func(_ context.Context, _ DBTX, _, _ int) (*User, error) {
+		repo.getByIDFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) (*User, error) {
 			getByIDCalls++
 			if getByIDCalls == 2 {
 				return &User{
-					ID:        5,
-					TenantID:  1,
+					ID:        uuid.MustParse("00000000-0000-4000-8000-000000000005"),
+					TenantID:  uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 					FirstName: "Updated",
 					LastName:  ptr("User"),
 					Username:  "updateduser",
@@ -351,8 +353,8 @@ func TestUpdate(t *testing.T) {
 			}
 			return existingUser, nil
 		}
-		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _, _ int) ([]Role, error) {
-			return []Role{{ID: 2, Name: "Editor"}}, nil
+		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) ([]Role, error) {
+			return []Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), Name: "Editor"}}, nil
 		}
 
 		req := UpdateUserRequest{
@@ -360,10 +362,10 @@ func TestUpdate(t *testing.T) {
 			LastName:  ptr("User"),
 			Username:  "updateduser",
 			Email:     "updated@example.com",
-			Roles:     []int{2, 3},
+			Roles:     []uuid.UUID{uuid.MustParse("00000000-0000-4000-8000-000000000002"), uuid.MustParse("00000000-0000-4000-8000-000000000003")},
 		}
 
-		user, err := svc.Update(context.Background(), 1, 5, req)
+		user, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -381,10 +383,10 @@ func TestUpdate(t *testing.T) {
 		if !repo.syncRolesCalled {
 			t.Fatal("SyncRoles was not called")
 		}
-		if repo.syncRolesUserID != 5 {
-			t.Fatalf("expected SyncRoles userID 5, got %d", repo.syncRolesUserID)
+		if repo.syncRolesUserID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Fatalf("expected SyncRoles userID 5, got %s", repo.syncRolesUserID)
 		}
-		if len(repo.syncRolesIDs) != 2 || repo.syncRolesIDs[0] != 2 {
+		if len(repo.syncRolesIDs) != 2 || repo.syncRolesIDs[0] != uuid.MustParse("00000000-0000-4000-8000-000000000002") {
 			t.Fatalf("unexpected SyncRoles IDs: %v", repo.syncRolesIDs)
 		}
 
@@ -400,10 +402,10 @@ func TestUpdate(t *testing.T) {
 		repo := &mockUserRepository{}
 		svc := newTestService(repo)
 
-		repo.getByIDFunc = func(_ context.Context, _ DBTX, _, _ int) (*User, error) {
+		repo.getByIDFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) (*User, error) {
 			return existingUser, nil
 		}
-		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _, _ int) ([]Role, error) {
+		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) ([]Role, error) {
 			return nil, nil
 		}
 
@@ -413,10 +415,10 @@ func TestUpdate(t *testing.T) {
 			Username:  "updateduser",
 			Email:     "updated@example.com",
 			Password:  &newPassword,
-			Roles:     []int{1},
+			Roles:     []uuid.UUID{uuid.MustParse("00000000-0000-4000-8000-000000000001")},
 		}
 
-		user, err := svc.Update(context.Background(), 1, 5, req)
+		user, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), req)
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
@@ -441,11 +443,18 @@ func TestUpdate(t *testing.T) {
 // ---------------------------------------------------------------------------
 
 func TestDelete(t *testing.T) {
-	t.Run("super admin id=1 returns error", func(t *testing.T) {
-		repo := &mockUserRepository{}
+	t.Run("super admin id=00000000-0000-4000-8000-000000000001 returns error", func(t *testing.T) {
+		repo := &mockUserRepository{
+			getByIDFunc: func(_ context.Context, _ DBTX, tenantID, id uuid.UUID) (*User, error) {
+				return &User{ID: id, TenantID: tenantID}, nil
+			},
+		}
+		repo.getRolesByUserIDFunc = func(_ context.Context, _ DBTX, _, _ uuid.UUID) ([]Role, error) {
+			return []Role{{Name: "super-admin"}}, nil
+		}
 		svc := newTestService(repo)
 
-		err := svc.Delete(context.Background(), 1, 1)
+		err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err == nil {
 			t.Fatal("expected error when deleting super admin")
 		}
@@ -458,21 +467,25 @@ func TestDelete(t *testing.T) {
 	})
 
 	t.Run("normal user is soft deleted", func(t *testing.T) {
-		repo := &mockUserRepository{}
+		repo := &mockUserRepository{
+			getByIDFunc: func(_ context.Context, _ DBTX, tenantID, id uuid.UUID) (*User, error) {
+				return &User{ID: id, TenantID: tenantID}, nil
+			},
+		}
 		svc := newTestService(repo)
 
-		err := svc.Delete(context.Background(), 1, 5)
+		err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"))
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
 		if !repo.softDeleteCalled {
 			t.Fatal("SoftDelete was not called")
 		}
-		if repo.softDeleteTenantID != 1 {
-			t.Fatalf("expected tenantID 1, got %d", repo.softDeleteTenantID)
+		if repo.softDeleteTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Fatalf("expected tenantID 1, got %s", repo.softDeleteTenantID)
 		}
-		if repo.softDeleteID != 5 {
-			t.Fatalf("expected id 5, got %d", repo.softDeleteID)
+		if repo.softDeleteID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Fatalf("expected id 5, got %s", repo.softDeleteID)
 		}
 	})
 }
@@ -486,7 +499,7 @@ func TestList(t *testing.T) {
 		repo := &mockUserRepository{}
 		svc := newTestService(repo)
 
-		repo.listFunc = func(_ context.Context, _ DBTX, _ int, limit, offset int, _ string, _ *int) ([]*User, int, error) {
+		repo.listFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, limit int, offset int, _ string, _ *uuid.UUID) ([]*User, int, error) {
 			return nil, 0, nil
 		}
 
@@ -517,7 +530,7 @@ func TestList(t *testing.T) {
 		repo := &mockUserRepository{}
 		svc := newTestService(repo)
 
-		repo.listFunc = func(_ context.Context, _ DBTX, _ int, limit, offset int, _ string, _ *int) ([]*User, int, error) {
+		repo.listFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, limit int, offset int, _ string, _ *uuid.UUID) ([]*User, int, error) {
 			return nil, 0, nil
 		}
 
@@ -535,18 +548,15 @@ func TestList(t *testing.T) {
 		svc := newTestService(repo)
 
 		users := []*User{
-			{ID: 1, FirstName: "Alice", Username: "alice", Email: "alice@test.com", TenantID: 1},
-			{ID: 2, FirstName: "Bob", Username: "bob", Email: "bob@test.com", TenantID: 1},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Alice", Username: "alice", Email: "alice@test.com", TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001")},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), FirstName: "Bob", Username: "bob", Email: "bob@test.com", TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001")},
 		}
-		roleMap := map[int][]Role{
-			1: {{ID: 10, Name: "Admin"}},
-			2: {{ID: 20, Name: "Editor"}},
-		}
+		roleMap := map[uuid.UUID][]Role{uuid.MustParse("00000000-0000-4000-8000-000000000001"): {{ID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), Name: "Admin"}}, uuid.MustParse("00000000-0000-4000-8000-000000000002"): {{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), Name: "Editor"}}}
 
-		repo.listFunc = func(_ context.Context, _ DBTX, _ int, _, _ int, _ string, _ *int) ([]*User, int, error) {
+		repo.listFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ int, _ int, _ string, _ *uuid.UUID) ([]*User, int, error) {
 			return users, 2, nil
 		}
-		repo.getRolesByUserIDsFunc = func(_ context.Context, _ DBTX, _ int, userIDs []int) (map[int][]Role, error) {
+		repo.getRolesByUserIDsFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID][]Role, error) {
 			return roleMap, nil
 		}
 		result, total, err := svc.List(context.Background(), ListUserQuery{Page: 1, Limit: 20}, testTenant)
@@ -583,14 +593,14 @@ func TestList(t *testing.T) {
 
 		users := make([]*User, 5)
 		for i := range users {
-			users[i] = &User{ID: i + 21}
+			users[i] = &User{ID: uuid.New()}
 		}
 
-		repo.listFunc = func(_ context.Context, _ DBTX, _ int, limit, offset int, _ string, _ *int) ([]*User, int, error) {
+		repo.listFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, limit int, offset int, _ string, _ *uuid.UUID) ([]*User, int, error) {
 			return users, 25, nil
 		}
-		repo.getRolesByUserIDsFunc = func(_ context.Context, _ DBTX, _ int, _ []int) (map[int][]Role, error) {
-			return map[int][]Role{}, nil
+		repo.getRolesByUserIDsFunc = func(_ context.Context, _ DBTX, _ uuid.UUID, _ []uuid.UUID) (map[uuid.UUID][]Role, error) {
+			return map[uuid.UUID][]Role{}, nil
 		}
 
 		result, total, err := svc.List(context.Background(), ListUserQuery{Page: 3, Limit: 10}, testTenant)

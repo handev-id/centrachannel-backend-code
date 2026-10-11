@@ -3,6 +3,8 @@ package conversation_tag
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -12,7 +14,7 @@ type DBTX interface {
 }
 
 type ConversationTagRepository interface {
-	ListByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]ConversationTag, error)
-	Attach(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error
-	Detach(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error
+	ListByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error)
+	Attach(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error
+	Detach(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error
 }

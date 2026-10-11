@@ -3,24 +3,26 @@ package contact
 import (
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type ListContactQuery struct {
-	Page             int     `query:"page"`
-	Limit            int     `query:"limit"`
-	Search           string  `query:"search"`
-	Status           string  `query:"status"`
-	ChannelID        int     `query:"channel_id"`
-	ChannelType      string  `query:"channel_type"`
-	Category         string  `query:"category"`
-	Country          string  `query:"country"`
-	Province         string  `query:"province"`
-	AgentID          int     `query:"agent_id"`
-	IsMerged         string  `query:"is_merged"`
-	HasConversation  string  `query:"has_conversation"`
-	LastActivityFrom string  `query:"last_activity_from"`
-	LastActivityTo   string  `query:"last_activity_to"`
-	SortBy           string  `query:"sort_by"`
+	Page             int       `query:"page"`
+	Limit            int       `query:"limit"`
+	Search           string    `query:"search"`
+	Status           string    `query:"status"`
+	ChannelID        uuid.UUID `query:"channel_id"`
+	ChannelType      string    `query:"channel_type"`
+	Category         string    `query:"category"`
+	Country          string    `query:"country"`
+	Province         string    `query:"province"`
+	AgentID          uuid.UUID `query:"agent_id"`
+	IsMerged         string    `query:"is_merged"`
+	HasConversation  string    `query:"has_conversation"`
+	LastActivityFrom string    `query:"last_activity_from"`
+	LastActivityTo   string    `query:"last_activity_to"`
+	SortBy           string    `query:"sort_by"`
 }
 
 type CreateContactRequest struct {
@@ -85,17 +87,17 @@ type CSVImportError struct {
 }
 
 type MergeContactRequest struct {
-	TargetContactID int `json:"target_contact_id" validate:"required"`
+	TargetContactID uuid.UUID `json:"target_contact_id" validate:"required,uuid"`
 }
 
 type ConversationBrief struct {
-	ID           int              `json:"id"`
-	Status       string           `json:"status"`
-	ProfileID    int              `json:"profile_id"`
-	AgentID      *int             `json:"agent_id,omitempty"`
-	ChannelID    int              `json:"channel_id"`
-	UnreadCount  int              `json:"unread_count"`
-	LastMessage  json.RawMessage  `json:"last_message,omitempty"`
-	LastActivity *time.Time       `json:"last_activity,omitempty"`
-	CreatedAt    time.Time        `json:"created_at"`
+	ID           uuid.UUID       `json:"id"`
+	Status       string          `json:"status"`
+	ProfileID    uuid.UUID       `json:"profile_id"`
+	AgentID      *uuid.UUID      `json:"agent_id,omitempty" validate:"omitnil,required,uuid"`
+	ChannelID    uuid.UUID       `json:"channel_id"`
+	UnreadCount  int             `json:"unread_count"`
+	LastMessage  json.RawMessage `json:"last_message,omitempty"`
+	LastActivity *time.Time      `json:"last_activity,omitempty"`
+	CreatedAt    time.Time       `json:"created_at"`
 }

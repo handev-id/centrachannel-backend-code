@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/src/message"
@@ -57,7 +59,7 @@ func (s *webhookService) handleInstagramEvent(ctx context.Context, payload *Meta
 	return nil
 }
 
-func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, channelID int, channelType string, messages []MetaWebhookMessage) error {
+func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, channelID uuid.UUID, channelType string, messages []MetaWebhookMessage) error {
 	for _, msg := range messages {
 		if msg.Message == nil || msg.Sender == nil {
 			continue
@@ -131,7 +133,7 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 			TenantID:         tenantID,
 			Text:             msgText,
 			Status:           "unread",
-			SenderID:         0,
+			SenderID:         c.ID,
 			SenderType:       "contact",
 			WebhookMessageID: &msg.Message.MID,
 			ConversationID:   conv.ID,
@@ -155,7 +157,7 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 		lastMsgJSON, _ := json.Marshal(lastMsg)
 		_ = s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, nil)
 
-		s.logger.Info("meta webhook: tenant=%d, channel=%s, sender=%s, text=%s, msg_id=%s",
+		s.logger.Info("meta webhook: tenant=%s, channel=%s, sender=%s, text=%s, msg_id=%s",
 			tenantID, channelType, externalID, text, msg.Message.MID)
 	}
 	return nil

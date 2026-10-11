@@ -8,6 +8,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/messenger"
 	"centrachannel/internal/src/channel"
@@ -18,24 +20,24 @@ import (
 
 type CampaignService interface {
 	List(ctx context.Context, q ListCampaignQuery, t *tenant.Tenant) ([]*Campaign, int, error)
-	GetByID(ctx context.Context, tenantID int, id int) (*Campaign, error)
-	Create(ctx context.Context, req CreateCampaignRequest, t *tenant.Tenant, userID int) (*Campaign, error)
-	Update(ctx context.Context, tenantID int, id int, req UpdateCampaignRequest) (*Campaign, error)
-	Delete(ctx context.Context, tenantID int, id int) error
-	Send(ctx context.Context, tenantID int, id int) error
-	ListTemplates(ctx context.Context, tenantID int) ([]CampaignTemplate, error)
-	GetTemplateByID(ctx context.Context, tenantID int, id int) (*CampaignTemplate, error)
+	GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Campaign, error)
+	Create(ctx context.Context, req CreateCampaignRequest, t *tenant.Tenant, userID uuid.UUID) (*Campaign, error)
+	Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateCampaignRequest) (*Campaign, error)
+	Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	Send(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	ListTemplates(ctx context.Context, tenantID uuid.UUID) ([]CampaignTemplate, error)
+	GetTemplateByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*CampaignTemplate, error)
 	CreateTemplate(ctx context.Context, req CreateTemplateRequest, t *tenant.Tenant) (*CampaignTemplate, error)
-	UpdateTemplate(ctx context.Context, tenantID int, id int, req UpdateTemplateRequest) (*CampaignTemplate, error)
-	DeleteTemplate(ctx context.Context, tenantID int, id int) error
-	ListRecipientLists(ctx context.Context, tenantID int) ([]CampaignRecipientList, error)
-	GetRecipientListByID(ctx context.Context, tenantID int, id int) (*CampaignRecipientList, error)
+	UpdateTemplate(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateTemplateRequest) (*CampaignTemplate, error)
+	DeleteTemplate(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	ListRecipientLists(ctx context.Context, tenantID uuid.UUID) ([]CampaignRecipientList, error)
+	GetRecipientListByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*CampaignRecipientList, error)
 	CreateRecipientList(ctx context.Context, req CreateRecipientListRequest, t *tenant.Tenant) (*CampaignRecipientList, error)
-	UpdateRecipientList(ctx context.Context, tenantID int, id int, req UpdateRecipientListRequest) (*CampaignRecipientList, error)
-	DeleteRecipientList(ctx context.Context, tenantID int, id int) error
-	ListRecipientContacts(ctx context.Context, tenantID int, listID int) ([]CampaignRecipientContact, error)
-	AddRecipientContact(ctx context.Context, tenantID int, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error)
-	RemoveRecipientContact(ctx context.Context, tenantID int, listID int, contactID int) error
+	UpdateRecipientList(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateRecipientListRequest) (*CampaignRecipientList, error)
+	DeleteRecipientList(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
+	ListRecipientContacts(ctx context.Context, tenantID uuid.UUID, listID uuid.UUID) ([]CampaignRecipientContact, error)
+	AddRecipientContact(ctx context.Context, tenantID uuid.UUID, listID uuid.UUID, req AddContactToListRequest) (*CampaignRecipientContact, error)
+	RemoveRecipientContact(ctx context.Context, tenantID uuid.UUID, listID uuid.UUID, contactID uuid.UUID) error
 }
 
 type campaignService struct {
@@ -68,7 +70,7 @@ func (s *campaignService) List(ctx context.Context, q ListCampaignQuery, t *tena
 	return campaigns, total, nil
 }
 
-func (s *campaignService) GetByID(ctx context.Context, tenantID int, id int) (*Campaign, error) {
+func (s *campaignService) GetByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*Campaign, error) {
 	campaign, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -79,7 +81,7 @@ func (s *campaignService) GetByID(ctx context.Context, tenantID int, id int) (*C
 	return campaign, nil
 }
 
-func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest, t *tenant.Tenant, userID int) (*Campaign, error) {
+func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest, t *tenant.Tenant, userID uuid.UUID) (*Campaign, error) {
 	campaignType := req.Type
 	if campaignType == "" {
 		campaignType = "broadcast"
@@ -95,8 +97,13 @@ func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest,
 	}
 
 	if req.RecipientListID != nil {
-		if _, err := s.repo.GetRecipientListByID(ctx, s.db, t.ID, *req.RecipientListID); err != nil {
+		if _, err := s.GetRecipientListByID(ctx, t.ID, *req.RecipientListID); err != nil {
 			return nil, fmt.Errorf("recipient list not found")
+		}
+	}
+	if req.TemplateID != nil {
+		if _, err := s.GetTemplateByID(ctx, t.ID, *req.TemplateID); err != nil {
+			return nil, fmt.Errorf("template not found")
 		}
 	}
 
@@ -155,7 +162,7 @@ func (s *campaignService) Create(ctx context.Context, req CreateCampaignRequest,
 	return campaign, nil
 }
 
-func (s *campaignService) Update(ctx context.Context, tenantID int, id int, req UpdateCampaignRequest) (*Campaign, error) {
+func (s *campaignService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateCampaignRequest) (*Campaign, error) {
 	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -201,12 +208,15 @@ func (s *campaignService) Update(ctx context.Context, tenantID int, id int, req 
 		updated.ScheduledAt = &parsed
 	}
 	if req.RecipientListID != nil {
-		if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, *req.RecipientListID); err != nil {
+		if _, err := s.GetRecipientListByID(ctx, tenantID, *req.RecipientListID); err != nil {
 			return nil, fmt.Errorf("recipient list not found")
 		}
 		updated.RecipientListID = req.RecipientListID
 	}
 	if req.TemplateID != nil {
+		if _, err := s.GetTemplateByID(ctx, tenantID, *req.TemplateID); err != nil {
+			return nil, fmt.Errorf("template not found")
+		}
 		updated.TemplateID = req.TemplateID
 	}
 	if req.AgentID != nil {
@@ -222,7 +232,7 @@ func (s *campaignService) Update(ctx context.Context, tenantID int, id int, req 
 	return s.repo.GetByID(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) Delete(ctx context.Context, tenantID int, id int) error {
+func (s *campaignService) Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return err
@@ -236,7 +246,7 @@ func (s *campaignService) Delete(ctx context.Context, tenantID int, id int) erro
 	return s.repo.Delete(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) Send(ctx context.Context, tenantID int, id int) error {
+func (s *campaignService) Send(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	campaign, err := s.repo.GetByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return err
@@ -275,7 +285,7 @@ func (s *campaignService) loadTemplateText(campaign *Campaign) (string, error) {
 
 	tmpl, err := s.repo.GetTemplateByID(context.Background(), s.db, campaign.TenantID, *campaign.TemplateID)
 	if err != nil || tmpl == nil {
-		s.logger.Warn("Template %d not found for campaign %d, falling back to message_template", *campaign.TemplateID, campaign.ID)
+		s.logger.Warn("Template %s not found for campaign %s, falling back to message_template", *campaign.TemplateID, campaign.ID)
 		return campaign.MessageTemplate, nil
 	}
 
@@ -289,27 +299,27 @@ func (s *campaignService) loadTemplateText(campaign *Campaign) (string, error) {
 	return content.Text, nil
 }
 
-func (s *campaignService) processSend(ctx context.Context, tenantID int, campaignID int) {
+func (s *campaignService) processSend(ctx context.Context, tenantID uuid.UUID, campaignID uuid.UUID) {
 	campaign, err := s.repo.GetByID(ctx, s.db, tenantID, campaignID)
 	if err != nil || campaign == nil {
-		s.logger.Error("Failed to get campaign %d: %v", campaignID, err)
+		s.logger.Error("Failed to get campaign %s: %v", campaignID, err)
 		return
 	}
 
 	templateText, err := s.loadTemplateText(campaign)
 	if err != nil {
-		s.logger.Error("Failed to load template for campaign %d: %v", campaignID, err)
+		s.logger.Error("Failed to load template for campaign %s: %v", campaignID, err)
 		if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, campaignID, "failed", nil); statusErr != nil {
-			s.logger.Error("Failed to persist campaign %d status: %v", campaignID, statusErr)
+			s.logger.Error("Failed to persist campaign %s status: %v", campaignID, statusErr)
 		}
 		return
 	}
 
 	ch, err := s.channelRepo.GetByID(ctx, s.db, campaign.ChannelID)
 	if err != nil {
-		s.logger.Error("Failed to get channel for campaign %d: %v", campaignID, err)
+		s.logger.Error("Failed to get channel for campaign %s: %v", campaignID, err)
 		if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, campaignID, "failed", nil); statusErr != nil {
-			s.logger.Error("Failed to persist campaign %d status: %v", campaignID, statusErr)
+			s.logger.Error("Failed to persist campaign %s status: %v", campaignID, statusErr)
 		}
 		return
 	}
@@ -318,7 +328,7 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 	if campaign.SenderID != nil && s.cfg.EvolutionAPIURL != "" {
 		device, err = s.deviceRepo.GetByID(ctx, s.db, tenantID, *campaign.SenderID)
 		if err != nil {
-			s.logger.Error("Failed to get sender device for campaign %d: %v", campaignID, err)
+			s.logger.Error("Failed to get sender device for campaign %s: %v", campaignID, err)
 		}
 	}
 
@@ -328,9 +338,9 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 	for {
 		recipients, err := s.repo.GetPendingRecipientsWithPhone(ctx, s.db, campaignID, batchSize)
 		if err != nil {
-			s.logger.Error("Failed to get pending recipients for campaign %d: %v", campaignID, err)
+			s.logger.Error("Failed to get pending recipients for campaign %s: %v", campaignID, err)
 			if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, campaignID, "failed", nil); statusErr != nil {
-				s.logger.Error("Failed to persist campaign %d status: %v", campaignID, statusErr)
+				s.logger.Error("Failed to persist campaign %s status: %v", campaignID, statusErr)
 			}
 			return
 		}
@@ -385,7 +395,7 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 			}
 
 			if err := s.repo.UpdateRecipientStatus(ctx, s.db, r.ID, status, failedReason, &sql.NullTime{Time: now, Valid: true}); err != nil {
-				s.logger.Error("Failed to update recipient %d: %v", r.ID, err)
+				s.logger.Error("Failed to update recipient %s: %v", r.ID, err)
 			}
 			if status == "delivered" {
 				sentCount++
@@ -405,17 +415,17 @@ func (s *campaignService) processSend(ctx context.Context, tenantID int, campaig
 	}
 
 	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, campaignID, finalStatus, &sentCount); err != nil {
-		s.logger.Error("Failed to persist campaign %d result: %v", campaignID, err)
+		s.logger.Error("Failed to persist campaign %s result: %v", campaignID, err)
 		return
 	}
-	s.logger.Info("Campaign %d processed: %d sent, status: %s", campaignID, sentCount, finalStatus)
+	s.logger.Info("Campaign %s processed: %d sent, status: %s", campaignID, sentCount, finalStatus)
 }
 
-func (s *campaignService) ListTemplates(ctx context.Context, tenantID int) ([]CampaignTemplate, error) {
+func (s *campaignService) ListTemplates(ctx context.Context, tenantID uuid.UUID) ([]CampaignTemplate, error) {
 	return s.repo.ListTemplates(ctx, s.db, tenantID)
 }
 
-func (s *campaignService) GetTemplateByID(ctx context.Context, tenantID int, id int) (*CampaignTemplate, error) {
+func (s *campaignService) GetTemplateByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*CampaignTemplate, error) {
 	t, err := s.repo.GetTemplateByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -456,7 +466,7 @@ func (s *campaignService) CreateTemplate(ctx context.Context, req CreateTemplate
 	return template, nil
 }
 
-func (s *campaignService) UpdateTemplate(ctx context.Context, tenantID int, id int, req UpdateTemplateRequest) (*CampaignTemplate, error) {
+func (s *campaignService) UpdateTemplate(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateTemplateRequest) (*CampaignTemplate, error) {
 	existing, err := s.repo.GetTemplateByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -505,15 +515,15 @@ func (s *campaignService) UpdateTemplate(ctx context.Context, tenantID int, id i
 	return s.repo.GetTemplateByID(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) DeleteTemplate(ctx context.Context, tenantID int, id int) error {
+func (s *campaignService) DeleteTemplate(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	return s.repo.DeleteTemplate(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) ListRecipientLists(ctx context.Context, tenantID int) ([]CampaignRecipientList, error) {
+func (s *campaignService) ListRecipientLists(ctx context.Context, tenantID uuid.UUID) ([]CampaignRecipientList, error) {
 	return s.repo.ListRecipientLists(ctx, s.db, tenantID)
 }
 
-func (s *campaignService) GetRecipientListByID(ctx context.Context, tenantID int, id int) (*CampaignRecipientList, error) {
+func (s *campaignService) GetRecipientListByID(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) (*CampaignRecipientList, error) {
 	l, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -548,7 +558,7 @@ func (s *campaignService) CreateRecipientList(ctx context.Context, req CreateRec
 	return list, nil
 }
 
-func (s *campaignService) UpdateRecipientList(ctx context.Context, tenantID int, id int, req UpdateRecipientListRequest) (*CampaignRecipientList, error) {
+func (s *campaignService) UpdateRecipientList(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateRecipientListRequest) (*CampaignRecipientList, error) {
 	existing, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, id)
 	if err != nil {
 		return nil, err
@@ -580,19 +590,19 @@ func (s *campaignService) UpdateRecipientList(ctx context.Context, tenantID int,
 	return s.repo.GetRecipientListByID(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) DeleteRecipientList(ctx context.Context, tenantID int, id int) error {
+func (s *campaignService) DeleteRecipientList(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	return s.repo.DeleteRecipientList(ctx, s.db, tenantID, id)
 }
 
-func (s *campaignService) ListRecipientContacts(ctx context.Context, tenantID int, listID int) ([]CampaignRecipientContact, error) {
-	if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, listID); err != nil {
+func (s *campaignService) ListRecipientContacts(ctx context.Context, tenantID uuid.UUID, listID uuid.UUID) ([]CampaignRecipientContact, error) {
+	if _, err := s.GetRecipientListByID(ctx, tenantID, listID); err != nil {
 		return nil, err
 	}
 	return s.repo.ListRecipientContacts(ctx, s.db, tenantID, listID)
 }
 
-func (s *campaignService) AddRecipientContact(ctx context.Context, tenantID int, listID int, req AddContactToListRequest) (*CampaignRecipientContact, error) {
-	if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, listID); err != nil {
+func (s *campaignService) AddRecipientContact(ctx context.Context, tenantID uuid.UUID, listID uuid.UUID, req AddContactToListRequest) (*CampaignRecipientContact, error) {
+	if _, err := s.GetRecipientListByID(ctx, tenantID, listID); err != nil {
 		return nil, err
 	}
 
@@ -618,8 +628,8 @@ func (s *campaignService) AddRecipientContact(ctx context.Context, tenantID int,
 	return contact, nil
 }
 
-func (s *campaignService) RemoveRecipientContact(ctx context.Context, tenantID int, listID int, contactID int) error {
-	if _, err := s.repo.GetRecipientListByID(ctx, s.db, tenantID, listID); err != nil {
+func (s *campaignService) RemoveRecipientContact(ctx context.Context, tenantID uuid.UUID, listID uuid.UUID, contactID uuid.UUID) error {
+	if _, err := s.GetRecipientListByID(ctx, tenantID, listID); err != nil {
 		return err
 	}
 	return s.repo.DeleteRecipientContact(ctx, s.db, tenantID, listID, contactID)

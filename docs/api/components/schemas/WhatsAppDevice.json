@@ -1,8 +1,8 @@
 {
   "type": "object",
   "properties": {
-    "id": { "type": "integer", "example": 1 },
-    "tenant_id": { "type": "integer", "example": 1 },
+    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+    "tenant_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
     "name": { "type": "string", "example": "Sales Phone" },
     "country_code": { "type": "string", "example": "62" },
     "phone": { "type": "string", "example": "6281234567890" },

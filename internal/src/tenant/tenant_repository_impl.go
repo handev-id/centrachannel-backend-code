@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type tenantRepository struct{}
@@ -13,47 +15,47 @@ func NewTenantRepository() TenantRepository {
 	return &tenantRepository{}
 }
 
-func (r *tenantRepository) Create(ctx context.Context, q DBTX, tenant *Tenant) (int, error) {
+func (r *tenantRepository) Create(ctx context.Context, q DBTX, tenant *Tenant) (uuid.UUID, error) {
 	query := `INSERT INTO tenants (name, domain, is_active, created_at, updated_at) VALUES ($1, $2, $3, $4, $5) RETURNING id`
-	var id int
+	var id uuid.UUID
 	err := q.QueryRowContext(ctx, query,
 		tenant.Name, tenant.Domain, true, time.Now(), time.Now(),
 	).Scan(&id)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 	return id, nil
 }
 
-func (r *tenantRepository) CreateRole(ctx context.Context, q DBTX, tenantID int, name string) (int, error) {
+func (r *tenantRepository) CreateRole(ctx context.Context, q DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
 	query := `INSERT INTO roles (tenant_id, name, created_at, updated_at) VALUES ($1, $2, $3, $4) RETURNING id`
-	var id int
+	var id uuid.UUID
 	err := q.QueryRowContext(ctx, query, tenantID, name, time.Now(), time.Now()).Scan(&id)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 	return id, nil
 }
 
-func (r *tenantRepository) CreateUser(ctx context.Context, q DBTX, user *User) (int, error) {
+func (r *tenantRepository) CreateUser(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
 	query := `INSERT INTO users (tenant_id, first_name, last_name, username, email, password, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id`
-	var id int
+	var id uuid.UUID
 	err := q.QueryRowContext(ctx, query,
 		user.TenantID, user.FirstName, user.LastName, user.Username, user.Email, user.Password, time.Now(), time.Now(),
 	).Scan(&id)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 	return id, nil
 }
 
-func (r *tenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
+func (r *tenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID uuid.UUID) error {
 	query := `INSERT INTO role_user (tenant_id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`
 	_, err := q.ExecContext(ctx, query, tenantID, userID, roleID, time.Now(), time.Now())
 	return err
 }
 
-func (r *tenantRepository) GetByID(ctx context.Context, q DBTX, id int) (*Tenant, error) {
+func (r *tenantRepository) GetByID(ctx context.Context, q DBTX, id uuid.UUID) (*Tenant, error) {
 	query := `SELECT id, name, domain, logo, address, phone, email, is_active, settings, created_at, updated_at FROM tenants WHERE id = $1`
 	return scanTenant(q.QueryRowContext(ctx, query, id))
 }
@@ -68,7 +70,9 @@ func (r *tenantRepository) GetByMetaInstagramBusinessID(ctx context.Context, q D
 	return scanTenant(q.QueryRowContext(ctx, query, igID))
 }
 
-func scanTenant(row interface{ Scan(dest ...interface{}) error }) (*Tenant, error) {
+func scanTenant(row interface {
+	Scan(dest ...interface{}) error
+}) (*Tenant, error) {
 	var t Tenant
 	var logo, settings sql.NullString
 	var address, phone, email sql.NullString
@@ -78,11 +82,21 @@ func scanTenant(row interface{ Scan(dest ...interface{}) error }) (*Tenant, erro
 		return nil, err
 	}
 
-	if logo.Valid { t.Logo = json.RawMessage(logo.String) }
-	if address.Valid { t.Address = &address.String }
-	if phone.Valid { t.Phone = &phone.String }
-	if email.Valid { t.Email = &email.String }
-	if settings.Valid { t.Settings = json.RawMessage(settings.String) }
+	if logo.Valid {
+		t.Logo = json.RawMessage(logo.String)
+	}
+	if address.Valid {
+		t.Address = &address.String
+	}
+	if phone.Valid {
+		t.Phone = &phone.String
+	}
+	if email.Valid {
+		t.Email = &email.String
+	}
+	if settings.Valid {
+		t.Settings = json.RawMessage(settings.String)
+	}
 
 	return &t, nil
 }

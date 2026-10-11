@@ -12,12 +12,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/golang-jwt/jwt/v5"
+	"github.com/google/uuid"
+	"golang.org/x/crypto/bcrypt"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
-
-	"github.com/golang-jwt/jwt/v5"
-	"golang.org/x/crypto/bcrypt"
 )
 
 // ---------------------------------------------------------------------------
@@ -111,7 +112,7 @@ func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error) {
 	}
 	return &mockRows{
 		cols: []string{"id"},
-		data: [][]driver.Value{{int64(1)}},
+		data: [][]driver.Value{{"00000000-0000-4000-8000-000000000001"}},
 	}, nil
 }
 
@@ -154,42 +155,42 @@ func openMockDB(conn *mockConn) *sql.DB {
 // ---------------------------------------------------------------------------
 
 type mockAuthRepository struct {
-	getByEmailFn        func(ctx context.Context, q DBTX, tenantID int, email string) (*User, error)
-	getByUsernameFn     func(ctx context.Context, q DBTX, tenantID int, username string) (*User, error)
-	getByIDFn           func(ctx context.Context, q DBTX, tenantID int, id int) (*User, error)
-	createFn            func(ctx context.Context, q DBTX, user *User) (int, error)
-	getRolesByUserIDFn  func(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error)
+	getByEmailFn       func(ctx context.Context, q DBTX, tenantID uuid.UUID, email string) (*User, error)
+	getByUsernameFn    func(ctx context.Context, q DBTX, tenantID uuid.UUID, username string) (*User, error)
+	getByIDFn          func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error)
+	createFn           func(ctx context.Context, q DBTX, user *User) (uuid.UUID, error)
+	getRolesByUserIDFn func(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error)
 }
 
-func (m *mockAuthRepository) GetByEmail(ctx context.Context, q DBTX, tenantID int, email string) (*User, error) {
+func (m *mockAuthRepository) GetByEmail(ctx context.Context, q DBTX, tenantID uuid.UUID, email string) (*User, error) {
 	if m.getByEmailFn == nil {
 		return nil, nil
 	}
 	return m.getByEmailFn(ctx, q, tenantID, email)
 }
 
-func (m *mockAuthRepository) GetByUsername(ctx context.Context, q DBTX, tenantID int, username string) (*User, error) {
+func (m *mockAuthRepository) GetByUsername(ctx context.Context, q DBTX, tenantID uuid.UUID, username string) (*User, error) {
 	if m.getByUsernameFn == nil {
 		return nil, nil
 	}
 	return m.getByUsernameFn(ctx, q, tenantID, username)
 }
 
-func (m *mockAuthRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*User, error) {
+func (m *mockAuthRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error) {
 	if m.getByIDFn == nil {
 		return nil, nil
 	}
 	return m.getByIDFn(ctx, q, tenantID, id)
 }
 
-func (m *mockAuthRepository) Create(ctx context.Context, q DBTX, user *User) (int, error) {
+func (m *mockAuthRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
 	if m.createFn == nil {
-		return 0, nil
+		return uuid.Nil, nil
 	}
 	return m.createFn(ctx, q, user)
 }
 
-func (m *mockAuthRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error) {
+func (m *mockAuthRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error) {
 	if m.getRolesByUserIDFn == nil {
 		return nil, nil
 	}
@@ -212,7 +213,7 @@ func testLogger() *logger.Logger {
 }
 
 func testTenant() *tenant.Tenant {
-	return &tenant.Tenant{ID: 1, Domain: "test.domain"}
+	return &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Domain: "test.domain"}
 }
 
 // ---------------------------------------------------------------------------
@@ -226,8 +227,8 @@ func TestRegister(t *testing.T) {
 
 	t.Run("duplicate email returns error", func(t *testing.T) {
 		repo := &mockAuthRepository{
-			getByEmailFn: func(_ context.Context, _ DBTX, _ int, email string) (*User, error) {
-				return &User{ID: 1, Email: email}, nil
+			getByEmailFn: func(_ context.Context, _ DBTX, _ uuid.UUID, email string) (*User, error) {
+				return &User{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Email: email}, nil
 			},
 		}
 		svc := NewAuthService(repo, openMockDB(&mockConn{}), cfg, log, nil)
@@ -240,11 +241,11 @@ func TestRegister(t *testing.T) {
 
 	t.Run("duplicate username returns error", func(t *testing.T) {
 		repo := &mockAuthRepository{
-			getByEmailFn: func(_ context.Context, _ DBTX, _ int, _ string) (*User, error) {
+			getByEmailFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ string) (*User, error) {
 				return nil, nil
 			},
-			getByUsernameFn: func(_ context.Context, _ DBTX, _ int, username string) (*User, error) {
-				return &User{ID: 2, Username: username}, nil
+			getByUsernameFn: func(_ context.Context, _ DBTX, _ uuid.UUID, username string) (*User, error) {
+				return &User{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), Username: username}, nil
 			},
 		}
 		svc := NewAuthService(repo, openMockDB(&mockConn{}), cfg, log, nil)
@@ -257,20 +258,20 @@ func TestRegister(t *testing.T) {
 
 	t.Run("successful registration", func(t *testing.T) {
 		repo := &mockAuthRepository{
-			getByEmailFn: func(_ context.Context, _ DBTX, _ int, _ string) (*User, error) {
+			getByEmailFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ string) (*User, error) {
 				return nil, nil
 			},
-			getByUsernameFn: func(_ context.Context, _ DBTX, _ int, _ string) (*User, error) {
+			getByUsernameFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ string) (*User, error) {
 				return nil, nil
 			},
-			createFn: func(_ context.Context, _ DBTX, user *User) (int, error) {
+			createFn: func(_ context.Context, _ DBTX, user *User) (uuid.UUID, error) {
 				if user.Password == "" {
 					t.Error("expected non-empty hashed password")
 				}
-				if user.TenantID != 1 {
-					t.Errorf("expected tenant ID 1, got %d", user.TenantID)
+				if user.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("expected tenant ID 1, got %s", user.TenantID)
 				}
-				return 42, nil
+				return uuid.MustParse("00000000-0000-4000-8000-00000000002a"), nil
 			},
 		}
 
@@ -291,13 +292,13 @@ func TestRegister(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if user.ID != 42 {
-			t.Errorf("expected user ID 42, got %d", user.ID)
+		if user.ID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+			t.Errorf("expected user ID 42, got %s", user.ID)
 		}
 		if user.Username != "john" {
 			t.Errorf("expected username 'john', got %s", user.Username)
 		}
-		if len(user.Roles) != 1 || user.Roles[0].ID != 1 {
+		if len(user.Roles) != 1 || user.Roles[0].ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
 			t.Errorf("expected role with ID 1, got %+v", user.Roles)
 		}
 		if user.Roles[0].Name != "agent" {
@@ -332,8 +333,8 @@ func TestLogin(t *testing.T) {
 			req:  LoginRequest{Username: "testuser", Password: "correctpassword"},
 			mockFn: func() *mockAuthRepository {
 				return &mockAuthRepository{
-					getByUsernameFn: func(_ context.Context, _ DBTX, _ int, _ string) (*User, error) {
-						return &User{ID: 1, TenantID: 1, Username: "testuser", Password: string(hashedPW)}, nil
+					getByUsernameFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ string) (*User, error) {
+						return &User{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Username: "testuser", Password: string(hashedPW)}, nil
 					},
 				}
 			},
@@ -344,8 +345,8 @@ func TestLogin(t *testing.T) {
 			req:  LoginRequest{Username: "testuser", Password: "wrongpassword"},
 			mockFn: func() *mockAuthRepository {
 				return &mockAuthRepository{
-					getByUsernameFn: func(_ context.Context, _ DBTX, _ int, _ string) (*User, error) {
-						return &User{ID: 1, TenantID: 1, Username: "testuser", Password: string(hashedPW)}, nil
+					getByUsernameFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ string) (*User, error) {
+						return &User{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Username: "testuser", Password: string(hashedPW)}, nil
 					},
 				}
 			},
@@ -356,7 +357,7 @@ func TestLogin(t *testing.T) {
 			req:  LoginRequest{Username: "nobody", Password: "doesnotmatter"},
 			mockFn: func() *mockAuthRepository {
 				return &mockAuthRepository{
-					getByUsernameFn: func(_ context.Context, _ DBTX, _ int, _ string) (*User, error) {
+					getByUsernameFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ string) (*User, error) {
 						return nil, nil
 					},
 				}
@@ -404,10 +405,10 @@ func TestLogin(t *testing.T) {
 			if !ok {
 				t.Fatal("expected MapClaims")
 			}
-			if got := claims["sub"]; got != float64(1) {
+			if got := claims["sub"]; got != "00000000-0000-4000-8000-000000000001" {
 				t.Errorf("expected sub=1, got %v", got)
 			}
-			if got := claims["tenant"]; got != float64(1) {
+			if got := claims["tenant"]; got != "00000000-0000-4000-8000-000000000001" {
 				t.Errorf("expected tenant=1, got %v", got)
 			}
 			if got := claims["domain"]; got != "test.domain" {
@@ -431,8 +432,8 @@ func TestCheckToken(t *testing.T) {
 
 	t.Run("valid token", func(t *testing.T) {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"sub":    float64(1),
-			"tenant": float64(1),
+			"sub":    "00000000-0000-4000-8000-000000000001",
+			"tenant": "00000000-0000-4000-8000-000000000001",
 			"domain": "test.domain",
 			"exp":    float64(time.Now().Add(time.Hour).Unix()),
 			"user":   "testuser",
@@ -443,11 +444,11 @@ func TestCheckToken(t *testing.T) {
 		}
 
 		repo := &mockAuthRepository{
-			getByIDFn: func(_ context.Context, _ DBTX, _ int, id int) (*User, error) {
-				return &User{ID: id, TenantID: 1, Username: "testuser"}, nil
+			getByIDFn: func(_ context.Context, _ DBTX, _ uuid.UUID, id uuid.UUID) (*User, error) {
+				return &User{ID: id, TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Username: "testuser"}, nil
 			},
-			getRolesByUserIDFn: func(_ context.Context, _ DBTX, _ int, _ int) ([]Role, error) {
-				return []Role{{ID: 1, TenantID: 1, Name: "agent"}}, nil
+			getRolesByUserIDFn: func(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) ([]Role, error) {
+				return []Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "agent"}}, nil
 			},
 		}
 
@@ -460,8 +461,8 @@ func TestCheckToken(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error: %v", err)
 		}
-		if user.ID != 1 {
-			t.Errorf("expected user ID 1, got %d", user.ID)
+		if user.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected user ID 1, got %s", user.ID)
 		}
 		if user.Username != "testuser" {
 			t.Errorf("expected username 'testuser', got %s", user.Username)
@@ -473,7 +474,7 @@ func TestCheckToken(t *testing.T) {
 
 	t.Run("expired token", func(t *testing.T) {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
-			"sub": float64(1),
+			"sub": "00000000-0000-4000-8000-000000000001",
 			"exp": float64(time.Now().Add(-time.Hour).Unix()),
 		})
 		tokenStr, err := token.SignedString([]byte(cfg.JWTSecret))
@@ -501,7 +502,7 @@ func TestCheckToken(t *testing.T) {
 			t.Fatal(err)
 		}
 		token := jwt.NewWithClaims(jwt.SigningMethodRS256, jwt.MapClaims{
-			"sub": float64(1),
+			"sub": "00000000-0000-4000-8000-000000000001",
 			"exp": float64(time.Now().Add(time.Hour).Unix()),
 		})
 		tokenStr, err := token.SignedString(key)
@@ -519,4 +520,14 @@ func TestCheckToken(t *testing.T) {
 			t.Fatalf("expected 'invalid token', got %v", err)
 		}
 	})
+}
+
+func (m *mockAuthRepository) GetRoleIDByName(ctx context.Context, q DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
+	return NewAuthRepository().GetRoleIDByName(ctx, q, tenantID, name)
+}
+func (m *mockAuthRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID uuid.UUID) error {
+	return NewAuthRepository().AttachRole(ctx, q, tenantID, userID, roleID)
+}
+func (m *mockAuthRepository) UpdateLastLogin(ctx context.Context, q DBTX, tenantID, userID uuid.UUID) error {
+	return NewAuthRepository().UpdateLastLogin(ctx, q, tenantID, userID)
 }

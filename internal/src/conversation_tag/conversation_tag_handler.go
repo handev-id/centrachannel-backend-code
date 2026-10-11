@@ -1,9 +1,8 @@
 package conversation_tag
 
 import (
-	"strconv"
-
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/src/tenant"
@@ -26,8 +25,8 @@ func NewConversationTagHandlerWithService(service ConversationTagService) *Conve
 
 func (h *ConversationTagHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
-	conversationID, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	conversationID, err := uuid.Parse(c.Params("id"))
+	if err != nil || conversationID == uuid.Nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
 	}
 
@@ -40,8 +39,8 @@ func (h *ConversationTagHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationTagHandler) Attach(c fiber.Ctx, t *tenant.Tenant) error {
 
-	conversationID, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	conversationID, err := uuid.Parse(c.Params("id"))
+	if err != nil || conversationID == uuid.Nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
 	}
 
@@ -58,13 +57,13 @@ func (h *ConversationTagHandler) Attach(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationTagHandler) Detach(c fiber.Ctx, t *tenant.Tenant) error {
 
-	conversationID, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	conversationID, err := uuid.Parse(c.Params("id"))
+	if err != nil || conversationID == uuid.Nil {
 		return response.BadRequest(c, "Invalid conversation ID", nil)
 	}
 
-	tagID, err := strconv.Atoi(c.Params("tagId"))
-	if err != nil {
+	tagID, err := uuid.Parse(c.Params("tagId"))
+	if err != nil || tagID == uuid.Nil {
 		return response.BadRequest(c, "Invalid tag ID", nil)
 	}
 

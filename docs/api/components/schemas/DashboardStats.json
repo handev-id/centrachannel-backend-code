@@ -34,7 +34,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "channel_id": { "type": "integer", "example": 1 },
+              "channel_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
               "channel_name": { "type": "string", "example": "whatsapp" },
               "total": { "type": "integer", "example": 978 },
               "unread": { "type": "integer", "example": 65 }
@@ -46,7 +46,7 @@
           "items": {
             "type": "object",
             "properties": {
-              "id": { "type": "integer", "example": 1001 },
+              "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-0000000003e9" },
               "status": { "type": "string", "example": "assigned" },
               "unread_count": { "type": "integer", "example": 2 },
               "last_activity": { "type": "string", "format": "date-time", "example": "2026-06-15T13:40:00Z" },
@@ -55,7 +55,7 @@
                 "type": "object",
                 "nullable": true,
                 "properties": {
-                  "id": { "type": "integer" },
+                  "id": { "type": "string", "format": "uuid" },
                   "name": { "type": "string" },
                   "logo": { "type": "object", "nullable": true }
                 }
@@ -64,7 +64,7 @@
                 "type": "object",
                 "nullable": true,
                 "properties": {
-                  "id": { "type": "integer" },
+                  "id": { "type": "string", "format": "uuid" },
                   "first_name": { "type": "string" },
                   "last_name": { "type": "string", "nullable": true },
                   "avatar": { "type": "object", "nullable": true }
@@ -74,7 +74,7 @@
                 "type": "object",
                 "nullable": true,
                 "properties": {
-                  "id": { "type": "integer" },
+                  "id": { "type": "string", "format": "uuid" },
                   "first_name": { "type": "string" },
                   "last_name": { "type": "string", "nullable": true },
                   "avatar": { "type": "object", "nullable": true }
@@ -148,7 +148,7 @@
       "items": {
         "type": "object",
         "properties": {
-          "id": { "type": "integer", "example": 9 },
+          "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000009" },
           "first_name": { "type": "string", "example": "Alya" },
           "last_name": { "type": "string", "nullable": true, "example": "Putri" },
           "avatar": { "type": "object", "nullable": true },

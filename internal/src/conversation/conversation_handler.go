@@ -4,6 +4,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/middleware"
@@ -29,28 +30,54 @@ func NewConversationHandlerWithService(service ConversationService) *Conversatio
 func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
-	channelID, _ := strconv.Atoi(c.Query("channel_id"))
-	agentID, _ := strconv.Atoi(c.Query("agent_id"))
+	var channelID uuid.UUID
+	if raw := c.Query("channel_id"); raw != "" {
+		var err error
+		channelID, err = uuid.Parse(raw)
+		if err != nil || channelID == uuid.Nil {
+			return response.BadRequest(c, "Invalid channel_id", nil)
+		}
+	}
+	var agentID uuid.UUID
+	if raw := c.Query("agent_id"); raw != "" {
+		var err error
+		agentID, err = uuid.Parse(raw)
+		if err != nil || agentID == uuid.Nil {
+			return response.BadRequest(c, "Invalid agent_id", nil)
+		}
+	}
 	lastActivity := c.Query("last_activity")
-	lastID, _ := strconv.Atoi(c.Query("last_id"))
+	var lastID uuid.UUID
+	if raw := c.Query("last_id"); raw != "" {
+		var err error
+		lastID, err = uuid.Parse(raw)
+		if err != nil || lastID == uuid.Nil {
+			return response.BadRequest(c, "Invalid last_id", nil)
+		}
+	}
 
 	queries := c.Queries()
 	_, hasLastActivity := queries["last_activity"]
 	_, hasLastID := queries["last_id"]
+	if hasLastID && lastID == uuid.Nil {
+		return response.BadRequest(c, "Invalid last_id", nil)
+	}
 	if hasLastActivity != hasLastID {
 		return response.BadRequest(c, "last_id and last_activity must be provided together", nil)
 	}
 
 	if middleware.IsAgentOnly(c) {
 		uid, err := middleware.GetUserID(c)
-		if err != nil { return response.Unauthorized(c, err.Error()) }
+		if err != nil {
+			return response.Unauthorized(c, err.Error())
+		}
 		agentID = uid
 	}
 
 	q := ListConversationQuery{
 		Limit: limit, Status: c.Query("status"),
 		ChannelID: channelID, AgentID: agentID, Search: c.Query("search"),
-		SortBy: c.Query("sort_by"),
+		SortBy:       c.Query("sort_by"),
 		LastActivity: lastActivity, LastID: lastID,
 	}
 
@@ -63,8 +90,8 @@ func (h *ConversationHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -81,8 +108,8 @@ func (h *ConversationHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	conv, err := h.service.Create(c.Context(), req, t)
@@ -94,10 +121,12 @@ func (h *ConversationHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationHandler) Assign(c fiber.Ctx, t *tenant.Tenant) error {
 	userID, err := middleware.GetUserID(c)
-	if err != nil { return response.Unauthorized(c, err.Error()) }
-
-	id, err := strconv.Atoi(c.Params("id"))
 	if err != nil {
+		return response.Unauthorized(c, err.Error())
+	}
+
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -109,8 +138,8 @@ func (h *ConversationHandler) Assign(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationHandler) Unassign(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -122,8 +151,8 @@ func (h *ConversationHandler) Unassign(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationHandler) Resolve(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -135,8 +164,8 @@ func (h *ConversationHandler) Resolve(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ConversationHandler) Reopen(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 

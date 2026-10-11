@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type conversationTagRepository struct{}
@@ -12,7 +14,7 @@ func NewConversationTagRepository() ConversationTagRepository {
 	return &conversationTagRepository{}
 }
 
-func (r *conversationTagRepository) ListByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]ConversationTag, error) {
+func (r *conversationTagRepository) ListByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]ConversationTag, error) {
 	rows, err := q.QueryContext(ctx, `SELECT id, tenant_id, conversation_id, tag_id, created_at, updated_at FROM conversation_tag WHERE tenant_id = $1 AND conversation_id = $2`, tenantID, conversationID)
 	if err != nil {
 		return nil, err
@@ -30,7 +32,7 @@ func (r *conversationTagRepository) ListByConversation(ctx context.Context, q DB
 	return tags, rows.Err()
 }
 
-func (r *conversationTagRepository) Attach(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error {
+func (r *conversationTagRepository) Attach(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 	_, err := q.ExecContext(ctx, `INSERT INTO conversation_tag (tenant_id, conversation_id, tag_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5) ON CONFLICT (conversation_id, tag_id) DO NOTHING`, tenantID, conversationID, tagID, time.Now(), time.Now())
 	if err != nil {
 		return fmt.Errorf("failed to attach tag: %w", err)
@@ -38,7 +40,7 @@ func (r *conversationTagRepository) Attach(ctx context.Context, q DBTX, tenantID
 	return nil
 }
 
-func (r *conversationTagRepository) Detach(ctx context.Context, q DBTX, tenantID int, conversationID int, tagID int) error {
+func (r *conversationTagRepository) Detach(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, tagID uuid.UUID) error {
 	result, err := q.ExecContext(ctx, `DELETE FROM conversation_tag WHERE tenant_id = $1 AND conversation_id = $2 AND tag_id = $3`, tenantID, conversationID, tagID)
 	if err != nil {
 		return err

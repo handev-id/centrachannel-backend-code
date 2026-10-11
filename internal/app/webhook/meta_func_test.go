@@ -4,6 +4,8 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/src/channel"
 	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/conversation"
@@ -16,30 +18,32 @@ func TestProcessMetaEvent_NotifiesNewMessage(t *testing.T) {
 	notifier := &mockNotifier{}
 
 	contactRepo := &mockContactRepo{
-		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID int, phone string) (*contact.Contact, error) {
-			return &contact.Contact{ID: 10, TenantID: 1, FirstName: "Existing", Facebook: &phone}, nil
+		getByPhoneFunc: func(ctx context.Context, q contact.DBTX, tenantID uuid.UUID, phone string) (*contact.Contact, error) {
+			return &contact.Contact{ID: uuid.MustParse("00000000-0000-4000-8000-00000000000a"), TenantID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), FirstName: "Existing", Facebook: &phone}, nil
 		},
 	}
 	profileRepo := &mockProfileRepo{
-		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID int, externalID string, channelID int) (*profile.Profile, error) {
-			return &profile.Profile{ID: 20, ExternalID: externalID, ChannelID: channelID}, nil
+		getByExternalIDAndChannelIDFunc: func(ctx context.Context, q profile.DBTX, tenantID uuid.UUID, externalID string, channelID uuid.UUID) (*profile.Profile, error) {
+			return &profile.Profile{ID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), ExternalID: externalID, ChannelID: channelID}, nil
 		},
 	}
 	channelRepo := &mockChannelRepo{
 		getByTypeFunc: func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
-			return &channel.Channel{ID: 1, Type: channelType}, nil
+			return &channel.Channel{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Type: channelType}, nil
 		},
 	}
 	convRepo := &mockConvRepo{
-		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, profileID int, channelID int) (*conversation.Conversation, error) {
-			return &conversation.Conversation{ID: 30, ProfileID: 20, Status: "unassigned"}, nil
+		findOpenByProfileAndChannelFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, profileID uuid.UUID, channelID uuid.UUID) (*conversation.Conversation, error) {
+			return &conversation.Conversation{ID: uuid.MustParse("00000000-0000-4000-8000-00000000001e"), ProfileID: uuid.MustParse("00000000-0000-4000-8000-000000000014"), Status: "unassigned"}, nil
 		},
-		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID int, id int, lastMessageJSON []byte, lastAgentID *int) error {
+		updateLastMessageFunc: func(ctx context.Context, q conversation.DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
 			return nil
 		},
 	}
 	msgRepo := &mockMsgRepo{
-		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (int, error) { return 500, nil },
+		createFunc: func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error) {
+			return uuid.MustParse("00000000-0000-4000-8000-0000000001f4"), nil
+		},
 	}
 
 	svc := NewWebhookService(&mockDeviceRepo{}, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, &mockMetaTenantRepo{}, nil, logger.NewLogger("debug", "text"), nil, notifier)
@@ -69,8 +73,8 @@ func TestProcessMetaEvent_NotifiesNewMessage(t *testing.T) {
 	if ev == nil {
 		t.Fatal("expected a websocket notification")
 	}
-	if ev.tenantID != 1 {
-		t.Errorf("expected tenantID 1, got %d", ev.tenantID)
+	if ev.tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("expected tenantID 1, got %s", ev.tenantID)
 	}
 	if ev.event != "new-message" {
 		t.Errorf("expected event 'new-message', got %q", ev.event)
@@ -79,11 +83,11 @@ func TestProcessMetaEvent_NotifiesNewMessage(t *testing.T) {
 	if !ok {
 		t.Fatalf("expected data *message.Message, got %T", ev.data)
 	}
-	if msg.ID != 500 {
-		t.Errorf("expected message id 500, got %d", msg.ID)
+	if msg.ID != uuid.MustParse("00000000-0000-4000-8000-0000000001f4") {
+		t.Errorf("expected message id 500, got %s", msg.ID)
 	}
-	if msg.ConversationID != 30 {
-		t.Errorf("expected conversation_id 30, got %d", msg.ConversationID)
+	if msg.ConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000001e") {
+		t.Errorf("expected conversation_id 30, got %s", msg.ConversationID)
 	}
 	if msg.SenderType != "contact" {
 		t.Errorf("expected sender_type contact, got %s", msg.SenderType)

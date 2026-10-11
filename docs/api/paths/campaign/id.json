@@ -4,7 +4,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Campaign ID" }
     ],
     "responses": {
       "200": {
@@ -30,7 +30,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Campaign ID" }
     ],
     "requestBody": {
       "required": true,
@@ -46,10 +46,10 @@
               "status": { "type": "string" },
               "sending_option": { "type": "object" },
               "scheduled_at": { "type": "string", "format": "date-time" },
-              "recipient_list_id": { "type": "integer" },
-              "template_id": { "type": "integer" },
-              "agent_id": { "type": "integer" },
-              "sender_id": { "type": "integer" }
+              "recipient_list_id": { "type": "string", "format": "uuid" },
+              "template_id": { "type": "string", "format": "uuid" },
+              "agent_id": { "type": "string", "format": "uuid" },
+              "sender_id": { "type": "string", "format": "uuid" }
             }
           }
         }
@@ -79,7 +79,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Campaign ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Campaign ID" }
     ],
     "responses": {
       "200": {

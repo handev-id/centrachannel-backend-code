@@ -3,6 +3,8 @@ package ws
 import (
 	"encoding/json"
 	"sync"
+
+	"github.com/google/uuid"
 )
 
 type Message struct {
@@ -11,27 +13,27 @@ type Message struct {
 }
 
 type Client struct {
-	TenantID int
+	TenantID uuid.UUID
 	Send     chan []byte
 }
 
 type Hub struct {
-	mu      sync.RWMutex
-	rooms   map[int]map[*Client]bool
-	reg     chan *Client
-	unreg   chan *Client
+	mu        sync.RWMutex
+	rooms     map[uuid.UUID]map[*Client]bool
+	reg       chan *Client
+	unreg     chan *Client
 	broadcast chan broadcastReq
-	done    chan struct{}
+	done      chan struct{}
 }
 
 type broadcastReq struct {
-	tenantID int
+	tenantID uuid.UUID
 	data     []byte
 }
 
 func NewHub() *Hub {
 	return &Hub{
-		rooms:     make(map[int]map[*Client]bool),
+		rooms:     make(map[uuid.UUID]map[*Client]bool),
 		reg:       make(chan *Client, 256),
 		unreg:     make(chan *Client, 256),
 		broadcast: make(chan broadcastReq, 256),
@@ -92,7 +94,7 @@ func (h *Hub) Unregister(client *Client) {
 	h.unreg <- client
 }
 
-func (h *Hub) Broadcast(tenantID int, event string, data interface{}) {
+func (h *Hub) Broadcast(tenantID uuid.UUID, event string, data interface{}) {
 	msg := Message{Event: event, Data: data}
 	raw, err := json.Marshal(msg)
 	if err != nil {
@@ -109,6 +111,6 @@ func NewHubNotifier(hub *Hub) Notifier {
 	return &hubNotifier{hub: hub}
 }
 
-func (n *hubNotifier) Notify(tenantID int, event string, data interface{}) {
+func (n *hubNotifier) Notify(tenantID uuid.UUID, event string, data interface{}) {
 	n.hub.Broadcast(tenantID, event, data)
 }

@@ -4,7 +4,7 @@
     "tags": ["User"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "User ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "User ID" }
     ],
     "responses": {
       "200": {
@@ -30,7 +30,7 @@
     "tags": ["User"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "User ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "User ID" }
     ],
     "requestBody": {
       "required": true,
@@ -48,8 +48,8 @@
               "avatar": { "type": "object" },
               "roles": {
                 "type": "array",
-                "items": { "type": "integer" },
-                "example": [2, 3]
+                "items": { "type": "string", "format": "uuid" },
+                "example": ["00000000-0000-4000-8000-000000000002", "00000000-0000-4000-8000-000000000003"]
               }
             }
           }
@@ -80,7 +80,7 @@
     "tags": ["User"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "User ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "User ID" }
     ],
     "responses": {
       "200": {

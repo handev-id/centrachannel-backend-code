@@ -1,6 +1,10 @@
 package registration
 
-import "centrachannel/internal/src/tenant"
+import (
+	"github.com/google/uuid"
+
+	"centrachannel/internal/src/tenant"
+)
 
 type OnboardRequest struct {
 	Name          string `json:"name" validate:"required"`
@@ -16,8 +20,8 @@ type OnboardResponse struct {
 }
 
 type AdminUser struct {
-	ID        int    `json:"id"`
-	FirstName string `json:"first_name"`
-	Email     string `json:"email"`
-	Username  string `json:"username"`
+	ID        uuid.UUID `json:"id"`
+	FirstName string    `json:"first_name"`
+	Email     string    `json:"email"`
+	Username  string    `json:"username"`
 }

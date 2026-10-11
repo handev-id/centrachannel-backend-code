@@ -6,28 +6,39 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type mockNoteRepository struct {
-	listFn     func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error)
-	createFn   func(ctx context.Context, q DBTX, note *Note) (int, error)
-	updateFn   func(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error
-	deleteFn   func(ctx context.Context, q DBTX, tenantID int, id int) error
+	getFn    func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Note, error)
+	listFn   func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error)
+	createFn func(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error)
+	updateFn func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error
+	deleteFn func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }
 
-func (m *mockNoteRepository) ListByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error) {
+func (m *mockNoteRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Note, error) {
+	if m.getFn != nil {
+		return m.getFn(ctx, q, tenantID, id)
+	}
+	n := baseNote(id, tenantID, uuid.MustParse("00000000-0000-4000-8000-00000000000a"), "original")
+	return &n, nil
+}
+
+func (m *mockNoteRepository) ListByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
 	return m.listFn(ctx, q, tenantID, conversationID)
 }
 
-func (m *mockNoteRepository) Create(ctx context.Context, q DBTX, note *Note) (int, error) {
+func (m *mockNoteRepository) Create(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error) {
 	return m.createFn(ctx, q, note)
 }
 
-func (m *mockNoteRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error {
+func (m *mockNoteRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
 	return m.updateFn(ctx, q, tenantID, id, note)
 }
 
-func (m *mockNoteRepository) Delete(ctx context.Context, q DBTX, tenantID int, id int) error {
+func (m *mockNoteRepository) Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	return m.deleteFn(ctx, q, tenantID, id)
 }
 
@@ -58,9 +69,9 @@ func (m *mockDB) QueryRowContext(ctx context.Context, query string, args ...inte
 	return nil
 }
 
-func baseNote(id, tenantID, conversationID int, text string) Note {
+func baseNote(id, tenantID, conversationID uuid.UUID, text string) Note {
 	now := time.Now()
-	uid := 1
+	uid := uuid.MustParse("00000000-0000-4000-8000-000000000001")
 	return Note{
 		ID:             id,
 		TenantID:       tenantID,
@@ -84,20 +95,20 @@ func newNoteService(repo NoteRepository) *noteService {
 
 func TestNoteServiceListByConversation(t *testing.T) {
 	t.Run("returns notes for conversation", func(t *testing.T) {
-		notes := []Note{baseNote(1, 1, 10, "note a"), baseNote(2, 1, 10, "note b")}
+		notes := []Note{baseNote(uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), "note a"), baseNote(uuid.MustParse("00000000-0000-4000-8000-000000000002"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), "note b")}
 		mock := &mockNoteRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error) {
-				if tenantID != 1 {
-					t.Errorf("expected tenantID 1, got %d", tenantID)
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
+				if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("expected tenantID 1, got %s", tenantID)
 				}
-				if conversationID != 10 {
-					t.Errorf("expected conversationID 10, got %d", conversationID)
+				if conversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+					t.Errorf("expected conversationID 10, got %s", conversationID)
 				}
 				return notes, nil
 			},
 		}
 		svc := newNoteService(mock)
-		result, err := svc.ListByConversation(context.Background(), 1, 10)
+		result, err := svc.ListByConversation(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -108,12 +119,12 @@ func TestNoteServiceListByConversation(t *testing.T) {
 
 	t.Run("empty list", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error) {
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
 				return []Note{}, nil
 			},
 		}
 		svc := newNoteService(mock)
-		result, err := svc.ListByConversation(context.Background(), 1, 10)
+		result, err := svc.ListByConversation(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -123,14 +134,14 @@ func TestNoteServiceListByConversation(t *testing.T) {
 	})
 
 	t.Run("pagination returns subset", func(t *testing.T) {
-		allNotes := []Note{baseNote(1, 1, 10, "a"), baseNote(2, 1, 10, "b"), baseNote(3, 1, 10, "c")}
+		allNotes := []Note{baseNote(uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), "a"), baseNote(uuid.MustParse("00000000-0000-4000-8000-000000000002"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), "b"), baseNote(uuid.MustParse("00000000-0000-4000-8000-000000000003"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), "c")}
 		mock := &mockNoteRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error) {
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
 				return allNotes[:2], nil
 			},
 		}
 		svc := newNoteService(mock)
-		result, err := svc.ListByConversation(context.Background(), 1, 10)
+		result, err := svc.ListByConversation(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -141,31 +152,31 @@ func TestNoteServiceListByConversation(t *testing.T) {
 
 	t.Run("filter by conversation_id", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error) {
-				if conversationID != 20 {
-					t.Errorf("expected conversationID 20, got %d", conversationID)
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
+				if conversationID != uuid.MustParse("00000000-0000-4000-8000-000000000014") {
+					t.Errorf("expected conversationID 20, got %s", conversationID)
 				}
-				return []Note{baseNote(5, 1, 20, "filtered")}, nil
+				return []Note{baseNote(uuid.MustParse("00000000-0000-4000-8000-000000000005"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000014"), "filtered")}, nil
 			},
 		}
 		svc := newNoteService(mock)
-		result, err := svc.ListByConversation(context.Background(), 1, 20)
+		result, err := svc.ListByConversation(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000014"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if len(result) != 1 || result[0].ConversationID != 20 {
+		if len(result) != 1 || result[0].ConversationID != uuid.MustParse("00000000-0000-4000-8000-000000000014") {
 			t.Fatalf("expected 1 note for conversation 20, got %+v", result)
 		}
 	})
 
 	t.Run("repository error", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error) {
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
 				return nil, errors.New("db error")
 			},
 		}
 		svc := newNoteService(mock)
-		_, err := svc.ListByConversation(context.Background(), 1, 10)
+		_, err := svc.ListByConversation(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"))
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -175,48 +186,48 @@ func TestNoteServiceListByConversation(t *testing.T) {
 func TestNoteServiceCreate(t *testing.T) {
 	t.Run("success with text only", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			createFn: func(ctx context.Context, q DBTX, note *Note) (int, error) {
+			createFn: func(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error) {
 				if note.Text != "hello" {
 					t.Errorf("expected text 'hello', got %s", note.Text)
 				}
 				if note.Date != nil {
 					t.Error("expected nil date")
 				}
-				return 100, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000064"), nil
 			},
 		}
 		svc := newNoteService(mock)
 		req := CreateNoteRequest{Text: "hello"}
-		result, err := svc.Create(context.Background(), req, 1, 10, 5)
+		result, err := svc.Create(context.Background(), req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), uuid.MustParse("00000000-0000-4000-8000-000000000005"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.ID != 100 {
-			t.Errorf("expected ID 100, got %d", result.ID)
+		if result.ID != uuid.MustParse("00000000-0000-4000-8000-000000000064") {
+			t.Errorf("expected ID 100, got %s", result.ID)
 		}
-		if result.TenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", result.TenantID)
+		if result.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", result.TenantID)
 		}
-		if result.ConversationID != 10 {
-			t.Errorf("expected conversationID 10, got %d", result.ConversationID)
+		if result.ConversationID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+			t.Errorf("expected conversationID 10, got %s", result.ConversationID)
 		}
-		if result.UserID == nil || *result.UserID != 5 {
+		if result.UserID == nil || *result.UserID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
 			t.Errorf("expected userID 5, got %v", result.UserID)
 		}
 	})
 
 	t.Run("success with date", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			createFn: func(ctx context.Context, q DBTX, note *Note) (int, error) {
+			createFn: func(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error) {
 				if note.Date == nil {
 					t.Error("expected non-nil date")
 				}
-				return 2, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000002"), nil
 			},
 		}
 		svc := newNoteService(mock)
 		req := CreateNoteRequest{Text: "dated", Date: "2025-06-01"}
-		result, err := svc.Create(context.Background(), req, 1, 10, 1)
+		result, err := svc.Create(context.Background(), req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -231,16 +242,16 @@ func TestNoteServiceCreate(t *testing.T) {
 
 	t.Run("invalid date format is ignored", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			createFn: func(ctx context.Context, q DBTX, note *Note) (int, error) {
+			createFn: func(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error) {
 				if note.Date != nil {
 					t.Error("expected nil date for invalid input")
 				}
-				return 3, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000003"), nil
 			},
 		}
 		svc := newNoteService(mock)
 		req := CreateNoteRequest{Text: "bad date", Date: "not-a-date"}
-		result, err := svc.Create(context.Background(), req, 1, 10, 1)
+		result, err := svc.Create(context.Background(), req, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -251,12 +262,12 @@ func TestNoteServiceCreate(t *testing.T) {
 
 	t.Run("repository error", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			createFn: func(ctx context.Context, q DBTX, note *Note) (int, error) {
-				return 0, errors.New("db error")
+			createFn: func(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error) {
+				return uuid.Nil, errors.New("db error")
 			},
 		}
 		svc := newNoteService(mock)
-		_, err := svc.Create(context.Background(), CreateNoteRequest{Text: "x"}, 1, 10, 1)
+		_, err := svc.Create(context.Background(), CreateNoteRequest{Text: "x"}, uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000000a"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -267,10 +278,10 @@ func TestNoteServiceUpdate(t *testing.T) {
 	t.Run("success updates text", func(t *testing.T) {
 		var capNote *Note
 		mock := &mockNoteRepository{
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
 				capNote = note
-				if tenantID != 1 {
-					t.Errorf("expected tenantID 1, got %d", tenantID)
+				if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("expected tenantID 1, got %s", tenantID)
 				}
 				return nil
 			},
@@ -278,15 +289,15 @@ func TestNoteServiceUpdate(t *testing.T) {
 		svc := newNoteService(mock)
 		newText := "updated text"
 		req := UpdateNoteRequest{Text: &newText}
-		result, err := svc.Update(context.Background(), 1, 5, req)
+		result, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), req)
 		if err != nil {
 			t.Fatal(err)
 		}
 		if result.Text != "updated text" {
 			t.Errorf("expected 'updated text', got %s", result.Text)
 		}
-		if result.ID != 5 {
-			t.Errorf("expected ID 5, got %d", result.ID)
+		if result.ID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected ID 5, got %s", result.ID)
 		}
 		if capNote.Text != "updated text" {
 			t.Errorf("passed note has text %s", capNote.Text)
@@ -295,7 +306,7 @@ func TestNoteServiceUpdate(t *testing.T) {
 
 	t.Run("success updates date", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
 				if note.Date == nil {
 					t.Error("expected non-nil date")
 				}
@@ -305,7 +316,7 @@ func TestNoteServiceUpdate(t *testing.T) {
 		svc := newNoteService(mock)
 		dateStr := "2026-01-15"
 		req := UpdateNoteRequest{Date: &dateStr}
-		result, err := svc.Update(context.Background(), 1, 5, req)
+		result, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -320,8 +331,8 @@ func TestNoteServiceUpdate(t *testing.T) {
 
 	t.Run("update only if tenant_id matches", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error {
-				if tenantID != 99 {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
+				if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000063") {
 					return errors.New("no matching row for this tenant")
 				}
 				return nil
@@ -330,17 +341,17 @@ func TestNoteServiceUpdate(t *testing.T) {
 		svc := newNoteService(mock)
 		text := "should fail"
 		req := UpdateNoteRequest{Text: &text}
-		_, err := svc.Update(context.Background(), 99, 5, req)
+		_, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000063"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), req)
 		if err != nil {
 			return
 		}
 		mockTenant1 := &mockNoteRepository{
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
 				return nil
 			},
 		}
 		svc2 := newNoteService(mockTenant1)
-		_, err2 := svc2.Update(context.Background(), 1, 5, req)
+		_, err2 := svc2.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"), req)
 		if err2 != nil {
 			t.Errorf("update for matching tenant should succeed, got %v", err2)
 		}
@@ -348,51 +359,125 @@ func TestNoteServiceUpdate(t *testing.T) {
 
 	t.Run("repository error propagated", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error {
 				return errors.New("db error")
 			},
 		}
 		svc := newNoteService(mock)
 		text := "x"
 		req := UpdateNoteRequest{Text: &text}
-		_, err := svc.Update(context.Background(), 1, 1, req)
+		_, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), req)
 		if err == nil {
 			t.Fatal("expected error")
 		}
 	})
 }
 
+func TestNoteServiceUpdatePreservesOmittedFields(t *testing.T) {
+	tenantID := uuid.MustParse("00000000-0000-4000-8000-000000000001")
+	noteID := uuid.MustParse("00000000-0000-4000-8000-000000000005")
+	conversationID := uuid.MustParse("00000000-0000-4000-8000-00000000000a")
+	oldDate, _ := time.Parse("2006-01-02", "2026-01-15")
+	newText, newDate := "updated", "2026-02-20"
+	for _, tc := range []struct {
+		name     string
+		req      UpdateNoteRequest
+		wantText string
+		wantDate string
+	}{
+		{"date only", UpdateNoteRequest{Date: &newDate}, "original", newDate},
+		{"text only", UpdateNoteRequest{Text: &newText}, newText, "2026-01-15"},
+		{"empty update", UpdateNoteRequest{}, "original", "2026-01-15"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			existing := baseNote(noteID, tenantID, conversationID, "original")
+			existing.Date = &oldDate
+			repo := &mockNoteRepository{
+				getFn: func(ctx context.Context, q DBTX, gotTenant, gotID uuid.UUID) (*Note, error) {
+					if gotTenant != tenantID || gotID != noteID {
+						t.Fatalf("incorrect note lookup: %s/%s", gotTenant, gotID)
+					}
+					return &existing, nil
+				},
+				updateFn: func(ctx context.Context, q DBTX, gotTenant, gotID uuid.UUID, n *Note) error {
+					if n.Text != tc.wantText {
+						t.Errorf("text = %q, want %q", n.Text, tc.wantText)
+					}
+					if n.Date == nil || n.Date.Format("2006-01-02") != tc.wantDate {
+						t.Errorf("date = %v, want %s", n.Date, tc.wantDate)
+					}
+					return nil
+				},
+			}
+			got, err := newNoteService(repo).Update(context.Background(), tenantID, noteID, tc.req)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got.TenantID != tenantID || got.ConversationID != conversationID || got.CreatedAt.IsZero() {
+				t.Errorf("update lost identity or creation data: %+v", got)
+			}
+		})
+	}
+}
+
+func TestNoteServiceUpdateRejectsInvalidDate(t *testing.T) {
+	date := "not-a-date"
+	repo := &mockNoteRepository{updateFn: func(context.Context, DBTX, uuid.UUID, uuid.UUID, *Note) error {
+		t.Error("invalid date must not write the note")
+		return nil
+	}}
+	_, err := newNoteService(repo).Update(context.Background(), uuid.New(), uuid.New(), UpdateNoteRequest{Date: &date})
+	if err == nil {
+		t.Fatal("expected invalid date error")
+	}
+}
+
+func TestNoteServiceUpdatePropagatesLookupError(t *testing.T) {
+	want := errors.New("note not found")
+	repo := &mockNoteRepository{
+		getFn: func(context.Context, DBTX, uuid.UUID, uuid.UUID) (*Note, error) { return nil, want },
+		updateFn: func(context.Context, DBTX, uuid.UUID, uuid.UUID, *Note) error {
+			t.Error("failed lookup must not update")
+			return nil
+		},
+	}
+	_, err := newNoteService(repo).Update(context.Background(), uuid.New(), uuid.New(), UpdateNoteRequest{})
+	if !errors.Is(err, want) {
+		t.Fatalf("error = %v, want %v", err, want)
+	}
+}
+
 func TestNoteServiceDelete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		var capTenantID, capID int
+		var capTenantID, capID uuid.UUID
 		mock := &mockNoteRepository{
-			deleteFn: func(ctx context.Context, q DBTX, tenantID int, id int) error {
+			deleteFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 				capTenantID = tenantID
 				capID = id
 				return nil
 			},
 		}
 		svc := newNoteService(mock)
-		err := svc.Delete(context.Background(), 1, 7)
+		err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000007"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if capTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capTenantID)
+		if capTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capTenantID)
 		}
-		if capID != 7 {
-			t.Errorf("expected id 7, got %d", capID)
+		if capID != uuid.MustParse("00000000-0000-4000-8000-000000000007") {
+			t.Errorf("expected id 7, got %s", capID)
 		}
 	})
 
 	t.Run("repository error", func(t *testing.T) {
 		mock := &mockNoteRepository{
-			deleteFn: func(ctx context.Context, q DBTX, tenantID int, id int) error {
+			deleteFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 				return errors.New("db error")
 			},
 		}
 		svc := newNoteService(mock)
-		err := svc.Delete(context.Background(), 1, 1)
+		err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err == nil {
 			t.Fatal("expected error")
 		}

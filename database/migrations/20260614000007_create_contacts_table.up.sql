@@ -1,6 +1,6 @@
 CREATE TABLE IF NOT EXISTS contacts (
-    id                   SERIAL PRIMARY KEY,
-    tenant_id            INTEGER      NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    id                   UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id            UUID      NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     first_name           VARCHAR(255) NOT NULL,
     last_name            VARCHAR(255),
     username             VARCHAR(255),
@@ -22,7 +22,7 @@ CREATE TABLE IF NOT EXISTS contacts (
     tiktok               VARCHAR(255),
     status               TEXT         NOT NULL DEFAULT 'individual',
     institution_name     VARCHAR(255),
-    merged_to_id         INTEGER      REFERENCES contacts(id) ON DELETE SET NULL,
+    merged_to_id         UUID      REFERENCES contacts(id) ON DELETE SET NULL,
     deleted_at           TIMESTAMPTZ,
     created_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),
     updated_at           TIMESTAMPTZ  NOT NULL DEFAULT NOW(),

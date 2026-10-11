@@ -7,6 +7,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/hash"
@@ -55,7 +57,7 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 	t.ID = tenantID
 
 	roleNames := []string{"super-admin", "admin", "agent"}
-	roleIDs := make(map[string]int, len(roleNames))
+	roleIDs := make(map[string]uuid.UUID, len(roleNames))
 	for _, name := range roleNames {
 		roleID, err := s.repo.CreateRole(ctx, tx, tenantID, name)
 		if err != nil {

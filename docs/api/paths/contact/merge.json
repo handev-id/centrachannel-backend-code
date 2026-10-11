@@ -4,7 +4,7 @@
     "tags": ["Contact"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Source contact ID to merge from" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Source contact ID to merge from" }
     ],
     "requestBody": {
       "required": true,
@@ -14,7 +14,7 @@
             "type": "object",
             "required": ["target_contact_id"],
             "properties": {
-              "target_contact_id": { "type": "integer", "example": 2 }
+              "target_contact_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000002" }
             }
           }
         }

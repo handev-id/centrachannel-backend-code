@@ -361,6 +361,10 @@ Do not register feature routes inside main.go.
 
 Location: `database/`
 
+- All internal primary and foreign keys use PostgreSQL `UUID`; primary keys default to `gen_random_uuid()`.
+- Go IDs use `uuid.UUID` (`github.com/google/uuid`); API IDs and JWT `sub`/`tenant` claims serialize as UUID strings. Nullable IDs use `*uuid.UUID` / `uuid.NullUUID`.
+- Provider identifiers such as `external_id`, `whatsapp_id`, and `webhook_message_id` remain strings.
+
 ```text
 database/
 ├── connector.go       # DBConnector interface
@@ -473,7 +477,7 @@ Service receives only what it needs — NOT the container.
 # Soft Delete & Super Admin Protection
 
 - Users use soft delete via `deleted_at` column
-- User with `id=1` (super admin) must NOT be deletable
+- User with the `super-admin` role must NOT be deletable
 - Return 403 with message `"You can not delete super admin"`
 
 ---
@@ -585,7 +589,7 @@ Before submitting code, verify:
 - Dependency injection used
 - Soft delete is respected (queries filter `deleted_at IS NULL`)
 - Every tenant-scoped query includes `tenant_id = $N` filter
-- Super admin (id=1) is protected from deletion
+- Super admin (role `super-admin`) is protected from deletion
 - Migration files have up/down pairs
 - Migration order: tenants → roles → users → role_user → tokens
 - Seed data in `database/seed.sql`

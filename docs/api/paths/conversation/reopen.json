@@ -4,7 +4,7 @@
     "tags": ["Conversation"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" }
     ],
     "responses": {
       "200": {

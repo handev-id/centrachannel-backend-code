@@ -4,10 +4,10 @@
     "tags": ["Message"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" },
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" },
       { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number (offset pagination)" },
       { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Results per page" },
-      { "name": "last_id", "in": "query", "schema": { "type": "integer" }, "description": "Cursor: last message ID from previous page. When provided, switches to cursor pagination." }
+      { "name": "last_id", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Cursor: last message ID from previous page. When provided, switches to cursor pagination." }
     ],
     "responses": {
       "200": {
@@ -38,7 +38,7 @@
                         {
                           "type": "object",
                           "properties": {
-                            "last_id": { "type": "integer" },
+                            "last_id": { "type": "string", "format": "uuid" },
                             "has_more": { "type": "boolean" }
                           },
                           "description": "Cursor pagination meta (when last_id param provided)"
@@ -63,7 +63,7 @@
     "tags": ["Message"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" }
     ],
     "requestBody": {
       "required": true,
@@ -75,7 +75,7 @@
             "properties": {
               "text": { "type": "string", "example": "Hello, how can I help you?" },
               "attachment": { "type": "object" },
-              "sender_id": { "type": "integer", "example": 1 },
+              "sender_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
               "sender_type": { "type": "string", "enum": ["contact", "user", "ai"], "example": "user" }
             }
           }

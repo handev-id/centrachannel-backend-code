@@ -3,6 +3,8 @@ package user
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -12,13 +14,13 @@ type DBTX interface {
 }
 
 type UserRepository interface {
-	List(ctx context.Context, q DBTX, tenantID int, limit, offset int, search string, roleID *int) ([]*User, int, error)
-	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*User, error)
-	Create(ctx context.Context, q DBTX, user *User) (int, error)
-	Update(ctx context.Context, q DBTX, tenantID int, id int, user *User) error
-	SoftDelete(ctx context.Context, q DBTX, tenantID int, id int) error
-	GetRolesByUserID(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error)
-	GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID int, userIDs []int) (map[int][]Role, error)
-	AttachRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error
-	SyncRoles(ctx context.Context, q DBTX, tenantID int, userID int, roleIDs []int) error
+	List(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int, offset int, search string, roleID *uuid.UUID) ([]*User, int, error)
+	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error)
+	Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error)
+	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, user *User) error
+	SoftDelete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
+	GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error)
+	GetRolesByUserIDs(ctx context.Context, q DBTX, tenantID uuid.UUID, userIDs []uuid.UUID) (map[uuid.UUID][]Role, error)
+	AttachRoles(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) error
+	SyncRoles(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleIDs []uuid.UUID) error
 }

@@ -79,13 +79,12 @@ func (s *authService) Register(ctx context.Context, req RegisterRequest, t *tena
 		return nil, fmt.Errorf("failed to create user: %w", err)
 	}
 
-	var agentRoleID int
-	err = tx.QueryRowContext(ctx, `SELECT id FROM roles WHERE tenant_id = $1 AND name = 'agent'`, t.ID).Scan(&agentRoleID)
+	agentRoleID, err := s.repo.GetRoleIDByName(ctx, tx, t.ID, "agent")
 	if err != nil {
 		return nil, fmt.Errorf("failed to find agent role: %w", err)
 	}
 
-	if _, err := tx.ExecContext(ctx, `INSERT INTO role_user (tenant_id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`, t.ID, userID, agentRoleID, time.Now(), time.Now()); err != nil {
+	if err := s.repo.AttachRole(ctx, tx, t.ID, userID, agentRoleID); err != nil {
 		return nil, fmt.Errorf("failed to attach role: %w", err)
 	}
 
@@ -112,7 +111,7 @@ func (s *authService) Login(ctx context.Context, req LoginRequest, t *tenant.Ten
 		return "", fmt.Errorf("invalid credentials")
 	}
 
-	_, _ = s.db.ExecContext(ctx, `UPDATE users SET last_login = $1 WHERE id = $2 AND tenant_id = $3`, time.Now(), user.ID, t.ID)
+	_ = s.repo.UpdateLastLogin(ctx, s.db, t.ID, user.ID)
 
 	roles, err := s.repo.GetRolesByUserID(ctx, s.db, t.ID, user.ID)
 	if err != nil {
@@ -127,8 +126,8 @@ func (s *authService) Login(ctx context.Context, req LoginRequest, t *tenant.Ten
 	now := time.Now()
 	claims := jwt.MapClaims{
 		"jti":    uuid.New().String(),
-		"sub":    user.ID,
-		"tenant": t.ID,
+		"sub":    user.ID.String(),
+		"tenant": t.ID.String(),
 		"domain": t.Domain,
 		"iat":    now.Unix(),
 		"exp":    now.Add(s.cfg.JWTExpiry).Unix(),
@@ -201,11 +200,16 @@ func (s *authService) CheckToken(ctx context.Context, tokenStr string, t *tenant
 		}
 	}
 
-	subFloat, ok := claims["sub"].(float64)
-	if !ok {
+	sub, ok := claims["sub"].(string)
+	userID, parseErr := uuid.Parse(sub)
+	if !ok || parseErr != nil || userID == uuid.Nil {
 		return nil, fmt.Errorf("invalid sub claim")
 	}
-	userID := int(subFloat)
+	tenantClaim, ok := claims["tenant"].(string)
+	tenantID, parseErr := uuid.Parse(tenantClaim)
+	if !ok || parseErr != nil || tenantID == uuid.Nil || tenantID != t.ID {
+		return nil, fmt.Errorf("invalid tenant claim")
+	}
 
 	user, err := s.repo.GetByID(ctx, s.db, t.ID, userID)
 	if err != nil {

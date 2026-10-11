@@ -3,6 +3,8 @@ package tag
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -12,9 +14,9 @@ type DBTX interface {
 }
 
 type TagRepository interface {
-	List(ctx context.Context, q DBTX, tenantID int) ([]Tag, error)
-	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Tag, error)
-	Create(ctx context.Context, q DBTX, tag *Tag) (int, error)
-	Update(ctx context.Context, q DBTX, tenantID int, id int, tag *Tag) error
-	Delete(ctx context.Context, q DBTX, tenantID int, id int) error
+	List(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error)
+	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Tag, error)
+	Create(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error)
+	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, tag *Tag) error
+	Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }

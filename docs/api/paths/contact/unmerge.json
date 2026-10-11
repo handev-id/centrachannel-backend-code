@@ -4,7 +4,7 @@
     "tags": ["Contact"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID to unmerge" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Contact ID to unmerge" }
     ],
     "responses": {
       "200": {

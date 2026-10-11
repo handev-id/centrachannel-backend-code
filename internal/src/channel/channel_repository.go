@@ -3,6 +3,8 @@ package channel
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -13,6 +15,6 @@ type DBTX interface {
 
 type ChannelRepository interface {
 	List(ctx context.Context, q DBTX) ([]Channel, error)
-	GetByID(ctx context.Context, q DBTX, id int) (*Channel, error)
+	GetByID(ctx context.Context, q DBTX, id uuid.UUID) (*Channel, error)
 	GetByType(ctx context.Context, q DBTX, channelType string) (*Channel, error)
 }

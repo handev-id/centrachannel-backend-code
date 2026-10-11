@@ -6,39 +6,41 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
 )
 
 type mockTagRepository struct {
-	listFn     func(ctx context.Context, q DBTX, tenantID int) ([]Tag, error)
-	getByIDFn  func(ctx context.Context, q DBTX, tenantID int, id int) (*Tag, error)
-	createFn   func(ctx context.Context, q DBTX, tag *Tag) (int, error)
-	updateFn   func(ctx context.Context, q DBTX, tenantID int, id int, tag *Tag) error
-	deleteFn   func(ctx context.Context, q DBTX, tenantID int, id int) error
+	listFn    func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error)
+	getByIDFn func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Tag, error)
+	createFn  func(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error)
+	updateFn  func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, tag *Tag) error
+	deleteFn  func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }
 
-func (m *mockTagRepository) List(ctx context.Context, q DBTX, tenantID int) ([]Tag, error) {
+func (m *mockTagRepository) List(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error) {
 	return m.listFn(ctx, q, tenantID)
 }
 
-func (m *mockTagRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*Tag, error) {
+func (m *mockTagRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Tag, error) {
 	return m.getByIDFn(ctx, q, tenantID, id)
 }
 
-func (m *mockTagRepository) Create(ctx context.Context, q DBTX, tag *Tag) (int, error) {
+func (m *mockTagRepository) Create(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error) {
 	return m.createFn(ctx, q, tag)
 }
 
-func (m *mockTagRepository) Update(ctx context.Context, q DBTX, tenantID int, id int, tag *Tag) error {
+func (m *mockTagRepository) Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, tag *Tag) error {
 	return m.updateFn(ctx, q, tenantID, id, tag)
 }
 
-func (m *mockTagRepository) Delete(ctx context.Context, q DBTX, tenantID int, id int) error {
+func (m *mockTagRepository) Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 	return m.deleteFn(ctx, q, tenantID, id)
 }
 
-func baseTag(id, tenantID int, name string) Tag {
+func baseTag(id, tenantID uuid.UUID, name string) Tag {
 	now := time.Now()
 	color := "#ff0000"
 	return Tag{
@@ -62,17 +64,17 @@ func newTagService(repo TagRepository) *tagService {
 
 func TestTagServiceList(t *testing.T) {
 	t.Run("returns list of tags", func(t *testing.T) {
-		tags := []Tag{baseTag(1, 1, "support"), baseTag(2, 1, "billing")}
+		tags := []Tag{baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "support"), baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000002"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "billing")}
 		mock := &mockTagRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int) ([]Tag, error) {
-				if tenantID != 1 {
-					t.Errorf("expected tenantID 1, got %d", tenantID)
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error) {
+				if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("expected tenantID 1, got %s", tenantID)
 				}
 				return tags, nil
 			},
 		}
 		svc := newTagService(mock)
-		result, err := svc.List(context.Background(), 1)
+		result, err := svc.List(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -83,12 +85,12 @@ func TestTagServiceList(t *testing.T) {
 
 	t.Run("empty list", func(t *testing.T) {
 		mock := &mockTagRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int) ([]Tag, error) {
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error) {
 				return []Tag{}, nil
 			},
 		}
 		svc := newTagService(mock)
-		result, err := svc.List(context.Background(), 1)
+		result, err := svc.List(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -98,14 +100,14 @@ func TestTagServiceList(t *testing.T) {
 	})
 
 	t.Run("pagination returns subset", func(t *testing.T) {
-		allTags := []Tag{baseTag(1, 1, "a"), baseTag(2, 1, "b"), baseTag(3, 1, "c")}
+		allTags := []Tag{baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "a"), baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000002"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "b"), baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000003"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "c")}
 		mock := &mockTagRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int) ([]Tag, error) {
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error) {
 				return allTags[:2], nil
 			},
 		}
 		svc := newTagService(mock)
-		result, err := svc.List(context.Background(), 1)
+		result, err := svc.List(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -116,12 +118,12 @@ func TestTagServiceList(t *testing.T) {
 
 	t.Run("search filter returns matching", func(t *testing.T) {
 		mock := &mockTagRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int) ([]Tag, error) {
-				return []Tag{baseTag(2, 1, "urgent")}, nil
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error) {
+				return []Tag{baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000002"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "urgent")}, nil
 			},
 		}
 		svc := newTagService(mock)
-		result, err := svc.List(context.Background(), 1)
+		result, err := svc.List(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -132,12 +134,12 @@ func TestTagServiceList(t *testing.T) {
 
 	t.Run("repository error", func(t *testing.T) {
 		mock := &mockTagRepository{
-			listFn: func(ctx context.Context, q DBTX, tenantID int) ([]Tag, error) {
+			listFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]Tag, error) {
 				return nil, errors.New("db error")
 			},
 		}
 		svc := newTagService(mock)
-		_, err := svc.List(context.Background(), 1)
+		_, err := svc.List(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -148,47 +150,47 @@ func TestTagServiceCreate(t *testing.T) {
 	t.Run("success with color", func(t *testing.T) {
 		var saved *Tag
 		mock := &mockTagRepository{
-			createFn: func(ctx context.Context, q DBTX, tag *Tag) (int, error) {
+			createFn: func(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error) {
 				saved = tag
-				return 42, nil
+				return uuid.MustParse("00000000-0000-4000-8000-00000000002a"), nil
 			},
 		}
 		svc := newTagService(mock)
 		color := "#00ff00"
 		req := CreateTagRequest{Name: "new tag", Color: &color}
-		result, err := svc.Create(context.Background(), req, 1)
+		result, err := svc.Create(context.Background(), req, uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if result.ID != 42 {
-			t.Errorf("expected ID 42, got %d", result.ID)
+		if result.ID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
+			t.Errorf("expected ID 42, got %s", result.ID)
 		}
 		if result.Name != "new tag" {
 			t.Errorf("expected name 'new tag', got %s", result.Name)
 		}
-		if result.TenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", result.TenantID)
+		if result.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", result.TenantID)
 		}
 		if result.Color == nil || *result.Color != "#00ff00" {
 			t.Errorf("expected color #00ff00, got %v", result.Color)
 		}
-		if saved.TenantID != 1 || saved.Name != "new tag" {
+		if saved.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") || saved.Name != "new tag" {
 			t.Errorf("saved tag has wrong fields: %+v", saved)
 		}
 	})
 
 	t.Run("success with nil color", func(t *testing.T) {
 		mock := &mockTagRepository{
-			createFn: func(ctx context.Context, q DBTX, tag *Tag) (int, error) {
+			createFn: func(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error) {
 				if tag.Color != nil {
 					t.Error("expected nil color")
 				}
-				return 1, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
 		}
 		svc := newTagService(mock)
 		req := CreateTagRequest{Name: "no color"}
-		result, err := svc.Create(context.Background(), req, 1)
+		result, err := svc.Create(context.Background(), req, uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -199,12 +201,12 @@ func TestTagServiceCreate(t *testing.T) {
 
 	t.Run("repository error", func(t *testing.T) {
 		mock := &mockTagRepository{
-			createFn: func(ctx context.Context, q DBTX, tag *Tag) (int, error) {
-				return 0, errors.New("db error")
+			createFn: func(ctx context.Context, q DBTX, tag *Tag) (uuid.UUID, error) {
+				return uuid.Nil, errors.New("db error")
 			},
 		}
 		svc := newTagService(mock)
-		_, err := svc.Create(context.Background(), CreateTagRequest{Name: "x"}, 1)
+		_, err := svc.Create(context.Background(), CreateTagRequest{Name: "x"}, uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err == nil {
 			t.Fatal("expected error")
 		}
@@ -213,12 +215,12 @@ func TestTagServiceCreate(t *testing.T) {
 
 func TestTagServiceUpdate(t *testing.T) {
 	t.Run("success updates name", func(t *testing.T) {
-		existing := baseTag(1, 1, "old name")
+		existing := baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "old name")
 		mock := &mockTagRepository{
-			getByIDFn: func(ctx context.Context, q DBTX, tenantID int, id int) (*Tag, error) {
+			getByIDFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Tag, error) {
 				return &existing, nil
 			},
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, tag *Tag) error {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, tag *Tag) error {
 				if tag.Name != "new name" {
 					t.Errorf("expected name 'new name', got %s", tag.Name)
 				}
@@ -228,7 +230,7 @@ func TestTagServiceUpdate(t *testing.T) {
 		svc := newTagService(mock)
 		newName := "new name"
 		req := UpdateTagRequest{Name: &newName}
-		result, err := svc.Update(context.Background(), 1, 1, req)
+		result, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -238,12 +240,12 @@ func TestTagServiceUpdate(t *testing.T) {
 	})
 
 	t.Run("success updates color only", func(t *testing.T) {
-		existing := baseTag(1, 1, "keep name")
+		existing := baseTag(uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), "keep name")
 		mock := &mockTagRepository{
-			getByIDFn: func(ctx context.Context, q DBTX, tenantID int, id int) (*Tag, error) {
+			getByIDFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Tag, error) {
 				return &existing, nil
 			},
-			updateFn: func(ctx context.Context, q DBTX, tenantID int, id int, tag *Tag) error {
+			updateFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, tag *Tag) error {
 				if tag.Name != "keep name" {
 					t.Errorf("expected name preserved, got %s", tag.Name)
 				}
@@ -253,7 +255,7 @@ func TestTagServiceUpdate(t *testing.T) {
 		svc := newTagService(mock)
 		newColor := "#0000ff"
 		req := UpdateTagRequest{Color: &newColor}
-		result, err := svc.Update(context.Background(), 1, 1, req)
+		result, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), req)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -264,12 +266,12 @@ func TestTagServiceUpdate(t *testing.T) {
 
 	t.Run("not found for wrong tenant", func(t *testing.T) {
 		mock := &mockTagRepository{
-			getByIDFn: func(ctx context.Context, q DBTX, tenantID int, id int) (*Tag, error) {
+			getByIDFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Tag, error) {
 				return nil, errors.New("not found")
 			},
 		}
 		svc := newTagService(mock)
-		_, err := svc.Update(context.Background(), 99, 1, UpdateTagRequest{})
+		_, err := svc.Update(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000063"), uuid.MustParse("00000000-0000-4000-8000-000000000001"), UpdateTagRequest{})
 		if err == nil {
 			t.Fatal("expected error for mismatch tenant")
 		}
@@ -278,35 +280,35 @@ func TestTagServiceUpdate(t *testing.T) {
 
 func TestTagServiceDelete(t *testing.T) {
 	t.Run("success", func(t *testing.T) {
-		var capTenantID, capID int
+		var capTenantID, capID uuid.UUID
 		mock := &mockTagRepository{
-			deleteFn: func(ctx context.Context, q DBTX, tenantID int, id int) error {
+			deleteFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 				capTenantID = tenantID
 				capID = id
 				return nil
 			},
 		}
 		svc := newTagService(mock)
-		err := svc.Delete(context.Background(), 1, 5)
+		err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000005"))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if capTenantID != 1 {
-			t.Errorf("expected tenantID 1, got %d", capTenantID)
+		if capTenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenantID 1, got %s", capTenantID)
 		}
-		if capID != 5 {
-			t.Errorf("expected id 5, got %d", capID)
+		if capID != uuid.MustParse("00000000-0000-4000-8000-000000000005") {
+			t.Errorf("expected id 5, got %s", capID)
 		}
 	})
 
 	t.Run("repository error", func(t *testing.T) {
 		mock := &mockTagRepository{
-			deleteFn: func(ctx context.Context, q DBTX, tenantID int, id int) error {
+			deleteFn: func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error {
 				return errors.New("db error")
 			},
 		}
 		svc := newTagService(mock)
-		err := svc.Delete(context.Background(), 1, 1)
+		err := svc.Delete(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err == nil {
 			t.Fatal("expected error")
 		}

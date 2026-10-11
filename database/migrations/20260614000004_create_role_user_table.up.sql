@@ -1,8 +1,8 @@
 CREATE TABLE IF NOT EXISTS role_user (
-    id         SERIAL PRIMARY KEY,
-    tenant_id  INTEGER NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
-    user_id    INTEGER NOT NULL REFERENCES users(id) ON DELETE CASCADE,
-    role_id    INTEGER NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id  UUID NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    user_id    UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+    role_id    UUID NOT NULL REFERENCES roles(id) ON DELETE CASCADE,
     created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     UNIQUE(tenant_id, user_id, role_id)

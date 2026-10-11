@@ -7,6 +7,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
 )
@@ -28,10 +30,10 @@ func (t *mockTx) Rollback() error { return nil }
 
 type mockStmt struct{}
 
-func (s *mockStmt) Close() error                                      { return nil }
-func (s *mockStmt) NumInput() int                                      { return -1 }
-func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error)   { return &mockResult{}, nil }
-func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error)    { return &mockRows{}, nil }
+func (s *mockStmt) Close() error                                    { return nil }
+func (s *mockStmt) NumInput() int                                   { return -1 }
+func (s *mockStmt) Exec(args []driver.Value) (driver.Result, error) { return &mockResult{}, nil }
+func (s *mockStmt) Query(args []driver.Value) (driver.Rows, error)  { return &mockRows{}, nil }
 
 type mockResult struct{}
 
@@ -50,23 +52,23 @@ func (c *mockConnector) Connect(ctx context.Context) (driver.Conn, error) { retu
 func (c *mockConnector) Driver() driver.Driver                            { return &mockDriver{} }
 
 type mockTenantRepository struct {
-	getByIDFn func(ctx context.Context, q DBTX, id int) (*Tenant, error)
+	getByIDFn func(ctx context.Context, q DBTX, id uuid.UUID) (*Tenant, error)
 	updateFn  func(ctx context.Context, q DBTX, tenant *Tenant) error
 }
 
-func (m *mockTenantRepository) Create(ctx context.Context, q DBTX, tenant *Tenant) (int, error) {
-	return 0, nil
+func (m *mockTenantRepository) Create(ctx context.Context, q DBTX, tenant *Tenant) (uuid.UUID, error) {
+	return uuid.Nil, nil
 }
-func (m *mockTenantRepository) CreateRole(ctx context.Context, q DBTX, tenantID int, name string) (int, error) {
-	return 0, nil
+func (m *mockTenantRepository) CreateRole(ctx context.Context, q DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
+	return uuid.Nil, nil
 }
-func (m *mockTenantRepository) CreateUser(ctx context.Context, q DBTX, user *User) (int, error) {
-	return 0, nil
+func (m *mockTenantRepository) CreateUser(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
+	return uuid.Nil, nil
 }
-func (m *mockTenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID int) error {
+func (m *mockTenantRepository) AttachRole(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID, roleID uuid.UUID) error {
 	return nil
 }
-func (m *mockTenantRepository) GetByID(ctx context.Context, q DBTX, id int) (*Tenant, error) {
+func (m *mockTenantRepository) GetByID(ctx context.Context, q DBTX, id uuid.UUID) (*Tenant, error) {
 	return m.getByIDFn(ctx, q, id)
 }
 func (m *mockTenantRepository) Update(ctx context.Context, q DBTX, tenant *Tenant) error {
@@ -85,17 +87,17 @@ func newMockDB() *sql.DB {
 
 func TestGetByID(t *testing.T) {
 	t.Run("returns tenant by id", func(t *testing.T) {
-		expected := &Tenant{ID: 1, Name: "Alpha", Domain: "alpha.com", IsActive: true}
+		expected := &Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Alpha", Domain: "alpha.com", IsActive: true}
 
 		repo := &mockTenantRepository{
-			getByIDFn: func(ctx context.Context, q DBTX, id int) (*Tenant, error) {
+			getByIDFn: func(ctx context.Context, q DBTX, id uuid.UUID) (*Tenant, error) {
 				return expected, nil
 			},
 		}
 
 		svc := NewTenantService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
-		tenant, err := svc.GetByID(context.Background(), 1)
+		tenant, err := svc.GetByID(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -119,7 +121,7 @@ func TestUpdate(t *testing.T) {
 
 		svc := NewTenantService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
-		tenant := &Tenant{ID: 1, Name: "Updated Name", Domain: "updated.com"}
+		tenant := &Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Updated Name", Domain: "updated.com"}
 		err := svc.Update(context.Background(), tenant)
 		if err != nil {
 			t.Fatal(err)

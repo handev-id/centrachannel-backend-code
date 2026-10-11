@@ -4,7 +4,7 @@
     "tags": ["Tag"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Tag ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Tag ID" }
     ],
     "requestBody": {
       "required": true,
@@ -44,7 +44,7 @@
     "tags": ["Tag"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Tag ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Tag ID" }
     ],
     "responses": {
       "200": {

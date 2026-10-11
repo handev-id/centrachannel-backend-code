@@ -41,7 +41,7 @@
             "properties": {
               "name": { "type": "string", "example": "Newsletter Subscribers" },
               "source": { "type": "string", "example": "manual" },
-              "channel_id": { "type": "integer", "example": 1 }
+              "channel_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" }
             }
           }
         }

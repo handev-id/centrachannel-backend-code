@@ -30,8 +30,8 @@ func (h *AuthHandler) Register(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	user, err := h.service.Register(c.Context(), req, t)
@@ -46,8 +46,8 @@ func (h *AuthHandler) Login(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 	token, err := h.service.Login(c.Context(), req, t)
 	if err != nil {

@@ -4,8 +4,8 @@
     "tags": ["Conversation Tag"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" },
-      { "name": "tagId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Tag ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" },
+      { "name": "tagId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Tag ID" }
     ],
     "responses": {
       "200": {

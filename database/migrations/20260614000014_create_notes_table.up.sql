@@ -1,10 +1,10 @@
 CREATE TABLE IF NOT EXISTS notes (
-    id              SERIAL PRIMARY KEY,
-    tenant_id       INTEGER     NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    tenant_id       UUID     NOT NULL REFERENCES tenants(id) ON DELETE CASCADE,
     text            TEXT        NOT NULL,
     date            DATE,
-    conversation_id INTEGER     NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
-    user_id         INTEGER     REFERENCES users(id) ON DELETE SET NULL,
+    conversation_id UUID     NOT NULL REFERENCES conversations(id) ON DELETE CASCADE,
+    user_id         UUID     REFERENCES users(id) ON DELETE SET NULL,
     created_at      TIMESTAMPTZ NOT NULL DEFAULT NOW(),
     updated_at      TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );

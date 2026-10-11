@@ -1,10 +1,10 @@
 {
   "type": "object",
   "properties": {
-    "id": { "type": "integer", "example": 1 },
-    "tenant_id": { "type": "integer", "example": 1 },
-    "conversation_id": { "type": "integer", "example": 1 },
-    "user_id": { "type": "integer", "example": 1 },
+    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+    "tenant_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+    "conversation_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
+    "user_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
     "text": { "type": "string", "example": "Customer requested a callback" },
     "date": { "type": "string", "format": "date", "example": "2025-07-29" },
     "deleted_at": { "type": "string", "format": "date-time", "example": null },

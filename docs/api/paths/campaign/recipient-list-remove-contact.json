@@ -4,8 +4,8 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Recipient List ID" },
-      { "name": "contactId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Contact ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Recipient List ID" },
+      { "name": "contactId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Contact ID" }
     ],
     "responses": {
       "200": {

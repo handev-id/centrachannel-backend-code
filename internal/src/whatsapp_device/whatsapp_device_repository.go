@@ -3,6 +3,8 @@ package whatsapp_device
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -12,10 +14,10 @@ type DBTX interface {
 }
 
 type WhatsAppDeviceRepository interface {
-	List(ctx context.Context, q DBTX, tenantID int) ([]WhatsAppDevice, error)
-	GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*WhatsAppDevice, error)
+	List(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]WhatsAppDevice, error)
+	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*WhatsAppDevice, error)
 	GetByWhatsappID(ctx context.Context, q DBTX, whatsappID string) (*WhatsAppDevice, error)
-	Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (int, error)
-	Update(ctx context.Context, q DBTX, tenantID int, id int, device *WhatsAppDevice) error
-	Delete(ctx context.Context, q DBTX, tenantID int, id int) error
+	Create(ctx context.Context, q DBTX, device *WhatsAppDevice) (uuid.UUID, error)
+	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, device *WhatsAppDevice) error
+	Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }

@@ -1,18 +1,22 @@
 package message
 
-import "encoding/json"
+import (
+	"encoding/json"
+
+	"github.com/google/uuid"
+)
 
 type ListMessageQuery struct {
-	Limit  int `query:"limit"`
-	LastID int `query:"last_id"`
+	Limit  int       `query:"limit"`
+	LastID uuid.UUID `query:"last_id"`
 }
 
 type SendMessageRequest struct {
 	Text           *string         `json:"text,omitempty"`
 	Attachment     json.RawMessage `json:"attachment,omitempty"`
-	SenderID       int             `json:"sender_id" validate:"required"`
+	SenderID       uuid.UUID       `json:"sender_id" validate:"required,uuid"`
 	SenderType     string          `json:"sender_type" validate:"required,oneof=contact user ai"`
-	ConversationID int             `json:"conversation_id" validate:"required"`
+	ConversationID uuid.UUID       `json:"conversation_id" validate:"required,uuid"`
 }
 
 type UpdateMessageStatusRequest struct {

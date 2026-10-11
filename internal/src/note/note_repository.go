@@ -3,6 +3,8 @@ package note
 import (
 	"context"
 	"database/sql"
+
+	"github.com/google/uuid"
 )
 
 type DBTX interface {
@@ -12,8 +14,9 @@ type DBTX interface {
 }
 
 type NoteRepository interface {
-	ListByConversation(ctx context.Context, q DBTX, tenantID int, conversationID int) ([]Note, error)
-	Create(ctx context.Context, q DBTX, note *Note) (int, error)
-	Update(ctx context.Context, q DBTX, tenantID int, id int, note *Note) error
-	Delete(ctx context.Context, q DBTX, tenantID int, id int) error
+	ListByConversation(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error)
+	GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Note, error)
+	Create(ctx context.Context, q DBTX, note *Note) (uuid.UUID, error)
+	Update(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, note *Note) error
+	Delete(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }

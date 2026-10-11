@@ -9,6 +9,8 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/middleware"
 	"centrachannel/internal/src/auth"
 	"centrachannel/internal/src/tenant"
@@ -56,12 +58,12 @@ func TestAuthRegister_Success(t *testing.T) {
 	mockSvc := &mockAuthService{
 		registerFn: func(ctx context.Context, req auth.RegisterRequest, t *tenant.Tenant) (*auth.User, error) {
 			return &auth.User{
-				ID:        1,
+				ID:        uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 				TenantID:  t.ID,
 				FirstName: req.FirstName,
 				Username:  req.Username,
 				Email:     req.Email,
-				Roles:     []auth.Role{{ID: 1, TenantID: t.ID, Name: "agent"}},
+				Roles:     []auth.Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: t.ID, Name: "agent"}},
 			}, nil
 		},
 	}
@@ -89,9 +91,12 @@ func TestAuthRegister_Success(t *testing.T) {
 	}
 
 	var u auth.User
-	readBody(t, resp, &u)
-	if u.ID != 1 {
-		t.Errorf("user.id = %d, want 1", u.ID)
+	if err := DecodeData(resp, &u); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if u.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("user.id = %s, want 1", u.ID)
 	}
 	if u.Username != "john_doe" {
 		t.Errorf("user.username = %q, want john_doe", u.Username)
@@ -203,12 +208,12 @@ func TestAuthCheckToken_Valid(t *testing.T) {
 	mockSvc := &mockAuthService{
 		checkTokenFn: func(ctx context.Context, token string, t *tenant.Tenant) (*auth.User, error) {
 			return &auth.User{
-				ID:        1,
+				ID:        uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 				TenantID:  t.ID,
 				FirstName: "John",
 				Username:  "john_doe",
 				Email:     "john@test.com",
-				Roles:     []auth.Role{{ID: 1, TenantID: t.ID, Name: "agent"}},
+				Roles:     []auth.Role{{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), TenantID: t.ID, Name: "agent"}},
 			}, nil
 		},
 	}
@@ -230,9 +235,12 @@ func TestAuthCheckToken_Valid(t *testing.T) {
 	}
 
 	var u auth.User
-	readBody(t, resp, &u)
-	if u.ID != 1 {
-		t.Errorf("user.id = %d, want 1", u.ID)
+	if err := DecodeData(resp, &u); err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if u.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+		t.Errorf("user.id = %s, want 1", u.ID)
 	}
 	if u.Username != "john_doe" {
 		t.Errorf("user.username = %q, want john_doe", u.Username)

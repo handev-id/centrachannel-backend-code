@@ -8,6 +8,7 @@ import (
 	"strconv"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/di"
 	"centrachannel/internal/src/profile"
@@ -34,8 +35,22 @@ func (h *ContactHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 
 	page, _ := strconv.Atoi(c.Query("page", "1"))
 	limit, _ := strconv.Atoi(c.Query("limit", "20"))
-	channelID, _ := strconv.Atoi(c.Query("channel_id"))
-	agentID, _ := strconv.Atoi(c.Query("agent_id"))
+	var channelID uuid.UUID
+	if raw := c.Query("channel_id"); raw != "" {
+		var err error
+		channelID, err = uuid.Parse(raw)
+		if err != nil || channelID == uuid.Nil {
+			return response.BadRequest(c, "Invalid channel_id", nil)
+		}
+	}
+	var agentID uuid.UUID
+	if raw := c.Query("agent_id"); raw != "" {
+		var err error
+		agentID, err = uuid.Parse(raw)
+		if err != nil || agentID == uuid.Nil {
+			return response.BadRequest(c, "Invalid agent_id", nil)
+		}
+	}
 
 	q := ListContactQuery{
 		Page:             page,
@@ -63,16 +78,21 @@ func (h *ContactHandler) List(c fiber.Ctx, t *tenant.Tenant) error {
 	lastPage := int(math.Ceil(float64(total) / float64(q.Limit)))
 	from := (q.Page-1)*q.Limit + 1
 	to := (q.Page-1)*q.Limit + len(contacts)
-	if to > total { to = total }
-	if total == 0 { from = 0; to = 0 }
+	if to > total {
+		to = total
+	}
+	if total == 0 {
+		from = 0
+		to = 0
+	}
 
 	return response.Paginated(c, "success", contacts, total, q.Page, q.Limit, from, to, lastPage)
 }
 
 func (h *ContactHandler) Show(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -89,8 +109,8 @@ func (h *ContactHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	contact, err := h.service.Create(c.Context(), req, t)
@@ -102,8 +122,8 @@ func (h *ContactHandler) Store(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ContactHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -111,8 +131,8 @@ func (h *ContactHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	contact, err := h.service.Update(c.Context(), t.ID, id, req)
@@ -124,8 +144,8 @@ func (h *ContactHandler) Update(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ContactHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -137,8 +157,8 @@ func (h *ContactHandler) Delete(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ContactHandler) Merge(c fiber.Ctx, t *tenant.Tenant) error {
 
-	sourceID, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	sourceID, err := uuid.Parse(c.Params("id"))
+	if err != nil || sourceID == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -146,8 +166,8 @@ func (h *ContactHandler) Merge(c fiber.Ctx, t *tenant.Tenant) error {
 	if err := c.Bind().Body(&req); err != nil {
 		return response.BadRequest(c, "Invalid payload", nil)
 	}
-	if err := response.Validate(c, &req); err != nil {
-		return err
+	if err := response.Validate(&req); err != nil {
+		return response.ValidationFailed(c, err)
 	}
 
 	if err := h.service.Merge(c.Context(), t.ID, sourceID, req.TargetContactID); err != nil {
@@ -158,8 +178,8 @@ func (h *ContactHandler) Merge(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ContactHandler) Unmerge(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -171,8 +191,8 @@ func (h *ContactHandler) Unmerge(c fiber.Ctx, t *tenant.Tenant) error {
 
 func (h *ContactHandler) Conversations(c fiber.Ctx, t *tenant.Tenant) error {
 
-	id, err := strconv.Atoi(c.Params("id"))
-	if err != nil {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
 		return response.BadRequest(c, "Invalid ID", nil)
 	}
 
@@ -187,8 +207,13 @@ func (h *ContactHandler) Conversations(c fiber.Ctx, t *tenant.Tenant) error {
 	lastPage := int(math.Ceil(float64(total) / float64(limit)))
 	from := (page-1)*limit + 1
 	to := (page-1)*limit + len(convs)
-	if to > total { to = total }
-	if total == 0 { from = 0; to = 0 }
+	if to > total {
+		to = total
+	}
+	if total == 0 {
+		from = 0
+		to = 0
+	}
 
 	return response.Paginated(c, "success", convs, total, page, limit, from, to, lastPage)
 }

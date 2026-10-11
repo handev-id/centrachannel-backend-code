@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"encoding/json"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type dashboardRepository struct{}
@@ -13,55 +15,55 @@ func NewDashboardRepository() DashboardRepository {
 	return &dashboardRepository{}
 }
 
-func (r *dashboardRepository) GetTotalContacts(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetTotalContacts(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM contacts WHERE tenant_id = $1 AND deleted_at IS NULL`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetNewContacts(ctx context.Context, q DBTX, tenantID int, days int) (int, error) {
+func (r *dashboardRepository) GetNewContacts(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM contacts WHERE tenant_id = $1 AND deleted_at IS NULL AND created_at >= NOW() - ($2 || ' days')::INTERVAL`, tenantID, days).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetTotalConversations(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetTotalConversations(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations WHERE tenant_id = $1`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetActiveConversations(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetActiveConversations(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations WHERE tenant_id = $1 AND status != 'resolved'`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetNewConversations(ctx context.Context, q DBTX, tenantID int, days int) (int, error) {
+func (r *dashboardRepository) GetNewConversations(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL`, tenantID, days).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetResolvedToday(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetResolvedToday(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations WHERE tenant_id = $1 AND status = 'resolved' AND updated_at >= $2`, tenantID, time.Now().Truncate(24*time.Hour)).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetUnassignedCount(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetUnassignedCount(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations WHERE tenant_id = $1 AND status = 'unassigned'`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetTotalUnreadConversations(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetTotalUnreadConversations(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM conversations WHERE tenant_id = $1 AND unread_count > 0`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetTotalUnreadMessages(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetTotalUnreadMessages(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var total sql.NullInt64
 	err := q.QueryRowContext(ctx, `SELECT COALESCE(SUM(unread_count), 0) FROM conversations WHERE tenant_id = $1`, tenantID).Scan(&total)
 	if err != nil {
@@ -70,31 +72,31 @@ func (r *dashboardRepository) GetTotalUnreadMessages(ctx context.Context, q DBTX
 	return int(total.Int64), nil
 }
 
-func (r *dashboardRepository) GetTotalMessages(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetTotalMessages(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM messages WHERE tenant_id = $1`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetMessagesToday(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetMessagesToday(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM messages WHERE tenant_id = $1 AND created_at >= $2`, tenantID, time.Now().Truncate(24*time.Hour)).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetTotalCampaigns(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetTotalCampaigns(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM campaigns WHERE tenant_id = $1`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetConnectedWhatsappDevices(ctx context.Context, q DBTX, tenantID int) (int, error) {
+func (r *dashboardRepository) GetConnectedWhatsappDevices(ctx context.Context, q DBTX, tenantID uuid.UUID) (int, error) {
 	var count int
 	err := q.QueryRowContext(ctx, `SELECT COUNT(*) FROM whatsapp_devices WHERE tenant_id = $1 AND status = 'CONNECTED'`, tenantID).Scan(&count)
 	return count, err
 }
 
-func (r *dashboardRepository) GetConversationsByStatus(ctx context.Context, q DBTX, tenantID int) (*ConversationsByStatus, error) {
+func (r *dashboardRepository) GetConversationsByStatus(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ConversationsByStatus, error) {
 	rows, err := q.QueryContext(ctx, `SELECT status, COUNT(*) as total FROM conversations WHERE tenant_id = $1 GROUP BY status`, tenantID)
 	if err != nil {
 		return nil, err
@@ -120,7 +122,7 @@ func (r *dashboardRepository) GetConversationsByStatus(ctx context.Context, q DB
 	return result, rows.Err()
 }
 
-func (r *dashboardRepository) GetConversationsByChannel(ctx context.Context, q DBTX, tenantID int) ([]ConversationsByChannel, error) {
+func (r *dashboardRepository) GetConversationsByChannel(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]ConversationsByChannel, error) {
 	query := `
 		SELECT c.channel_id, ch.name, COUNT(*) as total, COALESCE(SUM(c.unread_count), 0) as unread
 		FROM conversations c
@@ -147,25 +149,25 @@ func (r *dashboardRepository) GetConversationsByChannel(ctx context.Context, q D
 }
 
 type recentConversationScan struct {
-	ID               int
+	ID               uuid.UUID
 	Status           string
 	UnreadCount      int
 	LastActivity     sql.NullTime
 	LastMessage      sql.NullString
-	ChannelID        int
+	ChannelID        uuid.UUID
 	ChannelName      string
 	ChannelLogo      sql.NullString
-	AgentID          sql.NullInt64
+	AgentID          uuid.NullUUID
 	AgentFirstName   sql.NullString
 	AgentLastName    sql.NullString
 	AgentAvatar      sql.NullString
-	ContactID        int
+	ContactID        uuid.UUID
 	ContactFirstName string
 	ContactLastName  sql.NullString
 	ContactAvatar    sql.NullString
 }
 
-func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX, tenantID int, limit int) ([]RecentConversation, error) {
+func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX, tenantID uuid.UUID, limit int) ([]RecentConversation, error) {
 	query := `
 		SELECT
 			c.id, c.status, c.unread_count, c.last_activity, c.last_message,
@@ -176,7 +178,7 @@ func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX
 		JOIN channels ch ON ch.id = c.channel_id
 		JOIN profiles p ON p.id = c.profile_id AND p.tenant_id = c.tenant_id AND p.deleted_at IS NULL
 		JOIN contacts ct ON ct.id = p.contact_id AND ct.tenant_id = c.tenant_id AND ct.deleted_at IS NULL
-		LEFT JOIN users u ON u.id = c.agent_id AND u.deleted_at IS NULL
+		LEFT JOIN users u ON u.id = c.agent_id AND u.tenant_id = c.tenant_id AND u.deleted_at IS NULL
 		WHERE c.tenant_id = $1
 		ORDER BY c.last_activity DESC NULLS LAST, c.id DESC
 		LIMIT $2
@@ -231,7 +233,7 @@ func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX
 		}
 		if s.AgentID.Valid {
 			item.Agent = &AgentBrief{
-				ID:        int(s.AgentID.Int64),
+				ID:        s.AgentID.UUID,
 				FirstName: s.AgentFirstName.String,
 			}
 			if s.AgentLastName.Valid {
@@ -247,7 +249,7 @@ func (r *dashboardRepository) GetRecentConversations(ctx context.Context, q DBTX
 	return result, rows.Err()
 }
 
-func (r *dashboardRepository) GetConversationChart(ctx context.Context, q DBTX, tenantID int, days int) ([]ChartDataPoint, error) {
+func (r *dashboardRepository) GetConversationChart(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]ChartDataPoint, error) {
 	query := `SELECT DATE(created_at) as date, COUNT(*) as count FROM conversations WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL GROUP BY DATE(created_at) ORDER BY date`
 	rows, err := q.QueryContext(ctx, query, tenantID, days)
 	if err != nil {
@@ -268,7 +270,7 @@ func (r *dashboardRepository) GetConversationChart(ctx context.Context, q DBTX, 
 	return data, rows.Err()
 }
 
-func (r *dashboardRepository) GetContactsByStatus(ctx context.Context, q DBTX, tenantID int) (*ContactsByStatus, error) {
+func (r *dashboardRepository) GetContactsByStatus(ctx context.Context, q DBTX, tenantID uuid.UUID) (*ContactsByStatus, error) {
 	rows, err := q.QueryContext(ctx, `SELECT status, COUNT(*) as total FROM contacts WHERE tenant_id = $1 AND deleted_at IS NULL GROUP BY status`, tenantID)
 	if err != nil {
 		return nil, err
@@ -292,7 +294,7 @@ func (r *dashboardRepository) GetContactsByStatus(ctx context.Context, q DBTX, t
 	return result, rows.Err()
 }
 
-func (r *dashboardRepository) GetMessagesBySenderType(ctx context.Context, q DBTX, tenantID int) (*MessagesBySenderType, error) {
+func (r *dashboardRepository) GetMessagesBySenderType(ctx context.Context, q DBTX, tenantID uuid.UUID) (*MessagesBySenderType, error) {
 	rows, err := q.QueryContext(ctx, `SELECT sender_type, COUNT(*) as total FROM messages WHERE tenant_id = $1 GROUP BY sender_type`, tenantID)
 	if err != nil {
 		return nil, err
@@ -316,7 +318,7 @@ func (r *dashboardRepository) GetMessagesBySenderType(ctx context.Context, q DBT
 	return result, rows.Err()
 }
 
-func (r *dashboardRepository) GetMessagesByDate(ctx context.Context, q DBTX, tenantID int, days int) ([]MessagesByDate, error) {
+func (r *dashboardRepository) GetMessagesByDate(ctx context.Context, q DBTX, tenantID uuid.UUID, days int) ([]MessagesByDate, error) {
 	query := `SELECT DATE(created_at) as date, COUNT(*) as count FROM messages WHERE tenant_id = $1 AND created_at >= NOW() - ($2 || ' days')::INTERVAL GROUP BY DATE(created_at) ORDER BY date`
 	rows, err := q.QueryContext(ctx, query, tenantID, days)
 	if err != nil {
@@ -337,7 +339,7 @@ func (r *dashboardRepository) GetMessagesByDate(ctx context.Context, q DBTX, ten
 	return data, rows.Err()
 }
 
-func (r *dashboardRepository) GetCampaignsByStatus(ctx context.Context, q DBTX, tenantID int) (map[string]int, error) {
+func (r *dashboardRepository) GetCampaignsByStatus(ctx context.Context, q DBTX, tenantID uuid.UUID) (map[string]int, error) {
 	rows, err := q.QueryContext(ctx, `SELECT status, COUNT(*) as total FROM campaigns WHERE tenant_id = $1 GROUP BY status`, tenantID)
 	if err != nil {
 		return nil, err
@@ -357,14 +359,14 @@ func (r *dashboardRepository) GetCampaignsByStatus(ctx context.Context, q DBTX, 
 }
 
 type agentWorkloadScan struct {
-	ID        int
+	ID        uuid.UUID
 	FirstName string
 	LastName  sql.NullString
 	Avatar    sql.NullString
 	Ongoing   int
 }
 
-func (r *dashboardRepository) GetAgentWorkload(ctx context.Context, q DBTX, tenantID int) ([]AgentWorkload, error) {
+func (r *dashboardRepository) GetAgentWorkload(ctx context.Context, q DBTX, tenantID uuid.UUID) ([]AgentWorkload, error) {
 	query := `
 		SELECT u.id, u.first_name, u.last_name, u.avatar, COUNT(c.id) as ongoing
 		FROM users u

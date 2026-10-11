@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/gofiber/fiber/v3"
+	"github.com/google/uuid"
 
 	"centrachannel/internal/utils/logger"
 )
@@ -31,8 +32,8 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 		remoteIP := c.IP()
 		query := string(c.Request().URI().QueryString())
 
-		userID, _ := c.Locals("user_id").(int)
-		tenantID, _ := c.Locals("tenant_id").(int)
+		userID, _ := c.Locals("user_id").(uuid.UUID)
+		tenantID, _ := c.Locals("tenant_id").(uuid.UUID)
 
 		var displayMsg string
 		respBody := c.Response().Body()
@@ -97,10 +98,10 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 			if query != "" {
 				log["query"] = query
 			}
-			if userID > 0 {
+			if userID != uuid.Nil {
 				log["user_id"] = userID
 			}
-			if tenantID > 0 {
+			if tenantID != uuid.Nil {
 				log["tenant_id"] = tenantID
 			}
 			if displayMsg != "" {
@@ -122,29 +123,29 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 			fmt.Fprintln(os.Stdout, string(b))
 		} else {
 			fmt.Fprintf(os.Stdout, "\n")
-			fmt.Fprintf(os.Stdout, "  \033[1m%s\033[0m  \033[97m%s\033[0m  %s\n", ts, padLevel(level), "\033[90mHTTP\033[0m")
-			fmt.Fprintf(os.Stdout, "  \033[90mStatus\033[0m       %s\n", colorStatus)
-			fmt.Fprintf(os.Stdout, "  \033[90mMethod\033[0m       %s\n", method)
-			fmt.Fprintf(os.Stdout, "  \033[90mURL\033[0m          %s\n", url)
+			fmt.Fprintf(os.Stdout, "  \x1b[1m%s\x1b[0m  \x1b[97m%s\x1b[0m  %s\n", ts, padLevel(level), "\033[90mHTTP\033[0m")
+			fmt.Fprintf(os.Stdout, "  \x1b[90mStatus\x1b[0m       %s\n", colorStatus)
+			fmt.Fprintf(os.Stdout, "  \x1b[90mMethod\x1b[0m       %s\n", method)
+			fmt.Fprintf(os.Stdout, "  \x1b[90mURL\x1b[0m          %s\n", url)
 			if query != "" {
-				fmt.Fprintf(os.Stdout, "  \033[90mQuery\033[0m         %s\n", query)
+				fmt.Fprintf(os.Stdout, "  \x1b[90mQuery\x1b[0m         %s\n", query)
 			}
-			fmt.Fprintf(os.Stdout, "  \033[90mDuration\033[0m     %dms\n", elapsed.Milliseconds())
-			fmt.Fprintf(os.Stdout, "  \033[90mRemote IP\033[0m    %s\n", remoteIP)
-			if userID > 0 {
-				fmt.Fprintf(os.Stdout, "  \033[90mUser ID\033[0m      %d\n", userID)
+			fmt.Fprintf(os.Stdout, "  \x1b[90mDuration\x1b[0m     %dms\n", elapsed.Milliseconds())
+			fmt.Fprintf(os.Stdout, "  \x1b[90mRemote IP\x1b[0m    %s\n", remoteIP)
+			if userID != uuid.Nil {
+				fmt.Fprintf(os.Stdout, "  \x1b[90mUser ID\x1b[0m      %s\n", userID)
 			}
-			if tenantID > 0 {
-				fmt.Fprintf(os.Stdout, "  \033[90mTenant ID\033[0m    %d\n", tenantID)
+			if tenantID != uuid.Nil {
+				fmt.Fprintf(os.Stdout, "  \x1b[90mTenant ID\x1b[0m    %s\n", tenantID)
 			}
 			if displayMsg != "" {
-				fmt.Fprintf(os.Stdout, "  \033[90mMessage\033[0m      %q\n", displayMsg)
+				fmt.Fprintf(os.Stdout, "  \x1b[90mMessage\x1b[0m      %q\n", displayMsg)
 			}
 			for k, v := range authHeaders {
-				fmt.Fprintf(os.Stdout, "  \033[90m%s\033[0m     %s\n", strings.ToUpper(k), v)
+				fmt.Fprintf(os.Stdout, "  \x1b[90m%s\x1b[0m     %s\n", strings.ToUpper(k), v)
 			}
 			if reqBody != "" {
-				fmt.Fprintf(os.Stdout, "  \033[90mRequest Body\033[0m %s\n", reqBody)
+				fmt.Fprintf(os.Stdout, "  \x1b[90mRequest Body\x1b[0m %s\n", reqBody)
 			}
 			if env == "development" || status >= 500 {
 				respBodyStr := string(respBody)
@@ -153,7 +154,7 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 					if strings.Contains(ct, "json") {
 						respBodyStr = prettifyJSON(respBodyStr)
 					}
-					fmt.Fprintf(os.Stdout, "  \033[90mResponse Body\033[0m %s\n", truncate(respBodyStr, 2000))
+					fmt.Fprintf(os.Stdout, "  \x1b[90mResponse Body\x1b[0m %s\n", truncate(respBodyStr, 2000))
 				}
 			}
 			fmt.Fprintf(os.Stdout, "\n")

@@ -3,7 +3,10 @@ package note
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"time"
+
+	"github.com/google/uuid"
 
 	"centrachannel/config"
 	"centrachannel/internal/utils/logger"
@@ -11,17 +14,17 @@ import (
 )
 
 type NoteService interface {
-	ListByConversation(ctx context.Context, tenantID int, conversationID int) ([]Note, error)
-	Create(ctx context.Context, req CreateNoteRequest, tenantID int, conversationID int, userID int) (*Note, error)
-	Update(ctx context.Context, tenantID int, id int, req UpdateNoteRequest) (*Note, error)
-	Delete(ctx context.Context, tenantID int, id int) error
+	ListByConversation(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error)
+	Create(ctx context.Context, req CreateNoteRequest, tenantID uuid.UUID, conversationID uuid.UUID, userID uuid.UUID) (*Note, error)
+	Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateNoteRequest) (*Note, error)
+	Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error
 }
 
 type noteService struct {
-	repo   NoteRepository
-	db     *sql.DB
-	cfg    *config.Config
-	logger *logger.Logger
+	repo     NoteRepository
+	db       *sql.DB
+	cfg      *config.Config
+	logger   *logger.Logger
 	notifier ws.Notifier
 }
 
@@ -33,11 +36,11 @@ func NewNoteService(repo NoteRepository, db *sql.DB, cfg *config.Config, logger 
 	return svc
 }
 
-func (s *noteService) ListByConversation(ctx context.Context, tenantID int, conversationID int) ([]Note, error) {
+func (s *noteService) ListByConversation(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID) ([]Note, error) {
 	return s.repo.ListByConversation(ctx, s.db, tenantID, conversationID)
 }
 
-func (s *noteService) Create(ctx context.Context, req CreateNoteRequest, tenantID int, conversationID int, userID int) (*Note, error) {
+func (s *noteService) Create(ctx context.Context, req CreateNoteRequest, tenantID uuid.UUID, conversationID uuid.UUID, userID uuid.UUID) (*Note, error) {
 	var date *time.Time
 	if req.Date != "" {
 		t, err := time.Parse("2006-01-02", req.Date)
@@ -69,31 +72,39 @@ func (s *noteService) Create(ctx context.Context, req CreateNoteRequest, tenantI
 	return note, nil
 }
 
-func (s *noteService) Update(ctx context.Context, tenantID int, id int, req UpdateNoteRequest) (*Note, error) {
-	existing := &Note{
-		Text: "",
-		Date: nil,
+func (s *noteService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, req UpdateNoteRequest) (*Note, error) {
+	existing, err := s.repo.GetByID(ctx, s.db, tenantID, id)
+	if err != nil {
+		return nil, err
 	}
+	if existing == nil {
+		return nil, fmt.Errorf("note not found")
+	}
+	updated := *existing
 
-	if req.Text != nil { existing.Text = *req.Text }
+	if req.Text != nil {
+		updated.Text = *req.Text
+	}
 	if req.Date != nil {
 		t, err := time.Parse("2006-01-02", *req.Date)
-		if err == nil { existing.Date = &t }
+		if err != nil {
+			return nil, fmt.Errorf("invalid date, use YYYY-MM-DD: %w", err)
+		}
+		updated.Date = &t
 	}
 
-	if err := s.repo.Update(ctx, s.db, tenantID, id, existing); err != nil {
+	if err := s.repo.Update(ctx, s.db, tenantID, id, &updated); err != nil {
 		return nil, err
 	}
 
-	existing.ID = id
-	existing.UpdatedAt = time.Now()
+	updated.UpdatedAt = time.Now()
 
-	s.notifyNoteEvent(tenantID, "note-updated", existing)
+	s.notifyNoteEvent(tenantID, "note-updated", &updated)
 
-	return existing, nil
+	return &updated, nil
 }
 
-func (s *noteService) Delete(ctx context.Context, tenantID int, id int) error {
+func (s *noteService) Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UUID) error {
 	note := &Note{ID: id, TenantID: tenantID}
 
 	if err := s.repo.Delete(ctx, s.db, tenantID, id); err != nil {
@@ -105,7 +116,7 @@ func (s *noteService) Delete(ctx context.Context, tenantID int, id int) error {
 	return nil
 }
 
-func (s *noteService) notifyNoteEvent(tenantID int, event string, note *Note) {
+func (s *noteService) notifyNoteEvent(tenantID uuid.UUID, event string, note *Note) {
 	if s.notifier == nil {
 		return
 	}

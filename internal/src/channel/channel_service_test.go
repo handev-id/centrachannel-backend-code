@@ -7,6 +7,8 @@ import (
 	"errors"
 	"testing"
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type mockDB struct {
@@ -29,7 +31,7 @@ func (m *mockDB) QueryRowContext(ctx context.Context, query string, args ...inte
 }
 
 type mockChannelRepository struct {
-	listFunc    func(ctx context.Context, q DBTX) ([]Channel, error)
+	listFunc      func(ctx context.Context, q DBTX) ([]Channel, error)
 	getByTypeFunc func(ctx context.Context, q DBTX, channelType string) (*Channel, error)
 }
 
@@ -40,7 +42,7 @@ func (m *mockChannelRepository) List(ctx context.Context, q DBTX) ([]Channel, er
 	return nil, nil
 }
 
-func (m *mockChannelRepository) GetByID(ctx context.Context, q DBTX, id int) (*Channel, error) {
+func (m *mockChannelRepository) GetByID(ctx context.Context, q DBTX, id uuid.UUID) (*Channel, error) {
 	return nil, nil
 }
 
@@ -57,8 +59,8 @@ func TestChannelService_List(t *testing.T) {
 
 	t.Run("returns all channels with correct fields", func(t *testing.T) {
 		expected := []Channel{
-			{ID: 1, Name: "News Channel", Type: "news", Logo: logo, CreatedAt: now, UpdatedAt: now},
-			{ID: 2, Name: "Sports Channel", Type: "sports", CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "News Channel", Type: "news", Logo: logo, CreatedAt: now, UpdatedAt: now},
+			{ID: uuid.MustParse("00000000-0000-4000-8000-000000000002"), Name: "Sports Channel", Type: "sports", CreatedAt: now, UpdatedAt: now},
 		}
 
 		repo := &mockChannelRepository{
@@ -79,7 +81,7 @@ func TestChannelService_List(t *testing.T) {
 
 		for i := range expected {
 			if got[i].ID != expected[i].ID {
-				t.Errorf("channel[%d].ID = %d, want %d", i, got[i].ID, expected[i].ID)
+				t.Errorf("channel[%d].ID = %s, want %s", i, got[i].ID, expected[i].ID)
 			}
 			if got[i].Name != expected[i].Name {
 				t.Errorf("channel[%d].Name = %s, want %s", i, got[i].Name, expected[i].Name)

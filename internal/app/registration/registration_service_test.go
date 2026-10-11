@@ -7,6 +7,8 @@ import (
 	"io"
 	"testing"
 
+	"github.com/google/uuid"
+
 	"centrachannel/config"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
@@ -51,28 +53,28 @@ func (c *mockConnector) Connect(ctx context.Context) (driver.Conn, error) { retu
 func (c *mockConnector) Driver() driver.Driver                            { return &mockDriver{} }
 
 type mockTenantRepository struct {
-	createFn     func(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (int, error)
-	createRoleFn func(ctx context.Context, q tenant.DBTX, tenantID int, name string) (int, error)
-	createUserFn func(ctx context.Context, q tenant.DBTX, user *tenant.User) (int, error)
-	attachRoleFn func(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID int) error
+	createFn     func(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (uuid.UUID, error)
+	createRoleFn func(ctx context.Context, q tenant.DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error)
+	createUserFn func(ctx context.Context, q tenant.DBTX, user *tenant.User) (uuid.UUID, error)
+	attachRoleFn func(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID uuid.UUID) error
 }
 
-func (m *mockTenantRepository) Create(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (int, error) {
+func (m *mockTenantRepository) Create(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (uuid.UUID, error) {
 	return m.createFn(ctx, q, ten)
 }
-func (m *mockTenantRepository) CreateRole(ctx context.Context, q tenant.DBTX, tenantID int, name string) (int, error) {
+func (m *mockTenantRepository) CreateRole(ctx context.Context, q tenant.DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
 	return m.createRoleFn(ctx, q, tenantID, name)
 }
-func (m *mockTenantRepository) CreateUser(ctx context.Context, q tenant.DBTX, user *tenant.User) (int, error) {
+func (m *mockTenantRepository) CreateUser(ctx context.Context, q tenant.DBTX, user *tenant.User) (uuid.UUID, error) {
 	return m.createUserFn(ctx, q, user)
 }
-func (m *mockTenantRepository) AttachRole(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID int) error {
+func (m *mockTenantRepository) AttachRole(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID uuid.UUID) error {
 	return m.attachRoleFn(ctx, q, tenantID, userID, roleID)
 }
 func (m *mockTenantRepository) List(ctx context.Context, q tenant.DBTX) ([]tenant.Tenant, error) {
 	return nil, nil
 }
-func (m *mockTenantRepository) GetByID(ctx context.Context, q tenant.DBTX, id int) (*tenant.Tenant, error) {
+func (m *mockTenantRepository) GetByID(ctx context.Context, q tenant.DBTX, id uuid.UUID) (*tenant.Tenant, error) {
 	return nil, nil
 }
 func (m *mockTenantRepository) GetByMetaPageID(ctx context.Context, q tenant.DBTX, pageID string) (*tenant.Tenant, error) {
@@ -93,7 +95,7 @@ func TestOnboard(t *testing.T) {
 	t.Run("creates tenant with roles and admin user in transaction", func(t *testing.T) {
 		var calls []string
 		repo := &mockTenantRepository{
-			createFn: func(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (int, error) {
+			createFn: func(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (uuid.UUID, error) {
 				calls = append(calls, "Create")
 				if ten.Name != "test-tenant" {
 					t.Errorf("unexpected tenant name: %s", ten.Name)
@@ -101,44 +103,44 @@ func TestOnboard(t *testing.T) {
 				if !ten.IsActive {
 					t.Error("expected tenant to be active")
 				}
-				return 1, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
-			createRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID int, name string) (int, error) {
+			createRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
 				calls = append(calls, "CreateRole:"+name)
-				if tenantID != 1 {
-					t.Errorf("unexpected tenantID for role %s: %d", name, tenantID)
+				if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("unexpected tenantID for role %s: %s", name, tenantID)
 				}
 				switch name {
 				case "super-admin":
-					return 10, nil
+					return uuid.MustParse("00000000-0000-4000-8000-00000000000a"), nil
 				case "admin":
-					return 20, nil
+					return uuid.MustParse("00000000-0000-4000-8000-000000000014"), nil
 				case "agent":
-					return 30, nil
+					return uuid.MustParse("00000000-0000-4000-8000-00000000001e"), nil
 				}
 				t.Errorf("unexpected role name: %s", name)
-				return 0, nil
+				return uuid.Nil, nil
 			},
-			createUserFn: func(ctx context.Context, q tenant.DBTX, user *tenant.User) (int, error) {
+			createUserFn: func(ctx context.Context, q tenant.DBTX, user *tenant.User) (uuid.UUID, error) {
 				calls = append(calls, "CreateUser")
 				if user.Email != "admin@test.com" {
 					t.Errorf("unexpected user email: %s", user.Email)
 				}
-				if user.TenantID != 1 {
-					t.Errorf("unexpected user tenant_id: %d", user.TenantID)
+				if user.TenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("unexpected user tenant_id: %s", user.TenantID)
 				}
-				return 100, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000064"), nil
 			},
-			attachRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID int) error {
+			attachRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID uuid.UUID) error {
 				calls = append(calls, "AttachRole")
-				if userID != 100 {
-					t.Errorf("unexpected userID for role attach: %d", userID)
+				if userID != uuid.MustParse("00000000-0000-4000-8000-000000000064") {
+					t.Errorf("unexpected userID for role attach: %s", userID)
 				}
-				if roleID != 10 {
-					t.Errorf("expected super-admin role (10), got %d", roleID)
+				if roleID != uuid.MustParse("00000000-0000-4000-8000-00000000000a") {
+					t.Errorf("expected super-admin role (10), got %s", roleID)
 				}
-				if tenantID != 1 {
-					t.Errorf("expected tenantID 1, got %d", tenantID)
+				if tenantID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+					t.Errorf("expected tenantID 1, got %s", tenantID)
 				}
 				return nil
 			},
@@ -156,8 +158,8 @@ func TestOnboard(t *testing.T) {
 			t.Fatal(err)
 		}
 
-		if resp.Tenant.ID != 1 {
-			t.Errorf("expected tenant ID 1, got %d", resp.Tenant.ID)
+		if resp.Tenant.ID != uuid.MustParse("00000000-0000-4000-8000-000000000001") {
+			t.Errorf("expected tenant ID 1, got %s", resp.Tenant.ID)
 		}
 		if resp.Tenant.Name != "test-tenant" {
 			t.Errorf("expected tenant name test-tenant, got %s", resp.Tenant.Name)
@@ -168,8 +170,8 @@ func TestOnboard(t *testing.T) {
 		if !resp.Tenant.IsActive {
 			t.Error("expected tenant to be active")
 		}
-		if resp.Admin.ID != 100 {
-			t.Errorf("expected admin ID 100, got %d", resp.Admin.ID)
+		if resp.Admin.ID != uuid.MustParse("00000000-0000-4000-8000-000000000064") {
+			t.Errorf("expected admin ID 100, got %s", resp.Admin.ID)
 		}
 		if resp.Admin.Email != "admin@test.com" {
 			t.Errorf("expected admin email admin@test.com, got %s", resp.Admin.Email)
@@ -191,27 +193,27 @@ func TestOnboard(t *testing.T) {
 
 	t.Run("uses company name as tenant name when provided", func(t *testing.T) {
 		repo := &mockTenantRepository{
-			createFn: func(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (int, error) {
+			createFn: func(ctx context.Context, q tenant.DBTX, ten *tenant.Tenant) (uuid.UUID, error) {
 				if ten.Name != "My Corp" {
 					t.Errorf("expected tenant name 'My Corp', got %s", ten.Name)
 				}
-				return 1, nil
+				return uuid.MustParse("00000000-0000-4000-8000-000000000001"), nil
 			},
-			createRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID int, name string) (int, error) {
+			createRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
 				switch name {
 				case "super-admin":
-					return 10, nil
+					return uuid.MustParse("00000000-0000-4000-8000-00000000000a"), nil
 				case "admin":
-					return 20, nil
+					return uuid.MustParse("00000000-0000-4000-8000-000000000014"), nil
 				case "agent":
-					return 30, nil
+					return uuid.MustParse("00000000-0000-4000-8000-00000000001e"), nil
 				}
-				return 0, nil
+				return uuid.Nil, nil
 			},
-			createUserFn: func(ctx context.Context, q tenant.DBTX, user *tenant.User) (int, error) {
-				return 100, nil
+			createUserFn: func(ctx context.Context, q tenant.DBTX, user *tenant.User) (uuid.UUID, error) {
+				return uuid.MustParse("00000000-0000-4000-8000-000000000064"), nil
 			},
-			attachRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID int) error {
+			attachRoleFn: func(ctx context.Context, q tenant.DBTX, tenantID, userID, roleID uuid.UUID) error {
 				return nil
 			},
 		}

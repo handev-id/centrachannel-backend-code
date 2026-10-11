@@ -4,7 +4,7 @@
     "tags": ["Message"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Message ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Message ID" }
     ],
     "requestBody": {
       "required": true,

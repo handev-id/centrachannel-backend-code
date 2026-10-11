@@ -4,13 +4,15 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/src/profile"
 	"centrachannel/internal/utils"
 )
 
 type Contact struct {
-	ID                  int                `json:"id"`
-	TenantID            int                `json:"tenant_id"`
+	ID                  uuid.UUID          `json:"id"`
+	TenantID            uuid.UUID          `json:"tenant_id"`
 	FirstName           string             `json:"first_name"`
 	LastName            *string            `json:"last_name,omitempty"`
 	Username            *string            `json:"username,omitempty"`
@@ -32,7 +34,7 @@ type Contact struct {
 	Tiktok              *string            `json:"tiktok,omitempty"`
 	Status              string             `json:"status"`
 	InstitutionName     *string            `json:"institution_name,omitempty"`
-	MergedToID          *int               `json:"merged_to_id,omitempty"`
+	MergedToID          *uuid.UUID         `json:"merged_to_id,omitempty"`
 	DeletedAt           utils.NullableTime `json:"deleted_at,omitempty"`
 	CreatedAt           time.Time          `json:"created_at"`
 	UpdatedAt           time.Time          `json:"updated_at"`

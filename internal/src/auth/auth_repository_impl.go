@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"time"
 
+	"github.com/google/uuid"
+
 	"centrachannel/internal/utils"
 )
 
@@ -15,13 +17,15 @@ func NewAuthRepository() AuthRepository {
 	return &authRepository{}
 }
 
-func scanUser(row interface{ Scan(dest ...interface{}) error }) (*User, error) {
+func scanUser(row interface {
+	Scan(dest ...interface{}) error
+}) (*User, error) {
 	var u User
 	var lastName, phone sql.NullString
 	var avatar sql.NullString
 	var lastLogin sql.NullTime
 	var deletedAt utils.NullableTime
-	var tenantID int
+	var tenantID uuid.UUID
 
 	err := row.Scan(&u.ID, &tenantID, &u.FirstName, &lastName, &u.Username, &u.Email, &phone, &u.Password, &avatar, &lastLogin, &deletedAt, &u.CreatedAt, &u.UpdatedAt)
 	if err == sql.ErrNoRows {
@@ -47,45 +51,47 @@ func scanUser(row interface{ Scan(dest ...interface{}) error }) (*User, error) {
 	return &u, nil
 }
 
-func scanRole(rows interface{ Scan(dest ...interface{}) error }) (Role, error) {
+func scanRole(rows interface {
+	Scan(dest ...interface{}) error
+}) (Role, error) {
 	var r Role
 	err := rows.Scan(&r.ID, &r.TenantID, &r.Name, &r.CreatedAt, &r.UpdatedAt)
 	return r, err
 }
 
-func (r *authRepository) GetByEmail(ctx context.Context, q DBTX, tenantID int, email string) (*User, error) {
+func (r *authRepository) GetByEmail(ctx context.Context, q DBTX, tenantID uuid.UUID, email string) (*User, error) {
 	query := `SELECT id, tenant_id, first_name, last_name, username, email, phone, password, avatar, last_login, deleted_at, created_at, updated_at FROM users WHERE email = $1 AND tenant_id = $2 AND deleted_at IS NULL`
 	return scanUser(q.QueryRowContext(ctx, query, email, tenantID))
 }
 
-func (r *authRepository) GetByUsername(ctx context.Context, q DBTX, tenantID int, username string) (*User, error) {
+func (r *authRepository) GetByUsername(ctx context.Context, q DBTX, tenantID uuid.UUID, username string) (*User, error) {
 	query := `SELECT id, tenant_id, first_name, last_name, username, email, phone, password, avatar, last_login, deleted_at, created_at, updated_at FROM users WHERE username = $1 AND tenant_id = $2 AND deleted_at IS NULL`
 	return scanUser(q.QueryRowContext(ctx, query, username, tenantID))
 }
 
-func (r *authRepository) GetByID(ctx context.Context, q DBTX, tenantID int, id int) (*User, error) {
+func (r *authRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*User, error) {
 	query := `SELECT id, tenant_id, first_name, last_name, username, email, phone, password, avatar, last_login, deleted_at, created_at, updated_at FROM users WHERE id = $1 AND tenant_id = $2 AND deleted_at IS NULL`
 	return scanUser(q.QueryRowContext(ctx, query, id, tenantID))
 }
 
-func (r *authRepository) Create(ctx context.Context, q DBTX, user *User) (int, error) {
+func (r *authRepository) Create(ctx context.Context, q DBTX, user *User) (uuid.UUID, error) {
 	query := `INSERT INTO users (tenant_id, first_name, last_name, username, email, phone, password, avatar, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10) RETURNING id`
 	var avatarBytes []byte
 	if user.Avatar != nil {
 		avatarBytes = user.Avatar
 	}
-	var id int
+	var id uuid.UUID
 	err := q.QueryRowContext(ctx, query,
 		user.TenantID, user.FirstName, user.LastName, user.Username, user.Email, user.Phone,
 		user.Password, avatarBytes, time.Now(), time.Now(),
 	).Scan(&id)
 	if err != nil {
-		return 0, err
+		return uuid.Nil, err
 	}
 	return id, nil
 }
 
-func (r *authRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID int, userID int) ([]Role, error) {
+func (r *authRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID uuid.UUID, userID uuid.UUID) ([]Role, error) {
 	query := `SELECT r.id, r.tenant_id, r.name, r.created_at, r.updated_at FROM roles r INNER JOIN role_user ru ON ru.role_id = r.id WHERE ru.user_id = $1 AND r.tenant_id = $2`
 	rows, err := q.QueryContext(ctx, query, userID, tenantID)
 	if err != nil {
@@ -102,4 +108,18 @@ func (r *authRepository) GetRolesByUserID(ctx context.Context, q DBTX, tenantID 
 		roles = append(roles, role)
 	}
 	return roles, rows.Err()
+}
+
+func (r *authRepository) GetRoleIDByName(ctx context.Context, q DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error) {
+	var id uuid.UUID
+	err := q.QueryRowContext(ctx, `SELECT id FROM roles WHERE tenant_id = $1 AND name = $2`, tenantID, name).Scan(&id)
+	return id, err
+}
+func (r *authRepository) AttachRole(ctx context.Context, q DBTX, tenantID, userID, roleID uuid.UUID) error {
+	_, err := q.ExecContext(ctx, `INSERT INTO role_user (tenant_id, user_id, role_id, created_at, updated_at) VALUES ($1, $2, $3, $4, $5)`, tenantID, userID, roleID, time.Now(), time.Now())
+	return err
+}
+func (r *authRepository) UpdateLastLogin(ctx context.Context, q DBTX, tenantID, userID uuid.UUID) error {
+	_, err := q.ExecContext(ctx, `UPDATE users SET last_login = $1 WHERE id = $2 AND tenant_id = $3`, time.Now(), userID, tenantID)
+	return err
 }

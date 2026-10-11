@@ -4,7 +4,7 @@
     "tags": ["Note"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" }
     ],
     "responses": {
       "200": {
@@ -25,7 +25,7 @@
     "tags": ["Note"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Conversation ID" }
+      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" }
     ],
     "requestBody": {
       "required": true,

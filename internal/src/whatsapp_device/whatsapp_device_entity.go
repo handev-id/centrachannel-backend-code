@@ -2,11 +2,13 @@ package whatsapp_device
 
 import (
 	"time"
+
+	"github.com/google/uuid"
 )
 
 type WhatsAppDevice struct {
-	ID          int       `json:"id"`
-	TenantID    int       `json:"tenant_id"`
+	ID          uuid.UUID `json:"id"`
+	TenantID    uuid.UUID `json:"tenant_id"`
 	Name        string    `json:"name"`
 	CountryCode string    `json:"country_code"`
 	Phone       string    `json:"phone"`

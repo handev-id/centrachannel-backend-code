@@ -4,7 +4,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Template ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Template ID" }
     ],
     "responses": {
       "200": {
@@ -30,7 +30,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Template ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Template ID" }
     ],
     "requestBody": {
       "required": true,
@@ -47,7 +47,7 @@
               "content": { "type": "object" },
               "variables": { "type": "object" },
               "quality": { "type": "string" },
-              "account_id": { "type": "integer" }
+              "account_id": { "type": "string", "format": "uuid" }
             }
           }
         }
@@ -77,7 +77,7 @@
     "tags": ["Campaign"],
     "security": [{ "bearerAuth": [] }],
     "parameters": [
-      { "name": "id", "in": "path", "required": true, "schema": { "type": "integer" }, "description": "Template ID" }
+      { "name": "id", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Template ID" }
     ],
     "responses": {
       "200": {
