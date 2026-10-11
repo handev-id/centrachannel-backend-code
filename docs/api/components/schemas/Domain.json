@@ -1,0 +1,43 @@
+{
+  "type": "object",
+  "required": [
+    "id",
+    "tenant_id",
+    "name",
+    "is_default",
+    "is_active",
+    "created_at",
+    "updated_at"
+  ],
+  "properties": {
+    "id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "tenant_id": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "name": {
+      "type": "string",
+      "maxLength": 253,
+      "example": "crm.company.com",
+      "description": "Normalized complete ASCII hostname; custom domains supported."
+    },
+    "is_default": {
+      "type": "boolean",
+      "description": "Exactly one active default per tenant."
+    },
+    "is_active": {
+      "type": "boolean"
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time"
+    }
+  }
+}

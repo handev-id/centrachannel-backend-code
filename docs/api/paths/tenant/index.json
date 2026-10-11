@@ -1,16 +1,98 @@
 {
   "get": {
-    "summary": "List Tenants",
-    "tags": ["Tenant"],
-    "security": [{ "bearerAuth": [] }],
+    "summary": "Get current tenant",
+    "tags": [
+      "Tenant"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
     "responses": {
       "200": {
-        "description": "List of tenants",
+        "description": "Current tenant with domains; sensitive integration settings omitted",
         "content": {
           "application/json": {
             "schema": {
-              "type": "array",
-              "items": { "$ref": "../../components/schemas/Tenant.json" }
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "$ref": "../../components/schemas/Meta.json"
+                },
+                "data": {
+                  "$ref": "../../components/schemas/Tenant.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "put": {
+    "summary": "Update current tenant",
+    "tags": [
+      "Tenant"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "description": "Admin/super-admin only. Manage hostnames through /api/domains, not this endpoint.",
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "logo": {
+                "type": "object"
+              },
+              "address": {
+                "type": "string",
+                "maxLength": 255
+              },
+              "phone": {
+                "type": "string",
+                "maxLength": 50
+              },
+              "email": {
+                "type": "string",
+                "format": "email"
+              },
+              "is_active": {
+                "type": "boolean"
+              },
+              "settings": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "responses": {
+      "200": {
+        "description": "Tenant updated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "$ref": "../../components/schemas/Meta.json"
+                },
+                "data": {
+                  "$ref": "../../components/schemas/Tenant.json"
+                }
+              }
             }
           }
         }

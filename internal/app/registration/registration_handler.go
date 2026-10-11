@@ -1,10 +1,14 @@
 package registration
 
 import (
+	"errors"
+
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
+	"centrachannel/internal/src/domain"
 	"centrachannel/internal/src/tenant"
+	"centrachannel/internal/utils/hostname"
 	"centrachannel/internal/utils/response"
 )
 
@@ -14,7 +18,7 @@ type RegistrationHandler struct {
 
 func NewRegistrationHandler(c *di.Container) *RegistrationHandler {
 	repo := tenant.NewTenantRepository()
-	service := NewRegistrationService(repo, c.DB, c.Config, c.Logger)
+	service := NewRegistrationService(repo, domain.NewDomainRepository(), c.DB, c.Config, c.Logger)
 	return &RegistrationHandler{service: service}
 }
 
@@ -29,7 +33,13 @@ func (h *RegistrationHandler) Onboard(c fiber.Ctx) error {
 
 	result, err := h.service.Onboard(c.Context(), req)
 	if err != nil {
-		return response.BadRequest(c, err.Error(), nil)
+		if errors.Is(err, domain.ErrConflict) {
+			return response.Error(c, fiber.StatusConflict, domain.ErrConflict.Error(), nil)
+		}
+		if errors.Is(err, hostname.ErrInvalidName) {
+			return response.UnprocessableEntity(c, err.Error(), nil)
+		}
+		return response.InternalServerError(c, "Failed to onboard tenant")
 	}
 
 	return response.Created(c, "Tenant onboarded successfully", result)

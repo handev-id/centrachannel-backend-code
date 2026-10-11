@@ -26,11 +26,14 @@
     "/api/tenants/onboard": {
       "$ref": "/docs/api/paths/tenant/onboard.json"
     },
-    "/api/tenants": {
+    "/api/tenant": {
       "$ref": "/docs/api/paths/tenant/index.json"
     },
-    "/api/tenants/{id}": {
-      "$ref": "/docs/api/paths/tenant/id.json"
+    "/api/domains": {
+      "$ref": "/docs/api/paths/domain/index.json"
+    },
+    "/api/domains/{id}": {
+      "$ref": "/docs/api/paths/domain/id.json"
     },
     "/api/campaigns": {
       "$ref": "/docs/api/paths/campaign/index.json"

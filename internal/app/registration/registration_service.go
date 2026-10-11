@@ -3,6 +3,7 @@ package registration
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 	"fmt"
 	"strings"
 	"time"
@@ -10,9 +11,12 @@ import (
 	"github.com/google/uuid"
 
 	"centrachannel/config"
+	"centrachannel/internal/src/domain"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/hash"
+	"centrachannel/internal/utils/hostname"
 	"centrachannel/internal/utils/logger"
+	"centrachannel/internal/utils/tenantutils"
 )
 
 type RegistrationService interface {
@@ -20,17 +24,22 @@ type RegistrationService interface {
 }
 
 type registrationService struct {
-	repo   tenant.TenantRepository
-	db     *sql.DB
-	cfg    *config.Config
-	logger *logger.Logger
+	repo    tenant.TenantRepository
+	domains domain.DomainRepository
+	db      *sql.DB
+	cfg     *config.Config
+	logger  *logger.Logger
 }
 
-func NewRegistrationService(repo tenant.TenantRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) RegistrationService {
-	return &registrationService{repo: repo, db: db, cfg: cfg, logger: logger}
+func NewRegistrationService(repo tenant.TenantRepository, domains domain.DomainRepository, db *sql.DB, cfg *config.Config, logger *logger.Logger) RegistrationService {
+	return &registrationService{repo: repo, domains: domains, db: db, cfg: cfg, logger: logger}
 }
 
 func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (*OnboardResponse, error) {
+	name, err := hostname.ValidateName(req.Domain, s.cfg.BaseDomain)
+	if err != nil {
+		return nil, err
+	}
 	tenantName := req.Name
 	if req.CompanyName != "" {
 		tenantName = req.CompanyName
@@ -44,7 +53,6 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 
 	t := &tenant.Tenant{
 		Name:      tenantName,
-		Domain:    req.Domain,
 		IsActive:  true,
 		CreatedAt: time.Now(),
 		UpdatedAt: time.Now(),
@@ -55,6 +63,16 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 		return nil, fmt.Errorf("failed to create tenant: %w", err)
 	}
 	t.ID = tenantID
+	d := &domain.Domain{TenantID: tenantID, Name: name, IsDefault: true, IsActive: true}
+	domainID, err := s.domains.Create(ctx, tx, d)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create default domain: %w", err)
+	}
+	d.ID = domainID
+	domainData, err := json.Marshal([]domain.Domain{*d})
+	if err != nil {
+		return nil, fmt.Errorf("failed to serialize domain: %w", err)
+	}
 
 	roleNames := []string{"super-admin", "admin", "agent"}
 	roleIDs := make(map[string]uuid.UUID, len(roleNames))
@@ -96,8 +114,9 @@ func (s *registrationService) Onboard(ctx context.Context, req OnboardRequest) (
 		return nil, fmt.Errorf("failed to commit transaction: %w", err)
 	}
 
+	t.Settings = tenantutils.StripSettings(t.Settings)
 	return &OnboardResponse{
-		Tenant: t,
+		Tenant: &tenant.TenantResponse{Tenant: t, Domains: domainData},
 		Admin: &AdminUser{
 			ID:        userID,
 			FirstName: firstName,

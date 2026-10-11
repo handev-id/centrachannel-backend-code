@@ -15,7 +15,7 @@ import (
 
 func TestAuthMiddleware() fiber.Handler {
 	return func(c fiber.Ctx) error {
-		c.Locals("tenant", &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Test Tenant", Domain: "test.com"})
+		c.Locals("tenant", &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Test Tenant"})
 		c.Locals("user_id", uuid.MustParse("00000000-0000-4000-8000-000000000001"))
 		return c.Next()
 	}

@@ -20,6 +20,7 @@ import (
 	"centrachannel/internal/src/conversation"
 	"centrachannel/internal/src/conversation_tag"
 	"centrachannel/internal/src/dashboard"
+	"centrachannel/internal/src/domain"
 	"centrachannel/internal/src/message"
 	"centrachannel/internal/src/note"
 	"centrachannel/internal/src/tag"
@@ -52,7 +53,7 @@ func main() {
 	app.Use(middleware.CORSMiddleware())
 	app.Use(middleware.LogMiddleware(c.Logger, cfg.Env))
 
-	obsHandler := observability.NewObservabilityHandler(cfg, c.DB)
+	obsHandler := observability.NewObservabilityHandler(c)
 	observability.RegisterRoutes(app, obsHandler)
 
 	docs.RegisterRoutes(app)
@@ -67,7 +68,7 @@ func main() {
 	app.Get("/ws", wsHandler.Handle)
 
 	// Tenant Source
-	app.Use(middleware.TenantMiddleware(c.Redis, c.DB))
+	app.Use(middleware.TenantMiddleware(tenant.NewTenantResolver(tenant.NewTenantRepository(), c.DB, c.Redis, c.Logger), cfg))
 
 	authMw := middleware.AuthMiddleware(cfg, c.Redis)
 	adminOrAbove := middleware.RequireRole("super-admin", "admin")
@@ -88,6 +89,7 @@ func main() {
 	upload.RegisterRoutes(app, "/api/upload", c, authMw, agentOrAbove)
 	dashboard.RegisterRoutes(app, "/api/dashboard", c, authMw, agentOrAbove)
 	tenant.RegisterRoutes(app, "/api/tenant", c, authMw, adminOrAbove)
+	domain.RegisterRoutes(app, "/api/domains", c, authMw, adminOrAbove)
 
 	c.Logger.Info("Starting server on port %d", cfg.Port)
 

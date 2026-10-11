@@ -3,6 +3,7 @@ package tenant
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/google/uuid"
 )
@@ -23,6 +24,8 @@ type User struct {
 }
 
 type TenantRepository interface {
+	GetDomains(ctx context.Context, q DBTX, tenantID uuid.UUID) (json.RawMessage, error)
+	GetActiveIDByDomain(ctx context.Context, q DBTX, name string) (uuid.UUID, error)
 	Create(ctx context.Context, q DBTX, tenant *Tenant) (uuid.UUID, error)
 	CreateRole(ctx context.Context, q DBTX, tenantID uuid.UUID, name string) (uuid.UUID, error)
 	CreateUser(ctx context.Context, q DBTX, user *User) (uuid.UUID, error)

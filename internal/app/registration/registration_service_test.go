@@ -4,12 +4,14 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"io"
 	"testing"
 
 	"github.com/google/uuid"
 
 	"centrachannel/config"
+	"centrachannel/internal/src/domain"
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/utils/logger"
 )
@@ -146,7 +148,7 @@ func TestOnboard(t *testing.T) {
 			},
 		}
 
-		svc := NewRegistrationService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
+		svc := NewRegistrationService(repo, &mockDomainRepository{t: t}, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
 		resp, err := svc.Onboard(context.Background(), OnboardRequest{
 			Name:          "test-tenant",
@@ -164,8 +166,8 @@ func TestOnboard(t *testing.T) {
 		if resp.Tenant.Name != "test-tenant" {
 			t.Errorf("expected tenant name test-tenant, got %s", resp.Tenant.Name)
 		}
-		if resp.Tenant.Domain != "test.example.com" {
-			t.Errorf("expected domain test.example.com, got %s", resp.Tenant.Domain)
+		if firstDomain(t, resp.Tenant.Domains).Name != "test.example.com" {
+			t.Errorf("expected domain test.example.com, got %s", firstDomain(t, resp.Tenant.Domains).Name)
 		}
 		if !resp.Tenant.IsActive {
 			t.Error("expected tenant to be active")
@@ -218,7 +220,7 @@ func TestOnboard(t *testing.T) {
 			},
 		}
 
-		svc := NewRegistrationService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
+		svc := NewRegistrationService(repo, &mockDomainRepository{t: t}, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
 		resp, err := svc.Onboard(context.Background(), OnboardRequest{
 			Name:          "test-tenant",
@@ -234,4 +236,39 @@ func TestOnboard(t *testing.T) {
 			t.Errorf("expected tenant name 'My Corp', got %s", resp.Tenant.Name)
 		}
 	})
+}
+
+type mockDomainRepository struct {
+	domain.DomainRepository
+	t   *testing.T
+	err error
+}
+
+func (m *mockDomainRepository) Create(ctx context.Context, q domain.DBTX, d *domain.Domain) (uuid.UUID, error) {
+	if _, ok := q.(*sql.Tx); !ok {
+		m.t.Error("domain must be created in onboarding transaction")
+	}
+	if !d.IsDefault || !d.IsActive || d.TenantID == uuid.Nil {
+		m.t.Error("invalid initial domain")
+	}
+	return uuid.New(), m.err
+}
+
+func (m *mockTenantRepository) GetDomains(ctx context.Context, q tenant.DBTX, id uuid.UUID) (json.RawMessage, error) {
+	return json.RawMessage("[]"), nil
+}
+func (m *mockTenantRepository) GetActiveIDByDomain(ctx context.Context, q tenant.DBTX, name string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}
+
+func firstDomain(t *testing.T, raw json.RawMessage) domain.Domain {
+	t.Helper()
+	var domains []domain.Domain
+	if err := json.Unmarshal(raw, &domains); err != nil {
+		t.Fatal(err)
+	}
+	if len(domains) != 1 {
+		t.Fatalf("expected one domain, got %d", len(domains))
+	}
+	return domains[0]
 }

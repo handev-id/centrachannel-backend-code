@@ -1,20 +1,45 @@
 {
   "post": {
     "summary": "Onboard a new tenant",
-    "tags": ["Tenant"],
+    "tags": [
+      "Tenant"
+    ],
     "requestBody": {
       "required": true,
       "content": {
         "application/json": {
           "schema": {
             "type": "object",
-            "required": ["name", "domain", "admin_email", "admin_password"],
+            "required": [
+              "name",
+              "domain",
+              "admin_email",
+              "admin_password"
+            ],
             "properties": {
-              "name": { "type": "string", "example": "Acme Corp" },
-              "domain": { "type": "string", "example": "acme.com" },
-              "admin_email": { "type": "string", "format": "email", "example": "admin@acme.com" },
-              "admin_password": { "type": "string", "example": "adminpass123" },
-              "company_name": { "type": "string", "example": "Acme Corporation" }
+              "name": {
+                "type": "string",
+                "example": "Acme Corp"
+              },
+              "domain": {
+                "type": "string",
+                "example": "acme.com",
+                "maxLength": 254,
+                "description": "Complete ASCII hostname, normalized; cannot be application base domain."
+              },
+              "admin_email": {
+                "type": "string",
+                "format": "email",
+                "example": "admin@acme.com"
+              },
+              "admin_password": {
+                "type": "string",
+                "example": "adminpass123"
+              },
+              "company_name": {
+                "type": "string",
+                "example": "Acme Corporation"
+              }
             }
           }
         }
@@ -22,20 +47,43 @@
     },
     "responses": {
       "201": {
-        "description": "Tenant onboarded successfully",
+        "description": "Tenant onboarded with its first active default domain",
         "content": {
           "application/json": {
             "schema": {
               "type": "object",
               "properties": {
-                "tenant": { "$ref": "../../components/schemas/Tenant.json" },
-                "admin": {
+                "meta": {
+                  "$ref": "../../components/schemas/Meta.json"
+                },
+                "data": {
                   "type": "object",
                   "properties": {
-                    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
-                    "first_name": { "type": "string", "example": "Admin" },
-                    "email": { "type": "string", "example": "admin@acme.com" },
-                    "username": { "type": "string", "example": "admin" }
+                    "tenant": {
+                      "$ref": "../../components/schemas/Tenant.json"
+                    },
+                    "admin": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string",
+                          "format": "uuid",
+                          "example": "00000000-0000-4000-8000-000000000001"
+                        },
+                        "first_name": {
+                          "type": "string",
+                          "example": "Admin"
+                        },
+                        "email": {
+                          "type": "string",
+                          "example": "admin@acme.com"
+                        },
+                        "username": {
+                          "type": "string",
+                          "example": "admin"
+                        }
+                      }
+                    }
                   }
                 }
               }
@@ -47,10 +95,33 @@
         "description": "Validation Error",
         "content": {
           "application/json": {
-            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+            "schema": {
+              "$ref": "../../components/schemas/ValidationError.json"
+            }
+          }
+        }
+      },
+      "409": {
+        "description": "Hostname already registered",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Operation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
           }
         }
       }
-    }
+    },
+    "description": "Creates tenant, first active default domain, roles, and admin atomically. Domain accepts a complete hostname, including custom domain; response tenant contains domains instead of domain."
   }
 }

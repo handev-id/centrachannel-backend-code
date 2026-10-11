@@ -2,12 +2,12 @@ package tenant
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gofiber/fiber/v3"
 	"github.com/redis/go-redis/v9"
 
 	"centrachannel/internal/di"
+	"centrachannel/internal/utils/logger"
 	"centrachannel/internal/utils/response"
 	"centrachannel/internal/utils/tenantutils"
 )
@@ -15,6 +15,7 @@ import (
 type TenantHandler struct {
 	service TenantService
 	rdb     RedisClient
+	logger  *logger.Logger
 }
 
 type RedisClient interface {
@@ -24,7 +25,11 @@ type RedisClient interface {
 func NewTenantHandler(c *di.Container) *TenantHandler {
 	repo := NewTenantRepository()
 	service := NewTenantService(repo, c.DB, c.Config, c.Logger)
-	return &TenantHandler{service: service, rdb: c.Redis}
+	h := &TenantHandler{service: service, logger: c.Logger}
+	if c.Redis != nil {
+		h.rdb = c.Redis
+	}
+	return h
 }
 
 func (h *TenantHandler) Get(c fiber.Ctx) error {
@@ -39,7 +44,11 @@ func (h *TenantHandler) Get(c fiber.Ctx) error {
 	}
 	resp.Settings = tenantutils.StripSettings(resp.Settings)
 
-	return response.OK(c, "Tenant retrieved successfully", resp)
+	domains, err := h.service.GetDomains(c.Context(), t.ID)
+	if err != nil {
+		return response.InternalServerError(c, "Failed to load tenant domains")
+	}
+	return response.OK(c, "Tenant retrieved successfully", &TenantResponse{Tenant: resp, Domains: domains})
 }
 
 func (h *TenantHandler) Update(c fiber.Ctx) error {
@@ -83,8 +92,11 @@ func (h *TenantHandler) Update(c fiber.Ctx) error {
 	}
 
 	// Invalidate Redis cache so the next request loads fresh data
-	cacheKey := fmt.Sprintf("tenant:%s", t.Domain)
-	h.rdb.Del(c.Context(), cacheKey)
+	if h.rdb != nil {
+		if err := h.rdb.Del(c.Context(), "tenant:v2:"+t.ID.String()).Err(); err != nil {
+			h.logger.Error("tenant cache invalidation failed: %v", err)
+		}
+	}
 
 	resp, err := tenantutils.DeepCopyJSON(t)
 	if err != nil {
@@ -92,5 +104,9 @@ func (h *TenantHandler) Update(c fiber.Ctx) error {
 	}
 	resp.Settings = tenantutils.StripSettings(resp.Settings)
 
-	return response.OK(c, "Tenant updated successfully", resp)
+	domains, err := h.service.GetDomains(c.Context(), t.ID)
+	if err != nil {
+		return response.InternalServerError(c, "Failed to load tenant domains")
+	}
+	return response.OK(c, "Tenant updated successfully", &TenantResponse{Tenant: resp, Domains: domains})
 }

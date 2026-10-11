@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"database/sql/driver"
+	"encoding/json"
 	"io"
 	"testing"
 
@@ -87,7 +88,7 @@ func newMockDB() *sql.DB {
 
 func TestGetByID(t *testing.T) {
 	t.Run("returns tenant by id", func(t *testing.T) {
-		expected := &Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Alpha", Domain: "alpha.com", IsActive: true}
+		expected := &Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Alpha", IsActive: true}
 
 		repo := &mockTenantRepository{
 			getByIDFn: func(ctx context.Context, q DBTX, id uuid.UUID) (*Tenant, error) {
@@ -121,7 +122,7 @@ func TestUpdate(t *testing.T) {
 
 		svc := NewTenantService(repo, newMockDB(), &config.Config{}, logger.NewLogger("debug", "text"))
 
-		tenant := &Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Updated Name", Domain: "updated.com"}
+		tenant := &Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Name: "Updated Name"}
 		err := svc.Update(context.Background(), tenant)
 		if err != nil {
 			t.Fatal(err)
@@ -131,4 +132,11 @@ func TestUpdate(t *testing.T) {
 			t.Errorf("expected tenant to be updated")
 		}
 	})
+}
+
+func (m *mockTenantRepository) GetDomains(ctx context.Context, q DBTX, id uuid.UUID) (json.RawMessage, error) {
+	return json.RawMessage("[]"), nil
+}
+func (m *mockTenantRepository) GetActiveIDByDomain(ctx context.Context, q DBTX, name string) (uuid.UUID, error) {
+	return uuid.Nil, nil
 }

@@ -1,23 +1,16 @@
 package observability
 
 import (
-	"database/sql"
-	"net/url"
-	"strings"
-
 	"github.com/gofiber/fiber/v3"
 
-	"centrachannel/config"
+	"centrachannel/internal/di"
 	"centrachannel/internal/utils/response"
 )
 
-type ObservabilityHandler struct {
-	config *config.Config
-	db     *sql.DB
-}
+type ObservabilityHandler struct{ service ObservabilityService }
 
-func NewObservabilityHandler(cfg *config.Config, db *sql.DB) *ObservabilityHandler {
-	return &ObservabilityHandler{config: cfg, db: db}
+func NewObservabilityHandler(c *di.Container) *ObservabilityHandler {
+	return &ObservabilityHandler{service: NewObservabilityService(NewObservabilityRepository(), c.DB, c.Config)}
 }
 
 func (h *ObservabilityHandler) Health(c fiber.Ctx) error {
@@ -33,32 +26,9 @@ func (h *ObservabilityHandler) Version(c fiber.Ctx) error {
 }
 
 func (h *ObservabilityHandler) AskTLS(c fiber.Ctx) error {
-	domain := strings.ToLower(strings.TrimSpace(c.Query("domain")))
-	if domain == "" {
+	allowed, err := h.service.AllowTLS(c.Context(), c.Query("domain"))
+	if err != nil || !allowed {
 		return c.SendStatus(fiber.StatusForbidden)
 	}
-
-	parsed, err := url.Parse("https://" + domain)
-	if err != nil || parsed.Hostname() != domain {
-		return c.SendStatus(fiber.StatusForbidden)
-	}
-
-	baseDomain := strings.ToLower(strings.TrimSpace(h.config.BaseDomain))
-	if domain == baseDomain {
-		return c.SendStatus(fiber.StatusOK)
-	}
-
-	if strings.HasSuffix(domain, "."+baseDomain) {
-		var exists int
-		err := h.db.QueryRowContext(c.Context(),
-			`SELECT 1 FROM tenants WHERE domain = $1 AND is_active = TRUE`,
-			domain,
-		).Scan(&exists)
-		if err == nil && exists == 1 {
-			return c.SendStatus(fiber.StatusOK)
-		}
-		return c.SendStatus(fiber.StatusForbidden)
-	}
-
-	return c.SendStatus(fiber.StatusForbidden)
+	return c.SendStatus(fiber.StatusOK)
 }

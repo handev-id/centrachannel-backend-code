@@ -213,7 +213,7 @@ func testLogger() *logger.Logger {
 }
 
 func testTenant() *tenant.Tenant {
-	return &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001"), Domain: "test.domain"}
+	return &tenant.Tenant{ID: uuid.MustParse("00000000-0000-4000-8000-000000000001")}
 }
 
 // ---------------------------------------------------------------------------
@@ -411,8 +411,8 @@ func TestLogin(t *testing.T) {
 			if got := claims["tenant"]; got != "00000000-0000-4000-8000-000000000001" {
 				t.Errorf("expected tenant=1, got %v", got)
 			}
-			if got := claims["domain"]; got != "test.domain" {
-				t.Errorf("expected domain=test.domain, got %v", got)
+			if got, exists := claims["domain"]; exists {
+				t.Errorf("expected no domain claim, got %v", got)
 			}
 			if got := claims["user"]; got != "testuser" {
 				t.Errorf("expected user=testuser, got %v", got)
@@ -434,7 +434,6 @@ func TestCheckToken(t *testing.T) {
 		token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 			"sub":    "00000000-0000-4000-8000-000000000001",
 			"tenant": "00000000-0000-4000-8000-000000000001",
-			"domain": "test.domain",
 			"exp":    float64(time.Now().Add(time.Hour).Unix()),
 			"user":   "testuser",
 		})

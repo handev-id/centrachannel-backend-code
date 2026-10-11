@@ -631,3 +631,10 @@ func TestMessageService_UpdateStatus(t *testing.T) {
 		}
 	})
 }
+
+func (m *mockTenantRepository) GetDomains(ctx context.Context, q tenant.DBTX, id uuid.UUID) (json.RawMessage, error) {
+	return json.RawMessage("[]"), nil
+}
+func (m *mockTenantRepository) GetActiveIDByDomain(ctx context.Context, q tenant.DBTX, name string) (uuid.UUID, error) {
+	return uuid.Nil, nil
+}

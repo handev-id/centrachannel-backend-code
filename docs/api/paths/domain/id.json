@@ -1,0 +1,337 @@
+{
+  "get": {
+    "summary": "Get tenant domain",
+    "tags": [
+      "Domain"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "description": "Admin/super-admin only. Tenant ID comes from authenticated request context. All active hostnames access the same tenant without redirects.",
+    "responses": {
+      "400": {
+        "description": "Invalid payload or UUID",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "Admin or super-admin required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Domain not found in current tenant",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Request DTO validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Operation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "200": {
+        "description": "Domain retrieved",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "$ref": "../../components/schemas/Meta.json"
+                },
+                "data": {
+                  "$ref": "../../components/schemas/Domain.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    ]
+  },
+  "put": {
+    "summary": "Update tenant domain",
+    "tags": [
+      "Domain"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "description": "Admin/super-admin only. Tenant ID comes from authenticated request context. All active hostnames access the same tenant without redirects. Setting is_default=true atomically transfers the default. Cannot unset, disable or delete the current default before transferring it. To select an inactive domain, activate it in the same request.",
+    "responses": {
+      "400": {
+        "description": "Invalid request, duplicate domain, domain not found, or default domain protection",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "Admin or super-admin required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Domain not found in current tenant",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Request DTO validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Operation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "200": {
+        "description": "Domain updated",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "$ref": "../../components/schemas/Meta.json"
+                },
+                "data": {
+                  "$ref": "../../components/schemas/Domain.json"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    ],
+    "requestBody": {
+      "required": true,
+      "content": {
+        "application/json": {
+          "schema": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "maxLength": 254,
+                "example": "crm.company.com",
+                "description": "Complete ASCII hostname; normalized to lowercase and trailing dot removed. No scheme, port, path, wildcard or IP."
+              },
+              "is_default": {
+                "type": "boolean",
+                "description": "Exactly one active default per tenant."
+              },
+              "is_active": {
+                "type": "boolean"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "delete": {
+    "summary": "Delete nondefault tenant domain",
+    "tags": [
+      "Domain"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "description": "Admin/super-admin only. Tenant ID comes from authenticated request context. All active hostnames access the same tenant without redirects. Current default cannot be deleted.",
+    "responses": {
+      "400": {
+        "description": "Invalid request, duplicate domain, domain not found, or default domain protection",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "401": {
+        "description": "Authentication required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "403": {
+        "description": "Admin or super-admin required",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "404": {
+        "description": "Domain not found in current tenant",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "422": {
+        "description": "Request DTO validation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "500": {
+        "description": "Operation failed",
+        "content": {
+          "application/json": {
+            "schema": {
+              "$ref": "../../components/schemas/Error.json"
+            }
+          }
+        }
+      },
+      "200": {
+        "description": "Domain deleted; data is null",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "$ref": "../../components/schemas/Meta.json"
+                },
+                "data": {
+                  "type": "object",
+                  "nullable": true
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    ]
+  }
+}

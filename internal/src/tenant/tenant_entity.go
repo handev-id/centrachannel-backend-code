@@ -10,7 +10,6 @@ import (
 type Tenant struct {
 	ID        uuid.UUID       `json:"id"`
 	Name      string          `json:"name"`
-	Domain    string          `json:"domain"`
 	Logo      json.RawMessage `json:"logo,omitempty"`
 	Address   *string         `json:"address,omitempty"`
 	Phone     *string         `json:"phone,omitempty"`

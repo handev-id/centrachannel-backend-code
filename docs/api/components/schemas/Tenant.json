@@ -1,16 +1,60 @@
 {
   "type": "object",
   "properties": {
-    "id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
-    "name": { "type": "string", "example": "Acme Corp" },
-    "domain": { "type": "string", "example": "acme.com" },
-    "logo": { "type": "object", "example": { "name": "logo.png", "url": "https://cdn.example.com/logo.png" } },
-    "address": { "type": "string", "example": "123 Main St" },
-    "phone": { "type": "string", "example": "6281234567890" },
-    "email": { "type": "string", "format": "email", "example": "info@acme.com" },
-    "is_active": { "type": "boolean", "example": true },
-    "settings": { "type": "object", "example": { "channel_configuration": { "meta_access_token": "...", "whatsapp_phone_id": "..." } } },
-    "created_at": { "type": "string", "format": "date-time", "example": "2025-07-29T10:00:00.000Z" },
-    "updated_at": { "type": "string", "format": "date-time", "example": "2025-07-29T12:00:00.000Z" }
+    "id": {
+      "type": "string",
+      "format": "uuid",
+      "example": "00000000-0000-4000-8000-000000000001"
+    },
+    "name": {
+      "type": "string",
+      "example": "Acme Corp"
+    },
+    "logo": {
+      "type": "object",
+      "example": {
+        "name": "logo.png",
+        "url": "https://cdn.example.com/logo.png"
+      }
+    },
+    "address": {
+      "type": "string",
+      "example": "123 Main St"
+    },
+    "phone": {
+      "type": "string",
+      "example": "6281234567890"
+    },
+    "email": {
+      "type": "string",
+      "format": "email",
+      "example": "info@acme.com"
+    },
+    "is_active": {
+      "type": "boolean",
+      "example": true
+    },
+    "settings": {
+      "type": "object",
+      "description": "Tenant settings. Integration credentials are excluded from responses.",
+      "example": {}
+    },
+    "created_at": {
+      "type": "string",
+      "format": "date-time",
+      "example": "2025-07-29T10:00:00.000Z"
+    },
+    "updated_at": {
+      "type": "string",
+      "format": "date-time",
+      "example": "2025-07-29T12:00:00.000Z"
+    },
+    "domains": {
+      "type": "array",
+      "items": {
+        "$ref": "Domain.json"
+      },
+      "description": "Tenant hostnames, default first; exactly one default is active."
+    }
   }
 }

@@ -8,15 +8,15 @@ import (
 
 type OnboardRequest struct {
 	Name          string `json:"name" validate:"required"`
-	Domain        string `json:"domain" validate:"required"`
+	Domain        string `json:"domain" validate:"required,max=254"`
 	AdminEmail    string `json:"admin_email" validate:"required,email"`
 	AdminPassword string `json:"admin_password" validate:"required,min=8"`
 	CompanyName   string `json:"company_name"`
 }
 
 type OnboardResponse struct {
-	Tenant *tenant.Tenant `json:"tenant"`
-	Admin  *AdminUser     `json:"admin"`
+	Tenant *tenant.TenantResponse `json:"tenant"`
+	Admin  *AdminUser             `json:"admin"`
 }
 
 type AdminUser struct {

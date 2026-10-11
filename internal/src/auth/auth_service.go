@@ -128,7 +128,6 @@ func (s *authService) Login(ctx context.Context, req LoginRequest, t *tenant.Ten
 		"jti":    uuid.New().String(),
 		"sub":    user.ID.String(),
 		"tenant": t.ID.String(),
-		"domain": t.Domain,
 		"iat":    now.Unix(),
 		"exp":    now.Add(s.cfg.JWTExpiry).Unix(),
 		"user":   user.Username,
