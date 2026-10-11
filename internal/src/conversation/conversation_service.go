@@ -139,9 +139,6 @@ func (s *conversationService) Reopen(ctx context.Context, tenantID uuid.UUID, id
 }
 
 func (s *conversationService) notifyConversationUpdated(tenantID uuid.UUID, conversationID uuid.UUID) {
-	if s.notifier == nil {
-		return
-	}
 	conv, err := s.repo.GetByID(context.Background(), s.db, tenantID, conversationID)
 	if err != nil {
 		s.logger.Error("failed to get conversation for notification: %v", err)

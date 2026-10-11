@@ -111,7 +111,7 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	msg.CreatedAt = time.Now()
 	msg.UpdatedAt = time.Now()
 
-	s.notifyNewMessage(tenantID, msg)
+	s.notifier.Notify(tenantID, "new-message", msg)
 
 	// Send to external platform via messenger (non-blocking)
 	go func() {
@@ -124,13 +124,6 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	}()
 
 	return msg, nil
-}
-
-func (s *messageService) notifyNewMessage(tenantID uuid.UUID, msg *Message) {
-	if s.notifier == nil {
-		return
-	}
-	s.notifier.Notify(tenantID, "new-message", msg)
 }
 
 func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uuid.UUID, msg *Message) {

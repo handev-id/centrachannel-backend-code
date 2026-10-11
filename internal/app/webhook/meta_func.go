@@ -148,7 +148,7 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 		msgRecord.CreatedAt = time.Now()
 		msgRecord.UpdatedAt = time.Now()
 
-		s.notifyNewMessage(tenantID, msgRecord)
+		s.notifier.Notify(tenantID, "new-message", msgRecord)
 
 		lastMsg := map[string]interface{}{
 			"text":        msgText,

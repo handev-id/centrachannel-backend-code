@@ -83,6 +83,10 @@ type mockConversationRepository struct {
 	markReadErr error
 }
 
+type mockNotifier struct{}
+
+func (mockNotifier) Notify(uuid.UUID, string, interface{}) {}
+
 func (m *mockConversationRepository) GetByID(_ context.Context, _ DBTX, _ uuid.UUID, _ uuid.UUID) (*Conversation, error) {
 	m.getByIDCalled = true
 	return m.getByIDConv, m.getByIDErr
@@ -352,7 +356,7 @@ func TestCreate(t *testing.T) {
 
 func TestAssign(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
-	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
+	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger(), notifier: mockNotifier{}}
 
 	err := svc.Assign(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"), uuid.MustParse("00000000-0000-4000-8000-000000000007"))
 	if err != nil {
@@ -375,7 +379,7 @@ func TestAssign(t *testing.T) {
 
 func TestUnassign(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
-	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
+	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger(), notifier: mockNotifier{}}
 
 	err := svc.Unassign(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {
@@ -395,7 +399,7 @@ func TestUnassign(t *testing.T) {
 
 func TestResolve(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
-	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
+	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger(), notifier: mockNotifier{}}
 
 	err := svc.Resolve(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {
@@ -415,7 +419,7 @@ func TestResolve(t *testing.T) {
 
 func TestReopen(t *testing.T) {
 	mockRepo := &mockConversationRepository{}
-	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger()}
+	svc := &conversationService{repo: mockRepo, db: nil, cfg: testConfig(), logger: testLogger(), notifier: mockNotifier{}}
 
 	err := svc.Reopen(context.Background(), uuid.MustParse("00000000-0000-4000-8000-000000000001"), uuid.MustParse("00000000-0000-4000-8000-00000000002a"))
 	if err != nil {

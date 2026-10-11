@@ -18,6 +18,10 @@ type mockNoteRepository struct {
 	deleteFn func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) error
 }
 
+type mockNotifier struct{}
+
+func (mockNotifier) Notify(uuid.UUID, string, interface{}) {}
+
 func (m *mockNoteRepository) GetByID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID) (*Note, error) {
 	if m.getFn != nil {
 		return m.getFn(ctx, q, tenantID, id)
@@ -86,10 +90,11 @@ func baseNote(id, tenantID, conversationID uuid.UUID, text string) Note {
 
 func newNoteService(repo NoteRepository) *noteService {
 	return &noteService{
-		repo:   repo,
-		db:     nil,
-		cfg:    nil,
-		logger: nil,
+		repo:     repo,
+		db:       nil,
+		cfg:      nil,
+		logger:   nil,
+		notifier: mockNotifier{},
 	}
 }
 

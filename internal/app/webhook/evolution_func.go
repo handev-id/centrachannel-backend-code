@@ -153,7 +153,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	msg.CreatedAt = now
 	msg.UpdatedAt = now
 
-	s.notifyNewMessage(tenantID, msg)
+	s.notifier.Notify(tenantID, "new-message", msg)
 
 	return nil
 }
@@ -234,12 +234,10 @@ func (s *webhookService) handleConnectionUpdate(ctx context.Context, payload *Ev
 
 	s.logger.Info("device %s status updated to %s via webhook", payload.Instance, newStatus)
 
-	if s.notifier != nil {
-		s.notifier.Notify(device.TenantID, "device-updated", map[string]interface{}{
-			"id":     device.ID,
-			"status": newStatus,
-		})
-	}
+	s.notifier.Notify(device.TenantID, "device-updated", map[string]interface{}{
+		"id":     device.ID,
+		"status": newStatus,
+	})
 
 	return nil
 }
@@ -358,7 +356,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	msg.CreatedAt = now
 	msg.UpdatedAt = now
 
-	s.notifyNewMessage(tenantID, msg)
+	s.notifier.Notify(tenantID, "new-message", msg)
 
 	s.logger.Info("synced outgoing message from phone: device=%s, contact=%s, msg_id=%s", payload.Instance, phone, data.Key.ID)
 	return nil
@@ -367,11 +365,4 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 // kept here because it depends on conversation repo
 func (s *webhookService) findConversation(ctx context.Context, tenantID, profileID, channelID uuid.UUID) (*conversation.Conversation, error) {
 	return s.convRepo.FindOpenByProfileAndChannel(ctx, s.db, tenantID, profileID, channelID)
-}
-
-func (s *webhookService) notifyNewMessage(tenantID uuid.UUID, msg *message.Message) {
-	if s.notifier == nil {
-		return
-	}
-	s.notifier.Notify(tenantID, "new-message", msg)
 }

@@ -294,7 +294,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, &mockNotifier{})
 		req := SendMessageRequest{
 			Text:       strPtr("hello"),
 			SenderID:   uuid.MustParse("00000000-0000-4000-8000-00000000002a"),
@@ -345,7 +345,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, &mockNotifier{})
 		req := SendMessageRequest{
 			Text:       strPtr("hello"),
 			SenderID:   uuid.MustParse("00000000-0000-4000-8000-000000000063"),
@@ -375,7 +375,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, &mockNotifier{})
 		req := SendMessageRequest{
 			Text:       strPtr("with attachment"),
 			Attachment: json.RawMessage(`{"url":"http://example.com/file.pdf","type":"pdf"}`),
@@ -422,7 +422,7 @@ func TestMessageService_Send(t *testing.T) {
 			},
 		}
 
-		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil)
+		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, &mockNotifier{})
 		req := SendMessageRequest{
 			Text:       strPtr("no attachment"),
 			Attachment: nil,

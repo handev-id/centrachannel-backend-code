@@ -67,7 +67,7 @@ func (s *noteService) Create(ctx context.Context, req CreateNoteRequest, tenantI
 	note.CreatedAt = time.Now()
 	note.UpdatedAt = time.Now()
 
-	s.notifyNoteEvent(tenantID, "note-created", note)
+	s.notifier.Notify(tenantID, "note-created", note)
 
 	return note, nil
 }
@@ -99,7 +99,7 @@ func (s *noteService) Update(ctx context.Context, tenantID uuid.UUID, id uuid.UU
 
 	updated.UpdatedAt = time.Now()
 
-	s.notifyNoteEvent(tenantID, "note-updated", &updated)
+	s.notifier.Notify(tenantID, "note-updated", &updated)
 
 	return &updated, nil
 }
@@ -111,14 +111,7 @@ func (s *noteService) Delete(ctx context.Context, tenantID uuid.UUID, id uuid.UU
 		return err
 	}
 
-	s.notifyNoteEvent(tenantID, "note-deleted", note)
+	s.notifier.Notify(tenantID, "note-deleted", note)
 
 	return nil
-}
-
-func (s *noteService) notifyNoteEvent(tenantID uuid.UUID, event string, note *Note) {
-	if s.notifier == nil {
-		return
-	}
-	s.notifier.Notify(tenantID, event, note)
 }
