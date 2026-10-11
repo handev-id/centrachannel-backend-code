@@ -225,6 +225,8 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 		s.logger.Error("failed to deliver message to %s (conv=%s): %v", ch.Type, conversationID, err)
 		if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed"); statusErr != nil {
 			s.logger.Error("failed to persist delivery failure for message %s: %v", msg.ID, statusErr)
+		} else {
+			s.notifier.Notify(tenantID, "message-status-updated", nil)
 		}
 		return
 	}
@@ -239,5 +241,9 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 }
 
 func (s *messageService) UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status string) error {
-	return s.repo.UpdateStatus(ctx, s.db, tenantID, id, status)
+	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, status); err != nil {
+		return err
+	}
+	s.notifier.Notify(tenantID, "message-status-updated", nil)
+	return nil
 }

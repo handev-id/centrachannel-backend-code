@@ -188,7 +188,9 @@ func (s *webhookService) handleMessageUpdate(ctx context.Context, payload *Evolu
 	}
 	if err := s.msgRepo.UpdateStatusByWebhookID(ctx, s.db, tenantID, data.KeyID, msgStatus); err != nil {
 		s.logger.Debug("no message found for webhook id %s: %v", data.KeyID, err)
+		return nil
 	}
+	s.notifier.Notify(tenantID, "message-status-updated", nil)
 
 	return nil
 }
