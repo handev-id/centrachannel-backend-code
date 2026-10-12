@@ -305,6 +305,9 @@ func (c *evolutionClient) SetWebhook(ctx context.Context, device *WhatsAppDevice
 		return fmt.Errorf("evolution api request failed: %w", err)
 	}
 	defer resp.Body.Close()
+	if resp.StatusCode < 200 || resp.StatusCode >= 300 {
+		return fmt.Errorf("configure webhook: HTTP %d", resp.StatusCode)
+	}
 
 	respBody, _ := io.ReadAll(resp.Body)
 
@@ -312,7 +315,7 @@ func (c *evolutionClient) SetWebhook(ctx context.Context, device *WhatsAppDevice
 		Error interface{} `json:"error,omitempty"`
 	}
 	if err := json.Unmarshal(respBody, &result); err != nil {
-		return nil
+		return fmt.Errorf("decode webhook configuration response: %w", err)
 	}
 	if errStr := errorToString(result.Error); errStr != "" {
 		return fmt.Errorf("evolution api error: %s", errStr)

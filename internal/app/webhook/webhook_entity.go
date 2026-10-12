@@ -41,6 +41,7 @@ type EvolutionWebhookPayload struct {
 }
 
 type EvolutionMessageUpsert struct {
+	RawMessage  json.RawMessage     `json:"-"`
 	Key         EvolutionMessageKey `json:"key"`
 	PushName    string              `json:"pushName"`
 	Message     EvolutionMessage    `json:"message"`
@@ -67,6 +68,13 @@ type EvolutionMessageKey struct {
 }
 
 type EvolutionMessage struct {
+	DocumentWithCaptionMessage *struct {
+		Message *EvolutionMessage `json:"message"`
+	} `json:"documentWithCaptionMessage,omitempty"`
+	EphemeralMessage *struct {
+		Message *EvolutionMessage `json:"message"`
+	} `json:"ephemeralMessage,omitempty"`
+	Base64       string  `json:"base64,omitempty"`
 	Conversation *string `json:"conversation,omitempty"`
 
 	ExtendedTextMessage *struct {
@@ -97,6 +105,7 @@ type EvolutionMessage struct {
 		URL      string `json:"url"`
 		Mimetype string `json:"mimetype"`
 		FileName string `json:"fileName,omitempty"`
+		Caption  string `json:"caption,omitempty"`
 		Base64   string `json:"base64,omitempty"`
 	} `json:"documentMessage,omitempty"`
 }

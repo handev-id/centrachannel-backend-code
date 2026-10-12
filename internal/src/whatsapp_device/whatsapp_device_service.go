@@ -72,6 +72,12 @@ func (s *whatsAppDeviceService) Create(ctx context.Context, req CreateDeviceRequ
 		if err := s.client.CreateInstance(ctx, device); err != nil {
 			s.logger.Warn("failed to create evolution instance: %v", err)
 		}
+		if s.cfg.WebhookBaseURL != "" {
+			webhookURL := strings.TrimRight(s.cfg.WebhookBaseURL, "/") + "/webhook/evolution"
+			if err := s.client.SetWebhook(ctx, device, webhookURL); err != nil {
+				return nil, fmt.Errorf("device created but webhook configuration failed: %w", err)
+			}
+		}
 	}
 
 	return device, nil
@@ -128,6 +134,12 @@ func (s *whatsAppDeviceService) Connect(ctx context.Context, tenantID uuid.UUID,
 	}
 	if s.client == nil {
 		return "", fmt.Errorf("whatsapp client not configured")
+	}
+	if s.cfg.WebhookBaseURL != "" {
+		webhookURL := strings.TrimRight(s.cfg.WebhookBaseURL, "/") + "/webhook/evolution"
+		if err := s.client.SetWebhook(ctx, device, webhookURL); err != nil {
+			return "", fmt.Errorf("configure webhook: %w", err)
+		}
 	}
 
 	fullPhone := device.CountryCode + device.Phone

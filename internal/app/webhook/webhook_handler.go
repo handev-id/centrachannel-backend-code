@@ -17,6 +17,7 @@ import (
 	"centrachannel/internal/src/tenant"
 	"centrachannel/internal/src/whatsapp_device"
 	"centrachannel/internal/utils/response"
+	"centrachannel/internal/utils/storage"
 	"centrachannel/internal/ws"
 )
 
@@ -36,6 +37,7 @@ func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ws.Notifier
 	msgRepo := message.NewMessageRepository()
 	tenantRepo := tenant.NewTenantRepository()
 	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, c.DB, c.Logger, c.Redis, notifier)
+	service.media = newEvolutionMediaService(cfg.EvolutionAPIURL, cfg.EvolutionAPIKey, storage.NewClient(cfg.StorageURL, cfg.StorageSecretKey, c.Logger))
 	return &WebhookHandler{service: service, apiKey: cfg.EvolutionAPIKey, metaSecret: cfg.MetaWebhookSecret, metaAppSecret: cfg.MetaAppSecret}
 }
 

@@ -113,6 +113,9 @@
     "/api/conversations/{conversationId}/messages": {
       "$ref": "/docs/api/paths/message/index.json"
     },
+    "/api/messages/{id}/retry": {
+      "$ref": "/docs/api/paths/message/retry.json"
+    },
     "/api/messages/{id}": {
       "$ref": "/docs/api/paths/message/update-status.json"
     },

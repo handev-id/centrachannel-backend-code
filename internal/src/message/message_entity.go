@@ -21,3 +21,13 @@ type Message struct {
 	CreatedAt             time.Time       `json:"created_at"`
 	UpdatedAt             time.Time       `json:"updated_at"`
 }
+
+type Attachment struct {
+	Type     string `json:"type"`
+	URL      string `json:"url,omitempty"`
+	Mimetype string `json:"mimetype,omitempty"`
+	FileName string `json:"fileName,omitempty"`
+	Size     int64  `json:"size,omitempty"`
+	Caption  string `json:"caption,omitempty"`
+	Status   string `json:"status,omitempty"`
+}

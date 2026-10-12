@@ -322,8 +322,8 @@ func TestMessageService_Send(t *testing.T) {
 		if capturedCreateMsg.SenderID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
 			t.Errorf("expected SenderID 42, got %s", capturedCreateMsg.SenderID)
 		}
-		if capturedCreateMsg.Status != "sent" {
-			t.Errorf("expected Status sent, got %s", capturedCreateMsg.Status)
+		if capturedCreateMsg.Status != "pending" {
+			t.Errorf("expected Status pending, got %s", capturedCreateMsg.Status)
 		}
 		if capturedLastAgentID == nil || *capturedLastAgentID != uuid.MustParse("00000000-0000-4000-8000-00000000002a") {
 			t.Errorf("expected lastAgentID 42 for user sender, got %v", capturedLastAgentID)
@@ -378,7 +378,7 @@ func TestMessageService_Send(t *testing.T) {
 		svc := NewMessageService(msgRepo, convRepo, &mockProfileRepository{}, &mockChannelRepository{}, &mockTenantRepository{}, db, cfg, log, nil, &mockNotifier{})
 		req := SendMessageRequest{
 			Text:       strPtr("with attachment"),
-			Attachment: json.RawMessage(`{"url":"http://example.com/file.pdf","type":"pdf"}`),
+			Attachment: json.RawMessage(`{"url":"http://example.com/file.pdf","type":"document","mimetype":"application/pdf","size":100}`),
 			SenderID:   uuid.MustParse("00000000-0000-4000-8000-000000000001"),
 			SenderType: "user",
 		}
@@ -402,8 +402,8 @@ func TestMessageService_Send(t *testing.T) {
 		if attMap["url"] != "http://example.com/file.pdf" {
 			t.Errorf("expected url http://example.com/file.pdf, got %v", attMap["url"])
 		}
-		if attMap["type"] != "pdf" {
-			t.Errorf("expected type pdf, got %v", attMap["type"])
+		if attMap["type"] != "document" {
+			t.Errorf("expected type document, got %v", attMap["type"])
 		}
 	})
 
@@ -648,4 +648,8 @@ func (m *mockTenantRepository) GetDomains(ctx context.Context, q tenant.DBTX, id
 }
 func (m *mockTenantRepository) GetActiveIDByDomain(ctx context.Context, q tenant.DBTX, name string) (uuid.UUID, error) {
 	return uuid.Nil, nil
+}
+
+func (m *mockMessageRepository) RetryFailed(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, senderID uuid.UUID) (*Message, error) {
+	return nil, fmt.Errorf("not found")
 }

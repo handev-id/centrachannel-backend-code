@@ -184,6 +184,11 @@ type mockMsgRepo struct {
 }
 
 func (m *mockMsgRepo) Create(ctx context.Context, db *sql.DB, msg *message.Message, lastMessageJSON []byte, lastAgentID *uuid.UUID, conversations conversation.ConversationRepository) (uuid.UUID, error) {
+	if conversations != nil {
+		if err := conversations.UpdateLastMessage(ctx, db, msg.TenantID, msg.ConversationID, lastMessageJSON, lastAgentID); err != nil {
+			return uuid.Nil, err
+		}
+	}
 	if m.createFunc != nil {
 		return m.createFunc(ctx, db, msg)
 	}
@@ -273,4 +278,8 @@ func (m *mockMetaTenantRepo) GetDomains(ctx context.Context, q tenant.DBTX, id u
 }
 func (m *mockMetaTenantRepo) GetActiveIDByDomain(ctx context.Context, q tenant.DBTX, name string) (uuid.UUID, error) {
 	return uuid.Nil, nil
+}
+
+func (m *mockMsgRepo) RetryFailed(ctx context.Context, q message.DBTX, tenantID uuid.UUID, id uuid.UUID, senderID uuid.UUID) (*message.Message, error) {
+	return nil, fmt.Errorf("not found")
 }

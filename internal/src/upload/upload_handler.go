@@ -1,9 +1,11 @@
 package upload
 
 import (
+	"errors"
 	"github.com/gofiber/fiber/v3"
 
 	"centrachannel/internal/di"
+	"centrachannel/internal/utils/media"
 	"centrachannel/internal/utils/response"
 )
 
@@ -28,6 +30,9 @@ func (h *UploadHandler) Upload(c fiber.Ctx) error {
 
 	result, err := h.service.Upload(file)
 	if err != nil {
+		if errors.Is(err, media.ErrTooLarge) {
+			return response.Error(c, fiber.StatusRequestEntityTooLarge, err.Error(), nil)
+		}
 		return response.InternalServerError(c, err.Error())
 	}
 

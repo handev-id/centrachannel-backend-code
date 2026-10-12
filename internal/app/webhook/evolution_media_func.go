@@ -2,11 +2,38 @@ package webhook
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 )
 
 func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, json.RawMessage) {
+	if evtMsg.DocumentWithCaptionMessage != nil && evtMsg.DocumentWithCaptionMessage.Message != nil {
+		inner := *evtMsg.DocumentWithCaptionMessage.Message
+		if evtMsg.Base64 != "" {
+			inner.Base64 = evtMsg.Base64
+		}
+		return extractMessageContent(inner, msgType)
+	}
+	if evtMsg.EphemeralMessage != nil && evtMsg.EphemeralMessage.Message != nil {
+		inner := *evtMsg.EphemeralMessage.Message
+		if evtMsg.Base64 != "" {
+			inner.Base64 = evtMsg.Base64
+		}
+		return extractMessageContent(inner, msgType)
+	}
+	if evtMsg.Base64 != "" {
+		if evtMsg.ImageMessage != nil {
+			evtMsg.ImageMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.VideoMessage != nil {
+			evtMsg.VideoMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.AudioMessage != nil {
+			evtMsg.AudioMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.DocumentMessage != nil {
+			evtMsg.DocumentMessage.Base64 = evtMsg.Base64
+		}
+	}
 	if evtMsg.Conversation != nil && *evtMsg.Conversation != "" {
 		return evtMsg.Conversation, nil
 	}
@@ -27,12 +54,6 @@ func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, js
 		}
 		if evtMsg.ImageMessage.Base64 != "" {
 			att["base64"] = evtMsg.ImageMessage.Base64
-			if att["url"] == nil {
-				att["url"] = fmt.Sprintf("data:%s;base64,%s", evtMsg.ImageMessage.Mimetype, evtMsg.ImageMessage.Base64)
-			}
-		}
-		if evtMsg.ImageMessage.Base64 == "" && evtMsg.ImageMessage.URL == "" {
-			return nil, nil
 		}
 		attJSON, _ := json.Marshal(att)
 		caption := evtMsg.ImageMessage.Caption
@@ -55,12 +76,6 @@ func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, js
 		}
 		if evtMsg.VideoMessage.Base64 != "" {
 			att["base64"] = evtMsg.VideoMessage.Base64
-			if att["url"] == nil {
-				att["url"] = fmt.Sprintf("data:%s;base64,%s", evtMsg.VideoMessage.Mimetype, evtMsg.VideoMessage.Base64)
-			}
-		}
-		if evtMsg.VideoMessage.Base64 == "" && evtMsg.VideoMessage.URL == "" {
-			return nil, nil
 		}
 		attJSON, _ := json.Marshal(att)
 		caption := evtMsg.VideoMessage.Caption
@@ -80,12 +95,6 @@ func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, js
 		}
 		if evtMsg.AudioMessage.Base64 != "" {
 			att["base64"] = evtMsg.AudioMessage.Base64
-			if att["url"] == nil {
-				att["url"] = fmt.Sprintf("data:%s;base64,%s", evtMsg.AudioMessage.Mimetype, evtMsg.AudioMessage.Base64)
-			}
-		}
-		if evtMsg.AudioMessage.Base64 == "" && evtMsg.AudioMessage.URL == "" {
-			return nil, nil
 		}
 		attJSON, _ := json.Marshal(att)
 		return nil, attJSON
@@ -93,25 +102,31 @@ func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, js
 
 	if evtMsg.DocumentMessage != nil {
 		att := map[string]interface{}{
-			"type":      "document",
-			"mimetype":  evtMsg.DocumentMessage.Mimetype,
-			"file_name": evtMsg.DocumentMessage.FileName,
+			"type":     "document",
+			"mimetype": evtMsg.DocumentMessage.Mimetype,
+			"fileName": evtMsg.DocumentMessage.FileName,
 		}
 		if evtMsg.DocumentMessage.URL != "" && strings.HasPrefix(evtMsg.DocumentMessage.URL, "http") {
 			att["url"] = evtMsg.DocumentMessage.URL
 		}
 		if evtMsg.DocumentMessage.Base64 != "" {
 			att["base64"] = evtMsg.DocumentMessage.Base64
-			if att["url"] == nil {
-				att["url"] = fmt.Sprintf("data:%s;base64,%s", evtMsg.DocumentMessage.Mimetype, evtMsg.DocumentMessage.Base64)
-			}
 		}
-		if evtMsg.DocumentMessage.Base64 == "" && evtMsg.DocumentMessage.URL == "" {
-			return nil, nil
+		if evtMsg.DocumentMessage.Caption != "" {
+			att["caption"] = evtMsg.DocumentMessage.Caption
 		}
 		attJSON, _ := json.Marshal(att)
+		if evtMsg.DocumentMessage.Caption != "" {
+			caption := evtMsg.DocumentMessage.Caption
+			return &caption, attJSON
+		}
 		return nil, attJSON
 	}
 
-	return nil, nil
+	unsupported := map[string]string{"type": "unsupported", "message_type": msgType}
+	if msgType == "" {
+		return nil, nil
+	}
+	attJSON, _ := json.Marshal(unsupported)
+	return nil, attJSON
 }

@@ -244,7 +244,7 @@ func (r *conversationRepository) GetTotalUnread(ctx context.Context, q DBTX, ten
 }
 
 func (r *conversationRepository) UpdateLastMessage(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, lastMessageJSON []byte, lastAgentID *uuid.UUID) error {
-	result, err := q.ExecContext(ctx, `UPDATE conversations SET last_message=$1, last_activity=$2, unread_count=unread_count+1, last_agent_id=$3, updated_at=$4 WHERE id=$5 AND tenant_id=$6 AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id=$3 AND u.tenant_id=$6 AND u.deleted_at IS NULL))`, lastMessageJSON, time.Now(), lastAgentID, time.Now(), id, tenantID)
+	result, err := q.ExecContext(ctx, `UPDATE conversations SET last_message=$1, last_activity=$2, unread_count=unread_count+CASE WHEN $1::jsonb->>'sender_type'='contact' THEN 1 ELSE 0 END, last_agent_id=COALESCE($3,last_agent_id), updated_at=$4 WHERE id=$5 AND tenant_id=$6 AND ($3::uuid IS NULL OR EXISTS (SELECT 1 FROM users u WHERE u.id=$3 AND u.tenant_id=$6 AND u.deleted_at IS NULL))`, lastMessageJSON, time.Now(), lastAgentID, time.Now(), id, tenantID)
 	if err != nil {
 		return err
 	}

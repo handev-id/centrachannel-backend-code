@@ -25,6 +25,14 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	if err := json.Unmarshal(payload.Data, &data); err != nil {
 		return fmt.Errorf("failed to parse messages.upsert data: %w", err)
 	}
+	// Preserve mediaKey/directPath and other provider fields needed for decryption.
+	var original struct {
+		Message json.RawMessage `json:"message"`
+	}
+	if err := json.Unmarshal(payload.Data, &original); err != nil {
+		return err
+	}
+	data.RawMessage = original.Message
 	if strings.HasSuffix(data.Key.RemoteJid, "@g.us") {
 		return nil
 	}
@@ -108,10 +116,18 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	}
 
 	text, attachment := extractMessageContent(data.Message, data.MessageType)
+	if len(attachment) > 0 && s.media != nil {
+		stored, err := s.media.Store(ctx, payload.Instance, &data, attachment)
+		if err != nil {
+			return fmt.Errorf("store incoming media: %w", err)
+		}
+		attachment = stored
+	}
 
 	now := time.Now()
 	lastMsg := map[string]interface{}{
 		"text":        text,
+		"attachment":  attachment,
 		"sender_type": "contact",
 	}
 	lastMsgJSON, _ := json.Marshal(lastMsg)
@@ -130,9 +146,6 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		}
 		conv.ID = cid
 	}
-	if err := s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, nil); err != nil {
-		s.logger.Error("failed to update last_message: %v", err)
-	}
 
 	msg := &message.Message{
 		TenantID:         tenantID,
@@ -145,9 +158,12 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		ConversationID:   conv.ID,
 	}
 
-	mid, err := s.msgRepo.Create(ctx, s.db, msg, nil, nil, nil)
+	mid, err := s.msgRepo.Create(ctx, s.db, msg, lastMsgJSON, nil, s.convRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
+	}
+	if mid == uuid.Nil {
+		return nil
 	}
 	msg.ID = mid
 	msg.CreatedAt = now
@@ -174,7 +190,7 @@ func (s *webhookService) handleMessageUpdate(ctx context.Context, payload *Evolu
 		msgStatus = "delivered"
 	case "READ", "PLAYED":
 		msgStatus = "read"
-	case "SENT":
+	case "SENT", "SERVER_ACK":
 		msgStatus = "sent"
 	case "FAILED":
 		msgStatus = "failed"
@@ -313,10 +329,18 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	}
 
 	text, attachment := extractMessageContent(data.Message, data.MessageType)
+	if len(attachment) > 0 && s.media != nil {
+		stored, err := s.media.Store(ctx, payload.Instance, data, attachment)
+		if err != nil {
+			return fmt.Errorf("store outgoing phone media: %w", err)
+		}
+		attachment = stored
+	}
 
 	now := time.Now()
 	lastMsg := map[string]interface{}{
 		"text":        text,
+		"attachment":  attachment,
 		"sender_type": "user",
 	}
 	lastMsgJSON, _ := json.Marshal(lastMsg)
@@ -335,9 +359,6 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		}
 		conv.ID = cid
 	}
-	if err := s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, nil); err != nil {
-		s.logger.Error("failed to update last_message on outgoing sync: %v", err)
-	}
 
 	msg := &message.Message{
 		TenantID:         tenantID,
@@ -350,9 +371,12 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		ConversationID:   conv.ID,
 	}
 
-	mid, err := s.msgRepo.Create(ctx, s.db, msg, nil, nil, nil)
+	mid, err := s.msgRepo.Create(ctx, s.db, msg, lastMsgJSON, nil, s.convRepo)
 	if err != nil {
 		return fmt.Errorf("failed to create message: %w", err)
+	}
+	if mid == uuid.Nil {
+		return nil
 	}
 	msg.ID = mid
 	msg.CreatedAt = now

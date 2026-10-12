@@ -17,5 +17,6 @@ func RegisterRoutes(app fiber.Router, prefix string, c *di.Container, middleware
 	handler := NewMessageHandler(c)
 	group.Get("/", middleware.Tenant(handler.List))
 	group.Post("/", middleware.Tenant(handler.Send))
+	group.Post("/:id/retry", middleware.Tenant(handler.Retry))
 	group.Put("/:id", middleware.Tenant(handler.UpdateStatus))
 }

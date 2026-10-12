@@ -1,0 +1,48 @@
+{
+  "type": "object",
+  "properties": {
+    "type": {
+      "type": "string",
+      "enum": [
+        "image",
+        "video",
+        "audio",
+        "document",
+        "unsupported"
+      ]
+    },
+    "url": {
+      "type": "string",
+      "format": "uri",
+      "description": "Public HTTP(S) URL returned by POST /api/upload; absent for unavailable incoming media."
+    },
+    "mimetype": {
+      "type": "string",
+      "example": "application/pdf"
+    },
+    "fileName": {
+      "type": "string",
+      "example": "report.pdf"
+    },
+    "size": {
+      "type": "integer",
+      "maximum": 20000000,
+      "example": 2048
+    },
+    "caption": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "ready",
+        "failed",
+        "too_large"
+      ]
+    },
+    "message_type": {
+      "type": "string",
+      "description": "Original provider type for unsupported messages."
+    }
+  }
+}

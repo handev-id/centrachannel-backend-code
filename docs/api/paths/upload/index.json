@@ -1,8 +1,14 @@
 {
   "post": {
     "summary": "Upload a file",
-    "tags": ["Upload"],
-    "security": [{ "bearerAuth": [] }],
+    "tags": [
+      "Upload"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
     "requestBody": {
       "required": true,
       "content": {
@@ -13,9 +19,12 @@
               "file": {
                 "type": "string",
                 "format": "binary",
-                "description": "File to upload"
+                "description": "One nonempty file, at most 20,000,000 bytes (20 MB)."
               }
-            }
+            },
+            "required": [
+              "file"
+            ]
           }
         }
       }
@@ -28,10 +37,34 @@
             "schema": {
               "type": "object",
               "properties": {
-                "url": { "type": "string", "example": "https://cdn.example.com/uploads/file.pdf" },
-                "name": { "type": "string", "example": "file.pdf" },
-                "size": { "type": "integer", "example": 2048 },
-                "type": { "type": "string", "example": "application/pdf" }
+                "meta": {
+                  "type": "object"
+                },
+                "data": {
+                  "type": "object",
+                  "properties": {
+                    "url": {
+                      "type": "string",
+                      "example": "https://cdn.example.com/uploads/file.pdf"
+                    },
+                    "name": {
+                      "type": "string",
+                      "example": "file.pdf"
+                    },
+                    "size": {
+                      "type": "integer",
+                      "example": 2048
+                    },
+                    "type": {
+                      "type": "string",
+                      "example": "application/pdf"
+                    },
+                    "extname": {
+                      "type": "string",
+                      "example": "pdf"
+                    }
+                  }
+                }
               }
             }
           }
@@ -41,9 +74,14 @@
         "description": "Validation Error",
         "content": {
           "application/json": {
-            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+            "schema": {
+              "$ref": "../../components/schemas/ValidationError.json"
+            }
           }
         }
+      },
+      "413": {
+        "description": "File exceeds 20 MB."
       }
     }
   }
