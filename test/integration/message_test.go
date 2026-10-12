@@ -143,3 +143,7 @@ func TestMessageSend_Success(t *testing.T) {
 		t.Errorf("expected sender_type 'user', got %q", msg.SenderType)
 	}
 }
+
+func (m *mockMessageService) Retry(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, senderID uuid.UUID) (*message.Message, error) {
+	return nil, nil
+}

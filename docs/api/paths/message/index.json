@@ -1,54 +1,71 @@
 {
   "get": {
     "summary": "List messages in a conversation",
-    "tags": ["Message"],
-    "security": [{ "bearerAuth": [] }],
+    "tags": [
+      "Message"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" },
-      { "name": "page", "in": "query", "schema": { "type": "integer", "default": 1 }, "description": "Page number (offset pagination)" },
-      { "name": "limit", "in": "query", "schema": { "type": "integer", "default": 50 }, "description": "Results per page" },
-      { "name": "last_id", "in": "query", "schema": { "type": "string", "format": "uuid" }, "description": "Cursor: last message ID from previous page. When provided, switches to cursor pagination." }
+      {
+        "name": "conversationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Conversation ID"
+      },
+      {
+        "name": "limit",
+        "in": "query",
+        "schema": {
+          "type": "integer",
+          "default": 50
+        },
+        "description": "Results per page"
+      },
+      {
+        "name": "last_id",
+        "in": "query",
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Cursor: oldest message ID returned by the previous page."
+      }
     ],
     "responses": {
       "200": {
-        "description": "List of messages. Uses offset or cursor pagination based on query params.",
+        "description": "Cursor pagination only. Messages in each page are chronological.",
         "content": {
           "application/json": {
             "schema": {
               "type": "object",
               "properties": {
-                "meta": { "$ref": "../../components/schemas/Meta.json" },
-                "data": {
+                "meta": {
                   "type": "object",
                   "properties": {
-                    "meta_pagination": {
-                      "oneOf": [
-                        {
-                          "type": "object",
-                          "properties": {
-                            "total": { "type": "integer" },
-                            "per_page": { "type": "integer" },
-                            "current_page": { "type": "integer" },
-                            "last_page": { "type": "integer" },
-                            "from": { "type": "integer" },
-                            "to": { "type": "integer" }
-                          },
-                          "description": "Offset pagination meta (when page param used)"
-                        },
-                        {
-                          "type": "object",
-                          "properties": {
-                            "last_id": { "type": "string", "format": "uuid" },
-                            "has_more": { "type": "boolean" }
-                          },
-                          "description": "Cursor pagination meta (when last_id param provided)"
-                        }
-                      ]
+                    "message": {
+                      "type": "string"
                     },
-                    "data": {
-                      "type": "array",
-                      "items": { "$ref": "../../components/schemas/MessageModel.json" }
+                    "last_id": {
+                      "type": "string",
+                      "format": "uuid"
+                    },
+                    "has_more": {
+                      "type": "boolean"
                     }
+                  }
+                },
+                "data": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "../../components/schemas/MessageModel.json"
                   }
                 }
               }
@@ -60,10 +77,25 @@
   },
   "post": {
     "summary": "Send a message in a conversation",
-    "tags": ["Message"],
-    "security": [{ "bearerAuth": [] }],
+    "tags": [
+      "Message"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
     "parameters": [
-      { "name": "conversationId", "in": "path", "required": true, "schema": { "type": "string", "format": "uuid" }, "description": "Conversation ID" }
+      {
+        "name": "conversationId",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        },
+        "description": "Conversation ID"
+      }
     ],
     "requestBody": {
       "required": true,
@@ -71,23 +103,62 @@
         "application/json": {
           "schema": {
             "type": "object",
-            "required": ["sender_id", "sender_type"],
             "properties": {
-              "text": { "type": "string", "example": "Hello, how can I help you?" },
-              "attachment": { "type": "object" },
-              "sender_id": { "type": "string", "format": "uuid", "example": "00000000-0000-4000-8000-000000000001" },
-              "sender_type": { "type": "string", "enum": ["contact", "user", "ai"], "example": "user" }
-            }
+              "text": {
+                "type": "string",
+                "example": "Hello, how can I help you?"
+              },
+              "attachment": {
+                "allOf": [
+                  {
+                    "$ref": "../../components/schemas/MessageAttachment.json"
+                  },
+                  {
+                    "required": [
+                      "type",
+                      "url",
+                      "mimetype",
+                      "size"
+                    ]
+                  }
+                ]
+              },
+              "sender_id": {
+                "type": "string",
+                "format": "uuid",
+                "example": "00000000-0000-4000-8000-000000000001"
+              },
+              "sender_type": {
+                "type": "string",
+                "enum": [
+                  "contact",
+                  "user",
+                  "ai"
+                ],
+                "example": "user"
+              }
+            },
+            "description": "Requires nonempty text or one attachment. Authenticated user determines sender_id and sender_type. Upload the file first; use data.url and metadata. text is the image/video/document caption when an attachment is present. Audio does not support captions; send text separately."
           }
         }
       }
     },
     "responses": {
       "201": {
-        "description": "Message sent",
+        "description": "Message saved as pending; provider acceptance updates it to sent.",
         "content": {
           "application/json": {
-            "schema": { "$ref": "../../components/schemas/MessageModel.json" }
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "type": "object"
+                },
+                "data": {
+                  "$ref": "../../components/schemas/MessageModel.json"
+                }
+              }
+            }
           }
         }
       },
@@ -95,9 +166,14 @@
         "description": "Validation Error",
         "content": {
           "application/json": {
-            "schema": { "$ref": "../../components/schemas/ValidationError.json" }
+            "schema": {
+              "$ref": "../../components/schemas/ValidationError.json"
+            }
           }
         }
+      },
+      "400": {
+        "description": "Empty content or invalid attachment metadata."
       }
     }
   }

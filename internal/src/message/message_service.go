@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
@@ -23,6 +24,7 @@ type MessageService interface {
 	ListCursor(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, q ListMessageQuery) ([]*Message, uuid.UUID, bool, error)
 	Send(ctx context.Context, req SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*Message, error)
 	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status string) error
+	Retry(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, senderID uuid.UUID) (*Message, error)
 }
 
 type messageService struct {
@@ -74,11 +76,16 @@ func (s *messageService) ListCursor(ctx context.Context, tenantID uuid.UUID, con
 }
 
 func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*Message, error) {
+	text, attachment, err := normalizeMessageContent(req)
+	if err != nil {
+		return nil, err
+	}
+	req.Text, req.Attachment = text, attachment
 	msg := &Message{
 		TenantID:       tenantID,
 		Text:           req.Text,
 		Attachment:     req.Attachment,
-		Status:         "sent",
+		Status:         "pending",
 		SenderID:       req.SenderID,
 		SenderType:     req.SenderType,
 		ConversationID: conversationID,
@@ -111,53 +118,56 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	msg.CreatedAt = time.Now()
 	msg.UpdatedAt = time.Now()
 
-	s.notifier.Notify(tenantID, "new-message", msg)
+	if s.notifier != nil {
+		s.notifier.Notify(tenantID, "new-message", msg)
+	}
 
 	// Send to external platform via messenger (non-blocking)
 	go func() {
-		defer func() {
-			if r := recover(); r != nil {
-				s.logger.Error("panic in deliverToExternal: %v", r)
+		if err := s.deliverToExternal(tenantID, conversationID, msg); err != nil {
+			s.logger.Error("failed to deliver message %s: %v", msg.ID, err)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed"); statusErr != nil {
+				s.logger.Error("failed to persist delivery failure: %v", statusErr)
+			} else if s.notifier != nil {
+				s.notifier.Notify(tenantID, "message-status-updated", nil)
 			}
-		}()
-		s.deliverToExternal(tenantID, conversationID, msg)
+		}
 	}()
 
 	return msg, nil
 }
 
-func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uuid.UUID, msg *Message) {
-	ctx := context.Background()
+func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uuid.UUID, msg *Message) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 90*time.Second)
+	defer cancel()
 
 	conv, err := s.convRepo.GetByID(ctx, s.db, tenantID, conversationID)
-	if err != nil {
-		s.logger.Error("failed to get conversation for external delivery: %v", err)
-		return
+	if err != nil || conv == nil {
+		return fmt.Errorf("get conversation for delivery: %v", err)
 	}
 
 	prof, err := s.profileRepo.GetByID(ctx, s.db, tenantID, conv.ProfileID)
-	if err != nil {
-		s.logger.Error("failed to get profile for external delivery: %v", err)
-		return
+	if err != nil || prof == nil {
+		return fmt.Errorf("get profile for delivery: %v", err)
 	}
 
 	ch, err := s.channelRepo.GetByID(ctx, s.db, conv.ChannelID)
-	if err != nil {
-		s.logger.Error("failed to get channel for external delivery: %v", err)
-		return
+	if err != nil || ch == nil {
+		return fmt.Errorf("get channel for delivery: %v", err)
 	}
 
 	// Look up tenant channel configuration (per-tenant credentials)
 	t, err := s.tenantRepo.GetByID(ctx, s.db, tenantID)
-	if err != nil {
-		s.logger.Error("failed to get tenant config for external delivery: %v", err)
-		return
+	if err != nil || t == nil {
+		return fmt.Errorf("get tenant configuration for delivery: %v", err)
 	}
 
 	settings, err := tenant.ParseSettings(t.Settings)
 	if err != nil {
 		s.logger.Error("failed to parse tenant settings: %v", err)
-		return
+		return err
 	}
 
 	var sender messenger.Messenger
@@ -195,8 +205,7 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 		}
 	case "whatsapp":
 		if prof.LinkedDeviceWhatsappID == nil || *prof.LinkedDeviceWhatsappID == "" {
-			s.logger.Error("profile %s has no linked device for whatsapp delivery", prof.ID)
-			return
+			return fmt.Errorf("profile has no linked WhatsApp device")
 		}
 		evoCfg := messenger.EvolutionConfig{
 			APIURL:   s.cfg.EvolutionAPIURL,
@@ -204,8 +213,7 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 			DeviceID: *prof.LinkedDeviceWhatsappID,
 		}
 		if evoCfg.APIURL == "" {
-			s.logger.Warn("evolution api url not configured, falling back to mock sender")
-			sender = messenger.NewMockSender()
+			return fmt.Errorf("evolution API URL is not configured")
 		} else {
 			sender = messenger.NewEvolutionSender(evoCfg, s.logger)
 		}
@@ -222,28 +230,56 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 
 	extID, err := sender.Send(extMsg)
 	if err != nil {
-		s.logger.Error("failed to deliver message to %s (conv=%s): %v", ch.Type, conversationID, err)
-		if statusErr := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed"); statusErr != nil {
-			s.logger.Error("failed to persist delivery failure for message %s: %v", msg.ID, statusErr)
-		} else {
-			s.notifier.Notify(tenantID, "message-status-updated", nil)
-		}
-		return
+		return err
 	}
 
 	if extID != "sent" {
-		_ = s.repo.UpdateWebhookID(ctx, s.db, tenantID, msg.ID, extID)
+		if err := s.repo.UpdateWebhookID(ctx, s.db, tenantID, msg.ID, extID); err != nil {
+			return fmt.Errorf("persist provider message ID: %w", err)
+		}
 
 		if s.rdb != nil {
 			s.rdb.Set(ctx, "webhook_dedup:"+extID, 1, 60*time.Second)
 		}
 	}
+	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "sent"); err != nil {
+		return err
+	}
+	if s.notifier != nil {
+		s.notifier.Notify(tenantID, "message-status-updated", nil)
+	}
+	return nil
 }
 
 func (s *messageService) UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status string) error {
 	if err := s.repo.UpdateStatus(ctx, s.db, tenantID, id, status); err != nil {
 		return err
 	}
-	s.notifier.Notify(tenantID, "message-status-updated", nil)
+	if s.notifier != nil {
+		s.notifier.Notify(tenantID, "message-status-updated", nil)
+	}
 	return nil
+}
+
+func (s *messageService) Retry(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, senderID uuid.UUID) (*Message, error) {
+	msg, err := s.repo.RetryFailed(ctx, s.db, tenantID, id, senderID)
+	if err != nil {
+		return nil, fmt.Errorf("message cannot be retried: %w", err)
+	}
+	if s.notifier != nil {
+		s.notifier.Notify(tenantID, "message-status-updated", nil)
+	}
+	go func() {
+		if err := s.deliverToExternal(tenantID, msg.ConversationID, msg); err != nil {
+			s.logger.Error("failed to retry message %s: %v", msg.ID, err)
+			ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+			defer cancel()
+			if err := s.repo.UpdateStatus(ctx, s.db, tenantID, msg.ID, "failed"); err != nil {
+				s.logger.Error("failed to persist retry failure: %v", err)
+			} else if s.notifier != nil {
+				s.notifier.Notify(tenantID, "message-status-updated", nil)
+			}
+		}
+	}()
+	return msg, nil
 }

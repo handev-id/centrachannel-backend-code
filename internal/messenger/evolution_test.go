@@ -68,7 +68,7 @@ func TestSend_Text_EvolutionError(t *testing.T) {
 	}
 }
 
-func TestSend_Text_DefaultMessageID(t *testing.T) {
+func TestSend_Text_MissingMessageID(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte(`{"status":"sent","key":{"id":""}}`))
@@ -78,11 +78,8 @@ func TestSend_Text_DefaultMessageID(t *testing.T) {
 	s := NewEvolutionSender(EvolutionConfig{APIURL: server.URL, APIKey: "key123", DeviceID: "dev1"}, testLogger)
 	text := "Hello"
 	msgID, err := s.Send(&OutgoingMessage{RecipientID: "5511999999999", Text: &text})
-	if err != nil {
-		t.Fatalf("unexpected error: %v", err)
-	}
-	if msgID != "sent" {
-		t.Errorf("expected 'sent' fallback, got %s", msgID)
+	if err == nil {
+		t.Fatalf("expected error for missing message ID, got %q", msgID)
 	}
 }
 

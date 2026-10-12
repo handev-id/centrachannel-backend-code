@@ -92,6 +92,7 @@ func TestExtractMessageContent(t *testing.T) {
 		URL      string `json:"url"`
 		Mimetype string `json:"mimetype"`
 		FileName string `json:"fileName,omitempty"`
+		Caption  string `json:"caption,omitempty"`
 		Base64   string `json:"base64,omitempty"`
 	}{URL: "https://doc.url/r.pdf", Mimetype: "application/pdf", FileName: "report.pdf"}}
 	txt, att = extractMessageContent(docMsg, "documentMessage")

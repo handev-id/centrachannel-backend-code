@@ -28,6 +28,7 @@ import (
 	"centrachannel/internal/src/upload"
 	"centrachannel/internal/src/user"
 	"centrachannel/internal/src/whatsapp_device"
+	"centrachannel/internal/utils/media"
 	"centrachannel/internal/ws"
 )
 
@@ -47,7 +48,8 @@ func main() {
 	cfg := c.Config
 
 	app := fiber.New(fiber.Config{
-		AppName: "CentraChannel API v1.0.0",
+		AppName:   "CentraChannel API v1.0.0",
+		BodyLimit: media.MaxRequestSize,
 	})
 
 	app.Use(middleware.CORSMiddleware())

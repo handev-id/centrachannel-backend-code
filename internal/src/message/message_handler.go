@@ -78,6 +78,10 @@ func (h *MessageHandler) Send(c fiber.Ctx, t *tenant.Tenant) error {
 		}
 		req.ConversationID = id
 	}
+	if userID, ok := c.Locals("user_id").(uuid.UUID); ok && userID != uuid.Nil {
+		req.SenderID = userID
+		req.SenderType = "user"
+	}
 	if err := response.Validate(&req); err != nil {
 		return response.ValidationFailed(c, err)
 	}
@@ -86,7 +90,7 @@ func (h *MessageHandler) Send(c fiber.Ctx, t *tenant.Tenant) error {
 	if err != nil {
 		return response.BadRequest(c, err.Error(), nil)
 	}
-	return response.Created(c, "Message sent", msg)
+	return response.Created(c, "Message queued", msg)
 }
 
 func (h *MessageHandler) UpdateStatus(c fiber.Ctx, t *tenant.Tenant) error {
@@ -107,4 +111,20 @@ func (h *MessageHandler) UpdateStatus(c fiber.Ctx, t *tenant.Tenant) error {
 		return response.BadRequest(c, err.Error(), nil)
 	}
 	return response.OK(c, "Message status updated", nil)
+}
+
+func (h *MessageHandler) Retry(c fiber.Ctx, t *tenant.Tenant) error {
+	id, err := uuid.Parse(c.Params("id"))
+	if err != nil || id == uuid.Nil {
+		return response.BadRequest(c, "Invalid message ID", nil)
+	}
+	userID, ok := c.Locals("user_id").(uuid.UUID)
+	if !ok || userID == uuid.Nil {
+		return response.Unauthorized(c, "Missing user")
+	}
+	msg, err := h.service.Retry(c.Context(), t.ID, id, userID)
+	if err != nil {
+		return response.BadRequest(c, err.Error(), nil)
+	}
+	return response.OK(c, "Message queued for retry", msg)
 }

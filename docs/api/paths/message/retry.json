@@ -1,0 +1,48 @@
+{
+  "post": {
+    "summary": "Retry a failed message",
+    "description": "Only the original authenticated author in the same tenant can retry. Requires failed status and no recorded provider message ID. Reuses the stored attachment URL and message row.",
+    "tags": [
+      "Message"
+    ],
+    "security": [
+      {
+        "bearerAuth": []
+      }
+    ],
+    "parameters": [
+      {
+        "name": "id",
+        "in": "path",
+        "required": true,
+        "schema": {
+          "type": "string",
+          "format": "uuid"
+        }
+      }
+    ],
+    "responses": {
+      "200": {
+        "description": "Message moved atomically to pending.",
+        "content": {
+          "application/json": {
+            "schema": {
+              "type": "object",
+              "properties": {
+                "meta": {
+                  "type": "object"
+                },
+                "data": {
+                  "$ref": "../../components/schemas/MessageModel.json"
+                }
+              }
+            }
+          }
+        }
+      },
+      "400": {
+        "description": "Message cannot be retried."
+      }
+    }
+  }
+}
