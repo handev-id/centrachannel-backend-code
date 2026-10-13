@@ -13,6 +13,12 @@ import (
 	"centrachannel/internal/utils/logger"
 )
 
+// Exact paths whose successful GET requests do not need access logs.
+// Failures, redirects, and requests using other methods are always logged.
+var logEndpointWhitelist = map[string]struct{}{
+	"/health": {},
+}
+
 func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 	return func(c fiber.Ctx) error {
 		start := time.Now()
@@ -23,6 +29,9 @@ func LogMiddleware(l *logger.Logger, env string) fiber.Handler {
 		status := c.Response().StatusCode()
 		method := c.Method()
 		path := string(c.Request().URI().PathOriginal())
+		if _, hidden := logEndpointWhitelist[path]; hidden && method == fiber.MethodGet && err == nil && status >= 200 && status < 300 {
+			return nil
+		}
 		host := string(c.Request().Header.Host())
 		scheme := "http"
 		if c.Protocol() == "https" || string(c.Request().Header.Peek("X-Forwarded-Proto")) == "https" {
