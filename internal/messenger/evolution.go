@@ -39,16 +39,20 @@ func NewEvolutionSender(cfg EvolutionConfig, l *logger.Logger) *EvolutionSender 
 }
 
 func (s *EvolutionSender) Send(msg *OutgoingMessage) (string, error) {
+	quoted, err := buildEvolutionQuote(msg.Quoted, msg.RecipientID+"@s.whatsapp.net")
+	if err != nil {
+		return "", err
+	}
 	if len(msg.Attachment) > 0 && string(msg.Attachment) != "null" {
-		return s.sendMedia(msg)
+		return s.sendMedia(msg, quoted)
 	}
 	if msg.Text != nil && strings.TrimSpace(*msg.Text) != "" {
-		return s.sendText(msg)
+		return s.sendText(msg, quoted)
 	}
 	return "", fmt.Errorf("no text or attachment provided")
 }
 
-func (s *EvolutionSender) sendText(msg *OutgoingMessage) (string, error) {
+func (s *EvolutionSender) sendText(msg *OutgoingMessage, quoted json.RawMessage) (string, error) {
 	endpoint := fmt.Sprintf("%s/message/sendText/%s", strings.TrimRight(s.cfg.APIURL, "/"), s.cfg.DeviceID)
 
 	payload := map[string]interface{}{
@@ -56,14 +60,14 @@ func (s *EvolutionSender) sendText(msg *OutgoingMessage) (string, error) {
 		"text":   *msg.Text,
 		"delay":  1200,
 	}
-	if len(msg.Quoted) > 0 {
-		payload["quoted"] = msg.Quoted
+	if len(quoted) > 0 {
+		payload["quoted"] = quoted
 	}
 
 	return s.doRequest(endpoint, payload)
 }
 
-func (s *EvolutionSender) sendMedia(msg *OutgoingMessage) (string, error) {
+func (s *EvolutionSender) sendMedia(msg *OutgoingMessage, quoted json.RawMessage) (string, error) {
 	var att struct {
 		URL      string `json:"url"`
 		Type     string `json:"type"`
@@ -94,8 +98,8 @@ func (s *EvolutionSender) sendMedia(msg *OutgoingMessage) (string, error) {
 		"media":     att.URL,
 		"delay":     1200,
 	}
-	if len(msg.Quoted) > 0 {
-		payload["quoted"] = msg.Quoted
+	if len(quoted) > 0 {
+		payload["quoted"] = quoted
 	}
 	if att.Caption != "" {
 		payload["caption"] = att.Caption

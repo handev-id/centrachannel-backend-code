@@ -13,6 +13,7 @@ import (
 )
 
 type mockMessageService struct {
+	message.MessageService
 	listCursorFunc   func(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, q message.ListMessageQuery) ([]*message.Message, uuid.UUID, bool, error)
 	sendFunc         func(ctx context.Context, req message.SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*message.Message, error)
 	updateStatusFunc func(ctx context.Context, id uuid.UUID, status string) error

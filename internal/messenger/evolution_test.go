@@ -187,9 +187,9 @@ func TestEvolutionReplyKeepsProviderQuote(t *testing.T) {
 			if kind == "media" {
 				msg.Attachment = json.RawMessage(`{"type":"image","url":"https://storage.example/image.jpg"}`)
 			}
-			if err := json.Unmarshal([]byte(`{"Quoted":{"key":{"id":"original-id","remoteJid":"628123456789@s.whatsapp.net","fromMe":true},"message":{"conversation":"Original"}}}`), msg); err != nil {
-				t.Fatal(err)
-			}
+			original := "Original"
+			msg.Quoted = &QuotedMessage{ProviderMessageID: "original-id", FromMe: true, Text: &original}
+
 			sender := NewEvolutionSender(EvolutionConfig{APIURL: server.URL, DeviceID: "test"}, testLogger)
 			if _, err := sender.Send(msg); err != nil {
 				t.Fatal(err)

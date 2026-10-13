@@ -1,19 +1,14 @@
 package webhook
 
 import (
-	"centrachannel/internal/utils/whatsapp"
-	"context"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"github.com/google/uuid"
 	"strings"
 	"time"
 
-	"centrachannel/internal/src/contact"
 	"centrachannel/internal/src/message"
-	"errors"
 )
 
 func extractEvolutionQuote(raw json.RawMessage, contextInfo *EvolutionContextInfo, key EvolutionMessageKey) *message.Quote {
@@ -140,7 +135,150 @@ func unwrapEvolutionMessage(content EvolutionMessage) EvolutionMessage {
 	}
 }
 
-func (s *webhookService) applyEvolutionContentMutation(ctx context.Context, tenantID, profileID, channelID uuid.UUID, key EvolutionMessageKey, content EvolutionMessage, timestamp EvolutionTimestamp) (bool, error) {
+func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, json.RawMessage) {
+	evtMsg = unwrapEvolutionMessage(evtMsg)
+	if evtMsg.DocumentWithCaptionMessage != nil && evtMsg.DocumentWithCaptionMessage.Message != nil {
+		inner := *evtMsg.DocumentWithCaptionMessage.Message
+		if evtMsg.Base64 != "" {
+			inner.Base64 = evtMsg.Base64
+		}
+		return extractMessageContent(inner, msgType)
+	}
+	if evtMsg.EphemeralMessage != nil && evtMsg.EphemeralMessage.Message != nil {
+		inner := *evtMsg.EphemeralMessage.Message
+		if evtMsg.Base64 != "" {
+			inner.Base64 = evtMsg.Base64
+		}
+		return extractMessageContent(inner, msgType)
+	}
+	if evtMsg.Base64 != "" {
+		if evtMsg.StickerMessage != nil {
+			evtMsg.StickerMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.ImageMessage != nil {
+			evtMsg.ImageMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.VideoMessage != nil {
+			evtMsg.VideoMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.AudioMessage != nil {
+			evtMsg.AudioMessage.Base64 = evtMsg.Base64
+		}
+		if evtMsg.DocumentMessage != nil {
+			evtMsg.DocumentMessage.Base64 = evtMsg.Base64
+		}
+	}
+	if evtMsg.Conversation != nil && *evtMsg.Conversation != "" {
+		return evtMsg.Conversation, nil
+	}
+	if evtMsg.ExtendedTextMessage != nil && evtMsg.ExtendedTextMessage.Text != "" {
+		return &evtMsg.ExtendedTextMessage.Text, nil
+	}
+
+	if evtMsg.ImageMessage != nil {
+		att := map[string]interface{}{
+			"type":     "image",
+			"mimetype": evtMsg.ImageMessage.Mimetype,
+		}
+		if evtMsg.ImageMessage.Caption != "" {
+			att["caption"] = evtMsg.ImageMessage.Caption
+		}
+		if evtMsg.ImageMessage.URL != "" && strings.HasPrefix(evtMsg.ImageMessage.URL, "http") {
+			att["url"] = evtMsg.ImageMessage.URL
+		}
+		if evtMsg.ImageMessage.Base64 != "" {
+			att["base64"] = evtMsg.ImageMessage.Base64
+		}
+		attJSON, _ := json.Marshal(att)
+		caption := evtMsg.ImageMessage.Caption
+		if caption == "" {
+			return nil, attJSON
+		}
+		return &caption, attJSON
+	}
+
+	if evtMsg.VideoMessage != nil {
+		att := map[string]interface{}{
+			"type":     "video",
+			"mimetype": evtMsg.VideoMessage.Mimetype,
+		}
+		if evtMsg.VideoMessage.Caption != "" {
+			att["caption"] = evtMsg.VideoMessage.Caption
+		}
+		if evtMsg.VideoMessage.URL != "" && strings.HasPrefix(evtMsg.VideoMessage.URL, "http") {
+			att["url"] = evtMsg.VideoMessage.URL
+		}
+		if evtMsg.VideoMessage.Base64 != "" {
+			att["base64"] = evtMsg.VideoMessage.Base64
+		}
+		attJSON, _ := json.Marshal(att)
+		caption := evtMsg.VideoMessage.Caption
+		if caption == "" {
+			return nil, attJSON
+		}
+		return &caption, attJSON
+	}
+
+	if evtMsg.AudioMessage != nil {
+		att := map[string]interface{}{
+			"type":     "audio",
+			"mimetype": evtMsg.AudioMessage.Mimetype,
+		}
+		if evtMsg.AudioMessage.URL != "" && strings.HasPrefix(evtMsg.AudioMessage.URL, "http") {
+			att["url"] = evtMsg.AudioMessage.URL
+		}
+		if evtMsg.AudioMessage.Base64 != "" {
+			att["base64"] = evtMsg.AudioMessage.Base64
+		}
+		attJSON, _ := json.Marshal(att)
+		return nil, attJSON
+	}
+
+	if evtMsg.DocumentMessage != nil {
+		att := map[string]interface{}{
+			"type":     "document",
+			"mimetype": evtMsg.DocumentMessage.Mimetype,
+			"fileName": evtMsg.DocumentMessage.FileName,
+		}
+		if evtMsg.DocumentMessage.URL != "" && strings.HasPrefix(evtMsg.DocumentMessage.URL, "http") {
+			att["url"] = evtMsg.DocumentMessage.URL
+		}
+		if evtMsg.DocumentMessage.Base64 != "" {
+			att["base64"] = evtMsg.DocumentMessage.Base64
+		}
+		if evtMsg.DocumentMessage.Caption != "" {
+			att["caption"] = evtMsg.DocumentMessage.Caption
+		}
+		attJSON, _ := json.Marshal(att)
+		if evtMsg.DocumentMessage.Caption != "" {
+			caption := evtMsg.DocumentMessage.Caption
+			return &caption, attJSON
+		}
+		return nil, attJSON
+	}
+
+	if sticker := evtMsg.StickerMessage; sticker != nil {
+		att := map[string]interface{}{
+			"type": "sticker", "mimetype": sticker.Mimetype, "is_animated": sticker.IsAnimated,
+		}
+		if sticker.URL != "" && strings.HasPrefix(sticker.URL, "http") {
+			att["url"] = sticker.URL
+		}
+		if sticker.Base64 != "" {
+			att["base64"] = sticker.Base64
+		}
+		raw, _ := json.Marshal(att)
+		return nil, raw
+	}
+	unsupported := map[string]string{"type": "unsupported", "message_type": msgType}
+	if msgType == "" {
+		return nil, nil
+	}
+	attJSON, _ := json.Marshal(unsupported)
+	return nil, attJSON
+}
+
+func extractEvolutionMutation(key EvolutionMessageKey, content EvolutionMessage, timestamp EvolutionTimestamp) (message.Mutation, bool, error) {
 	content = unwrapEvolutionMessage(content)
 	event := message.Mutation{EventID: key.ID, EventAt: evolutionEventTime(timestamp), ActorKey: "contact", SenderType: "contact"}
 	if key.FromMe {
@@ -162,7 +300,7 @@ func (s *webhookService) applyEvolutionContentMutation(ctx context.Context, tena
 		edited := unwrapEvolutionMessage(*content.EditedMessage.Message)
 		event.Text, _ = extractMessageContent(edited, "")
 		if edited.Conversation == nil && edited.ExtendedTextMessage == nil && edited.ImageMessage == nil && edited.VideoMessage == nil && edited.DocumentMessage == nil {
-			return true, fmt.Errorf("unsupported edited content")
+			return event, true, fmt.Errorf("unsupported edited content")
 		}
 		encoded, _ := json.Marshal(content.EditedMessage)
 		digest := sha256.Sum256(encoded)
@@ -176,92 +314,14 @@ func (s *webhookService) applyEvolutionContentMutation(ctx context.Context, tena
 		if protocol.TimestampMS != 0 {
 			timestamp = protocol.TimestampMS
 		}
-		return s.applyEvolutionContentMutation(ctx, tenantID, profileID, channelID, key, inner, timestamp)
+		return extractEvolutionMutation(key, inner, timestamp)
 	case content.SecretEncryptedMessage != nil:
-		return true, fmt.Errorf("encrypted edit requires the Evolution secret-edit adapter")
+		return event, true, fmt.Errorf("encrypted edit requires the Evolution secret-edit adapter")
 	default:
-		return false, nil
+		return event, false, nil
 	}
 	if event.TargetProviderID == "" {
-		return true, fmt.Errorf("message mutation has no target")
+		return event, true, fmt.Errorf("message mutation has no target")
 	}
-	updated, err := s.msgRepo.ApplyMutation(ctx, s.db, tenantID, profileID, channelID, event)
-	if err != nil {
-		return true, err
-	}
-	if updated != nil && s.notifier != nil {
-		s.notifier.Notify(tenantID, "message-updated", updated)
-		if event.Kind == "edit" {
-			s.notifier.Notify(tenantID, "conversation-updated", map[string]interface{}{"id": updated.ConversationID})
-		}
-	}
-	return true, nil
-}
-
-func (s *webhookService) handleEvolutionEditedUpdate(ctx context.Context, payload *EvolutionWebhookPayload, data EvolutionMessageUpdate) error {
-	if isEvolutionGroup(data.RemoteJid) {
-		return nil
-	}
-	device, err := s.deviceRepo.GetByWhatsappID(ctx, s.db, payload.Instance)
-	if err != nil {
-		return err
-	}
-	if device == nil {
-		return fmt.Errorf("device not found")
-	}
-	phone := whatsapp.ExtractPhoneFromJID(data.RemoteJid)
-	if phone == "" {
-		return fmt.Errorf("edited message has no peer")
-	}
-	channel, err := s.channelRepo.GetByType(ctx, s.db, "whatsapp")
-	if err != nil {
-		return err
-	}
-	profile, err := s.profileRepo.GetByExternalIDAndChannelID(ctx, s.db, device.TenantID, phone, channel.ID)
-	if err != nil {
-		return err
-	}
-	if profile == nil {
-		return fmt.Errorf("edited message profile not found")
-	}
-	timestamp := data.MessageTimestamp
-	if data.TimestampMs != 0 {
-		timestamp = data.TimestampMs
-	}
-	_, err = s.applyEvolutionContentMutation(ctx, device.TenantID, profile.ID, channel.ID, EvolutionMessageKey{ID: data.KeyID, RemoteJid: data.RemoteJid, FromMe: data.FromMe}, *data.Message, timestamp)
-	return err
-}
-
-func (s *webhookService) populateEvolutionQuote(ctx context.Context, msg *message.Message, data EvolutionMessageUpsert, profileID, channelID uuid.UUID, peer *contact.Contact) error {
-	quote := extractEvolutionQuote(data.RawMessage, data.ContextInfo, data.Key)
-	if quote == nil {
-		return nil
-	}
-	target, err := s.msgRepo.GetByProviderID(ctx, s.db, msg.TenantID, profileID, channelID, quote.ProviderMessageID)
-	if err != nil && !errors.Is(err, message.ErrMessageNotFound) {
-		return fmt.Errorf("resolve quote: %w", err)
-	}
-	if target != nil {
-		quote.MessageID = &target.ID
-		quote.SenderType = target.SenderType
-		var stored, snapshot message.Attachment
-		if json.Unmarshal(target.Attachment, &stored) == nil && json.Unmarshal(quote.Attachment, &snapshot) == nil && stored.Type == snapshot.Type {
-			snapshot.URL = stored.URL
-			snapshot.Status = stored.Status
-			snapshot.Size = stored.Size
-			quote.Attachment, err = json.Marshal(snapshot)
-			if err != nil {
-				return err
-			}
-		}
-	}
-	if quote.SenderType == "contact" {
-		quote.SenderName = peer.FirstName
-		if peer.LastName != nil {
-			quote.SenderName += " " + *peer.LastName
-		}
-	}
-	msg.Reply = quote
-	msg.WebhookMessageReplyID = &quote.ProviderMessageID
-	return nil
+	return event, true, nil
 }

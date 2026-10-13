@@ -4,6 +4,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"time"
 
@@ -21,6 +22,10 @@ import (
 )
 
 type MessageService interface {
+	ResolveQuote(ctx context.Context, tenantID, profileID, channelID uuid.UUID, quote *Quote) error
+	UpdateStatusByProviderID(ctx context.Context, tenantID uuid.UUID, providerID, status string) error
+	Create(ctx context.Context, msg *Message, lastAgentID *uuid.UUID) (uuid.UUID, error)
+	ApplyMutation(ctx context.Context, tenantID, profileID, channelID uuid.UUID, mutation Mutation) (*Message, error)
 	ListCursor(ctx context.Context, tenantID uuid.UUID, conversationID uuid.UUID, q ListMessageQuery) ([]*Message, uuid.UUID, bool, error)
 	Send(ctx context.Context, req SendMessageRequest, tenantID uuid.UUID, conversationID uuid.UUID) (*Message, error)
 	UpdateStatus(ctx context.Context, tenantID uuid.UUID, id uuid.UUID, status string) error
@@ -108,45 +113,18 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 			return nil, fmt.Errorf("reply is supported on WhatsApp devices only")
 		}
 		msg.Reply = &Quote{MessageID: &target.ID, ProviderMessageID: *target.WebhookMessageID, Text: target.Text, Attachment: target.Attachment, SenderType: target.SenderType}
-		if _, err := buildProviderQuote(msg.Reply, ""); err != nil {
+		if err := validateReplyTarget(msg.Reply); err != nil {
 			return nil, err
 		}
 		msg.WebhookMessageReplyID = &msg.Reply.ProviderMessageID
 	}
 
-	var lastMsgJSON []byte
-	lastMsg := map[string]interface{}{
-		"text":        req.Text,
-		"sender_type": req.SenderType,
-	}
-	if len(req.Attachment) > 0 {
-		var att map[string]interface{}
-		if err := json.Unmarshal(req.Attachment, &att); err == nil {
-			lastMsg["attachment"] = att
-		}
-	}
-	lastMsgJSON, _ = json.Marshal(lastMsg)
-
 	var lastAgentID *uuid.UUID
 	if req.SenderType == "user" {
 		lastAgentID = &req.SenderID
 	}
-
-	id, err := s.repo.Create(ctx, s.db, msg, lastMsgJSON, lastAgentID, s.convRepo)
-	if err != nil {
+	if _, err := s.Create(ctx, msg, lastAgentID); err != nil {
 		return nil, err
-	}
-
-	msg.ID = id
-	if msg.CreatedAt.IsZero() {
-		msg.CreatedAt = time.Now()
-	}
-	if msg.UpdatedAt.IsZero() {
-		msg.UpdatedAt = time.Now()
-	}
-
-	if s.notifier != nil {
-		s.notifier.Notify(tenantID, "new-message", msg)
 	}
 
 	// Send to external platform via messenger (non-blocking)
@@ -255,10 +233,7 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 		Attachment:  msg.Attachment,
 	}
 	if msg.Reply != nil {
-		extMsg.Quoted, err = buildProviderQuote(msg.Reply, prof.ExternalID+"@s.whatsapp.net")
-		if err != nil {
-			return err
-		}
+		extMsg.Quoted = &messenger.QuotedMessage{ProviderMessageID: msg.Reply.ProviderMessageID, FromMe: msg.Reply.SenderType != "contact", Text: msg.Reply.Text, Attachment: msg.Reply.Attachment}
 	}
 
 	extID, err := sender.Send(extMsg)
@@ -323,4 +298,84 @@ func (s *messageService) Retry(ctx context.Context, tenantID uuid.UUID, id uuid.
 		}
 	}()
 	return msg, nil
+}
+
+func (s *messageService) Create(ctx context.Context, msg *Message, lastAgentID *uuid.UUID) (uuid.UUID, error) {
+	lastMessage := map[string]interface{}{"id": msg.ID, "text": msg.Text, "sender_type": msg.SenderType}
+	if len(msg.Attachment) > 0 {
+		lastMessage["attachment"] = msg.Attachment
+	}
+	preview, err := json.Marshal(lastMessage)
+	if err != nil {
+		return uuid.Nil, err
+	}
+	id, err := s.repo.Create(ctx, s.db, msg, preview, lastAgentID, s.convRepo)
+	if err != nil || id == uuid.Nil {
+		return id, err
+	}
+	msg.ID = id
+	if msg.CreatedAt.IsZero() {
+		msg.CreatedAt = time.Now()
+	}
+	if msg.UpdatedAt.IsZero() {
+		msg.UpdatedAt = msg.CreatedAt
+	}
+	if msg.Reactions == nil {
+		msg.Reactions = []Reaction{}
+	}
+	if s.notifier != nil {
+		s.notifier.Notify(msg.TenantID, "new-message", msg)
+	}
+	return id, nil
+}
+
+func (s *messageService) ApplyMutation(ctx context.Context, tenantID, profileID, channelID uuid.UUID, mutation Mutation) (*Message, error) {
+	if (mutation.Kind != "edit" && mutation.Kind != "reaction") || mutation.TargetProviderID == "" || mutation.EventAt.IsZero() || mutation.ActorKey == "" {
+		return nil, fmt.Errorf("invalid message mutation")
+	}
+	updated, err := s.repo.ApplyMutation(ctx, s.db, tenantID, profileID, channelID, mutation)
+	if err != nil {
+		return nil, err
+	}
+
+	if updated != nil && s.notifier != nil {
+		s.notifier.Notify(tenantID, "message-updated", updated)
+		if mutation.Kind == "edit" {
+			s.notifier.Notify(tenantID, "conversation-updated", map[string]interface{}{"id": updated.ConversationID})
+		}
+	}
+	return updated, nil
+}
+
+func (s *messageService) ResolveQuote(ctx context.Context, tenantID, profileID, channelID uuid.UUID, quote *Quote) error {
+	target, err := s.repo.GetByProviderID(ctx, s.db, tenantID, profileID, channelID, quote.ProviderMessageID)
+	if errors.Is(err, ErrMessageNotFound) {
+		return nil
+	}
+	if err != nil {
+		return fmt.Errorf("resolve quote: %w", err)
+	}
+	if target == nil {
+		return nil
+	}
+	quote.MessageID = &target.ID
+	quote.SenderType = target.SenderType
+	var stored, snapshot Attachment
+	if json.Unmarshal(target.Attachment, &stored) == nil && json.Unmarshal(quote.Attachment, &snapshot) == nil && stored.Type == snapshot.Type {
+		snapshot.URL = stored.URL
+		snapshot.Status = stored.Status
+		snapshot.Size = stored.Size
+		quote.Attachment, err = json.Marshal(snapshot)
+	}
+	return err
+}
+
+func (s *messageService) UpdateStatusByProviderID(ctx context.Context, tenantID uuid.UUID, providerID, status string) error {
+	if err := s.repo.UpdateStatusByWebhookID(ctx, s.db, tenantID, providerID, status); err != nil {
+		return err
+	}
+	if s.notifier != nil {
+		s.notifier.Notify(tenantID, "message-status-updated", nil)
+	}
+	return nil
 }

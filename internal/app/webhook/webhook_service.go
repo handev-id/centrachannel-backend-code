@@ -3,7 +3,6 @@ package webhook
 import (
 	"context"
 	"database/sql"
-	"encoding/json"
 
 	"github.com/redis/go-redis/v9"
 
@@ -29,7 +28,7 @@ type webhookService struct {
 	profileRepo profile.ProfileRepository
 	channelRepo channel.ChannelRepository
 	convRepo    conversation.ConversationRepository
-	msgRepo     message.MessageRepository
+	messages    message.MessageService
 	tenantRepo  tenant.TenantRepository
 	db          *sql.DB
 	logger      *logger.Logger
@@ -38,14 +37,14 @@ type webhookService struct {
 	media       *evolutionMediaService
 }
 
-func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, rdb *redis.Client, notifier ...ws.Notifier) *webhookService {
+func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, messages message.MessageService, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, rdb *redis.Client, notifier ...ws.Notifier) *webhookService {
 	svc := &webhookService{
 		deviceRepo:  deviceRepo,
 		contactRepo: contactRepo,
 		profileRepo: profileRepo,
 		channelRepo: channelRepo,
 		convRepo:    convRepo,
-		msgRepo:     msgRepo,
+		messages:    messages,
 		tenantRepo:  tenantRepo,
 		db:          db,
 		logger:      logger,
@@ -64,17 +63,7 @@ func (s *webhookService) ProcessEvolutionEvent(ctx context.Context, payload *Evo
 	case "messages.update":
 		return s.handleMessageUpdate(ctx, payload)
 	case "messages.edited":
-		var data EvolutionProtocolMessage
-		if err := json.Unmarshal(payload.Data, &data); err != nil {
-			return err
-		}
-		if data.EditedMessage == nil {
-			return nil
-		}
-		return s.handleEvolutionEditedUpdate(ctx, payload, EvolutionMessageUpdate{
-			KeyID: data.Key.ID, RemoteJid: data.Key.RemoteJid, FromMe: data.Key.FromMe, TimestampMs: data.TimestampMS,
-			Message: &EvolutionMessage{EditedMessage: &EvolutionMessageContainer{Message: data.EditedMessage}},
-		})
+		return s.handleLegacyEditedMessage(ctx, payload)
 	case "connection.update":
 		return s.handleConnectionUpdate(ctx, payload)
 	default:
