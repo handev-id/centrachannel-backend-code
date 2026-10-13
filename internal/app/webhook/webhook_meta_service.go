@@ -2,8 +2,6 @@ package webhook
 
 import (
 	"context"
-	"encoding/json"
-	"time"
 
 	"github.com/google/uuid"
 
@@ -108,7 +106,7 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 			p.ID = pid
 		}
 
-		conv, err := s.findConversation(ctx, tenantID, p.ID, channelID)
+		conv, err := s.convRepo.FindOpenByProfileAndChannel(ctx, s.db, tenantID, p.ID, channelID)
 		if err != nil {
 			conv = &conversation.Conversation{
 				TenantID:  tenantID,
@@ -139,23 +137,14 @@ func (s *webhookService) processMetaMessaging(ctx context.Context, tenantID, cha
 			ConversationID:   conv.ID,
 		}
 
-		mid, err := s.msgRepo.Create(ctx, s.db, msgRecord, nil, nil, nil)
+		id, err := s.messages.Create(ctx, msgRecord, nil)
 		if err != nil {
 			s.logger.Error("failed to create message for meta sender %s: %v", externalID, err)
 			continue
 		}
-		msgRecord.ID = mid
-		msgRecord.CreatedAt = time.Now()
-		msgRecord.UpdatedAt = time.Now()
-
-		s.notifier.Notify(tenantID, "new-message", msgRecord)
-
-		lastMsg := map[string]interface{}{
-			"text":        msgText,
-			"sender_type": "contact",
+		if id == uuid.Nil {
+			continue
 		}
-		lastMsgJSON, _ := json.Marshal(lastMsg)
-		_ = s.convRepo.UpdateLastMessage(ctx, s.db, tenantID, conv.ID, lastMsgJSON, nil)
 
 		s.logger.Info("meta webhook: tenant=%s, channel=%s, sender=%s, text=%s, msg_id=%s",
 			tenantID, channelType, externalID, text, msg.Message.MID)

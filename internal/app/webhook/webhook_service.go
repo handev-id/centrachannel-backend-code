@@ -28,7 +28,7 @@ type webhookService struct {
 	profileRepo profile.ProfileRepository
 	channelRepo channel.ChannelRepository
 	convRepo    conversation.ConversationRepository
-	msgRepo     message.MessageRepository
+	messages    message.MessageService
 	tenantRepo  tenant.TenantRepository
 	db          *sql.DB
 	logger      *logger.Logger
@@ -37,14 +37,14 @@ type webhookService struct {
 	media       *evolutionMediaService
 }
 
-func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, msgRepo message.MessageRepository, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, rdb *redis.Client, notifier ...ws.Notifier) *webhookService {
+func NewWebhookService(deviceRepo whatsapp_device.WhatsAppDeviceRepository, contactRepo contact.ContactRepository, profileRepo profile.ProfileRepository, channelRepo channel.ChannelRepository, convRepo conversation.ConversationRepository, messages message.MessageService, tenantRepo tenant.TenantRepository, db *sql.DB, logger *logger.Logger, rdb *redis.Client, notifier ...ws.Notifier) *webhookService {
 	svc := &webhookService{
 		deviceRepo:  deviceRepo,
 		contactRepo: contactRepo,
 		profileRepo: profileRepo,
 		channelRepo: channelRepo,
 		convRepo:    convRepo,
-		msgRepo:     msgRepo,
+		messages:    messages,
 		tenantRepo:  tenantRepo,
 		db:          db,
 		logger:      logger,
@@ -62,6 +62,8 @@ func (s *webhookService) ProcessEvolutionEvent(ctx context.Context, payload *Evo
 		return s.handleMessageUpsert(ctx, payload)
 	case "messages.update":
 		return s.handleMessageUpdate(ctx, payload)
+	case "messages.edited":
+		return s.handleLegacyEditedMessage(ctx, payload)
 	case "connection.update":
 		return s.handleConnectionUpdate(ctx, payload)
 	default:

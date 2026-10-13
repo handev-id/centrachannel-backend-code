@@ -1,10 +1,14 @@
 package message
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime"
 	"strings"
+
+	"github.com/google/uuid"
 
 	"centrachannel/internal/utils/media"
 )
@@ -60,4 +64,72 @@ func normalizeMessageContent(req SendMessageRequest) (*string, json.RawMessage, 
 	}
 	raw, err := json.Marshal(att)
 	return text, raw, err
+}
+
+func validateReplyTarget(quote *Quote) error {
+	if len(quote.Attachment) > 0 && string(quote.Attachment) != "null" {
+		var att Attachment
+		if err := json.Unmarshal(quote.Attachment, &att); err != nil {
+			return err
+		}
+		switch att.Type {
+		case "image", "video", "audio", "document", "sticker":
+			return nil
+		}
+		return fmt.Errorf("cannot quote unsupported message type")
+	}
+	if quote.Text == nil {
+		return fmt.Errorf("reply target has no supported content")
+	}
+	return nil
+}
+
+var ErrMessageNotFound = errors.New("message not found")
+
+func scanMessage(row interface {
+	Scan(dest ...interface{}) error
+}) (*Message, error) {
+	var m Message
+	var text, webhookID, webhookReplyID sql.NullString
+	var attachment sql.NullString
+	var quote, reactions sql.NullString
+	var editedAt sql.NullTime
+	var tenantID uuid.UUID
+
+	err := row.Scan(&m.ID, &tenantID, &text, &attachment, &m.Status, &m.SenderID, &m.SenderType, &webhookID, &webhookReplyID, &m.ConversationID, &m.CreatedAt, &m.UpdatedAt, &editedAt, &quote, &reactions)
+	if err == sql.ErrNoRows {
+		return nil, ErrMessageNotFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	m.TenantID = tenantID
+	m.Reactions = []Reaction{}
+	if reactions.Valid {
+		if err := json.Unmarshal([]byte(reactions.String), &m.Reactions); err != nil {
+			return nil, err
+		}
+	}
+	if text.Valid {
+		m.Text = &text.String
+	}
+	if attachment.Valid {
+		m.Attachment = []byte(attachment.String)
+	}
+	if webhookID.Valid {
+		m.WebhookMessageID = &webhookID.String
+	}
+	if webhookReplyID.Valid {
+		m.WebhookMessageReplyID = &webhookReplyID.String
+	}
+	if editedAt.Valid {
+		m.EditedAt = &editedAt.Time
+		m.IsEdited = true
+	}
+	if quote.Valid {
+		if err := json.Unmarshal([]byte(quote.String), &m.Reply); err != nil {
+			return nil, err
+		}
+	}
+	return &m, nil
 }

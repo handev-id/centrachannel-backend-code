@@ -36,7 +36,8 @@ func NewWebhookHandler(c *di.Container, cfg *config.Config, notifier ws.Notifier
 	convRepo := conversation.NewConversationRepository()
 	msgRepo := message.NewMessageRepository()
 	tenantRepo := tenant.NewTenantRepository()
-	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, msgRepo, tenantRepo, c.DB, c.Logger, c.Redis, notifier)
+	messages := message.NewMessageService(msgRepo, convRepo, profileRepo, channelRepo, tenantRepo, c.DB, cfg, c.Logger, c.Redis, notifier)
+	service := NewWebhookService(deviceRepo, contactRepo, profileRepo, channelRepo, convRepo, messages, tenantRepo, c.DB, c.Logger, c.Redis, notifier)
 	service.media = newEvolutionMediaService(cfg.EvolutionAPIURL, cfg.EvolutionAPIKey, storage.NewClient(cfg.StorageURL, cfg.StorageSecretKey, c.Logger))
 	return &WebhookHandler{service: service, apiKey: cfg.EvolutionAPIKey, metaSecret: cfg.MetaWebhookSecret, metaAppSecret: cfg.MetaAppSecret}
 }

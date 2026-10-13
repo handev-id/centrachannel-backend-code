@@ -12,6 +12,7 @@ type ListMessageQuery struct {
 }
 
 type SendMessageRequest struct {
+	ReplyToID      uuid.UUID       `json:"reply_to_id,omitempty"`
 	Text           *string         `json:"text,omitempty"`
 	Attachment     json.RawMessage `json:"attachment,omitempty"`
 	SenderID       uuid.UUID       `json:"sender_id" validate:"required,uuid"`
