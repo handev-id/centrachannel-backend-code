@@ -156,3 +156,44 @@ func TestSend_Attachment_MediaTypeDefault(t *testing.T) {
 		t.Errorf("expected default, got %s", msgID)
 	}
 }
+
+func TestEvolutionReplyKeepsProviderQuote(t *testing.T) {
+	for _, kind := range []string{"text", "media"} {
+		t.Run(kind, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				var body struct {
+					Quoted struct {
+						Key struct {
+							ID     string `json:"id"`
+							FromMe bool   `json:"fromMe"`
+						} `json:"key"`
+						Message struct {
+							Conversation string `json:"conversation"`
+						} `json:"message"`
+					} `json:"quoted"`
+				}
+				if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+					t.Error(err)
+				}
+				if body.Quoted.Key.ID != "original-id" || !body.Quoted.Key.FromMe || body.Quoted.Message.Conversation != "Original" {
+					t.Errorf("provider quote missing: %+v", body)
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = w.Write([]byte(`{"key":{"id":"reply-id"}}`))
+			}))
+			defer server.Close()
+			text := "Reply"
+			msg := &OutgoingMessage{RecipientID: "628123456789", Text: &text}
+			if kind == "media" {
+				msg.Attachment = json.RawMessage(`{"type":"image","url":"https://storage.example/image.jpg"}`)
+			}
+			if err := json.Unmarshal([]byte(`{"Quoted":{"key":{"id":"original-id","remoteJid":"628123456789@s.whatsapp.net","fromMe":true},"message":{"conversation":"Original"}}}`), msg); err != nil {
+				t.Fatal(err)
+			}
+			sender := NewEvolutionSender(EvolutionConfig{APIURL: server.URL, DeviceID: "test"}, testLogger)
+			if _, err := sender.Send(msg); err != nil {
+				t.Fatal(err)
+			}
+		})
+	}
+}

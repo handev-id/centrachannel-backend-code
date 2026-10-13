@@ -6,6 +6,7 @@ import (
 )
 
 func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, json.RawMessage) {
+	evtMsg = unwrapEvolutionMessage(evtMsg)
 	if evtMsg.DocumentWithCaptionMessage != nil && evtMsg.DocumentWithCaptionMessage.Message != nil {
 		inner := *evtMsg.DocumentWithCaptionMessage.Message
 		if evtMsg.Base64 != "" {
@@ -21,6 +22,9 @@ func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, js
 		return extractMessageContent(inner, msgType)
 	}
 	if evtMsg.Base64 != "" {
+		if evtMsg.StickerMessage != nil {
+			evtMsg.StickerMessage.Base64 = evtMsg.Base64
+		}
 		if evtMsg.ImageMessage != nil {
 			evtMsg.ImageMessage.Base64 = evtMsg.Base64
 		}
@@ -123,6 +127,19 @@ func extractMessageContent(evtMsg EvolutionMessage, msgType string) (*string, js
 		return nil, attJSON
 	}
 
+	if sticker := evtMsg.StickerMessage; sticker != nil {
+		att := map[string]interface{}{
+			"type": "sticker", "mimetype": sticker.Mimetype, "is_animated": sticker.IsAnimated,
+		}
+		if sticker.URL != "" && strings.HasPrefix(sticker.URL, "http") {
+			att["url"] = sticker.URL
+		}
+		if sticker.Base64 != "" {
+			att["base64"] = sticker.Base64
+		}
+		raw, _ := json.Marshal(att)
+		return nil, raw
+	}
 	unsupported := map[string]string{"type": "unsupported", "message_type": msgType}
 	if msgType == "" {
 		return nil, nil

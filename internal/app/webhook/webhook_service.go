@@ -3,6 +3,7 @@ package webhook
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/redis/go-redis/v9"
 
@@ -62,6 +63,18 @@ func (s *webhookService) ProcessEvolutionEvent(ctx context.Context, payload *Evo
 		return s.handleMessageUpsert(ctx, payload)
 	case "messages.update":
 		return s.handleMessageUpdate(ctx, payload)
+	case "messages.edited":
+		var data EvolutionProtocolMessage
+		if err := json.Unmarshal(payload.Data, &data); err != nil {
+			return err
+		}
+		if data.EditedMessage == nil {
+			return nil
+		}
+		return s.handleEvolutionEditedUpdate(ctx, payload, EvolutionMessageUpdate{
+			KeyID: data.Key.ID, RemoteJid: data.Key.RemoteJid, FromMe: data.Key.FromMe, TimestampMs: data.TimestampMS,
+			Message: &EvolutionMessage{EditedMessage: &EvolutionMessageContainer{Message: data.EditedMessage}},
+		})
 	case "connection.update":
 		return s.handleConnectionUpdate(ctx, payload)
 	default:

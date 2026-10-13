@@ -59,10 +59,19 @@ func (t *mockSQLTx) Rollback() error { return nil }
 // mock repositories
 
 type mockMessageRepository struct {
+	getByIDFunc func(context.Context, DBTX, uuid.UUID, uuid.UUID, uuid.UUID) (*Message, error)
+	MessageRepository
 	createFunc                  func(ctx context.Context, q DBTX, msg *Message) (uuid.UUID, error)
 	listCursorFunc              func(ctx context.Context, q DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*Message, error)
 	updateStatusFunc            func(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, status string) error
 	updateStatusByWebhookIDFunc func(ctx context.Context, q DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error
+}
+
+func (m *mockMessageRepository) GetByID(ctx context.Context, q DBTX, tenantID, conversationID, id uuid.UUID) (*Message, error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, q, tenantID, conversationID, id)
+	}
+	return nil, fmt.Errorf("message not found")
 }
 
 func (m *mockMessageRepository) Create(ctx context.Context, db *sql.DB, msg *Message, lastMessageJSON []byte, lastAgentID *uuid.UUID, conversations conversation.ConversationRepository) (uuid.UUID, error) {
@@ -95,7 +104,7 @@ func (m *mockMessageRepository) UpdateStatusByWebhookID(ctx context.Context, q D
 	return nil
 }
 
-func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, webhookMessageID string) error {
+func (m *mockMessageRepository) UpdateWebhookID(ctx context.Context, db *sql.DB, tenantID uuid.UUID, id uuid.UUID, webhookMessageID string) error {
 	return nil
 }
 
@@ -187,6 +196,7 @@ func (m *mockProfileRepository) Create(ctx context.Context, q profile.DBTX, p *p
 
 // mockChannelRepository
 type mockChannelRepository struct {
+	getByIDFunc   func(context.Context, channel.DBTX, uuid.UUID) (*channel.Channel, error)
 	getByTypeFunc func(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error)
 }
 
@@ -194,6 +204,9 @@ func (m *mockChannelRepository) List(ctx context.Context, q channel.DBTX) ([]cha
 	panic("unexpected call")
 }
 func (m *mockChannelRepository) GetByID(ctx context.Context, q channel.DBTX, id uuid.UUID) (*channel.Channel, error) {
+	if m.getByIDFunc != nil {
+		return m.getByIDFunc(ctx, q, id)
+	}
 	return &channel.Channel{Type: "facebook"}, nil
 }
 func (m *mockChannelRepository) GetByType(ctx context.Context, q channel.DBTX, channelType string) (*channel.Channel, error) {
@@ -652,4 +665,32 @@ func (m *mockTenantRepository) GetActiveIDByDomain(ctx context.Context, q tenant
 
 func (m *mockMessageRepository) RetryFailed(ctx context.Context, q DBTX, tenantID uuid.UUID, id uuid.UUID, senderID uuid.UUID) (*Message, error) {
 	return nil, fmt.Errorf("not found")
+}
+
+func TestSendReplyUsesScopedTarget(t *testing.T) {
+	tenantID, conversationID, targetID := uuid.New(), uuid.New(), uuid.New()
+	providerID, original := "original-provider", "Original"
+	repo := &mockMessageRepository{createFunc: func(_ context.Context, _ DBTX, msg *Message) (uuid.UUID, error) { return uuid.New(), nil }, getByIDFunc: func(_ context.Context, _ DBTX, tenant, conv, id uuid.UUID) (*Message, error) {
+		if tenant != tenantID || conv != conversationID || id != targetID {
+			t.Fatal("reply target lookup not scoped")
+		}
+		return &Message{ID: targetID, TenantID: tenantID, ConversationID: conversationID, WebhookMessageID: &providerID, Text: &original, SenderType: "contact"}, nil
+	}}
+	channels := &mockChannelRepository{getByIDFunc: func(context.Context, channel.DBTX, uuid.UUID) (*channel.Channel, error) {
+		return &channel.Channel{Type: "whatsapp"}, nil
+	}}
+	repo.updateStatusFunc = func(context.Context, DBTX, uuid.UUID, uuid.UUID, string) error { return nil }
+	convs := &mockConversationRepository{updateLastMessageFunc: func(context.Context, conversation.DBTX, uuid.UUID, uuid.UUID, []byte, *uuid.UUID) error { return nil }}
+	svc := NewMessageService(repo, convs, &mockProfileRepository{}, channels, &mockTenantRepository{}, nil, &config.Config{}, logger.NewLogger("error", "text"), nil)
+	req := SendMessageRequest{Text: strPtr("Reply"), SenderID: uuid.New(), SenderType: "user"}
+	if err := json.Unmarshal([]byte(`{"reply_to_id":"`+targetID.String()+`"}`), &req); err != nil {
+		t.Fatal(err)
+	}
+	sent, err := svc.Send(context.Background(), req, tenantID, conversationID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if sent.Reply == nil || sent.Reply.ProviderMessageID != providerID || sent.Reply.MessageID == nil || *sent.Reply.MessageID != targetID {
+		t.Fatalf("sent reply lacks original context: %+v", sent)
+	}
 }

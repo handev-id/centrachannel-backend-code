@@ -138,15 +138,11 @@ func containsSubstring(s, sub string) bool {
 
 func TestMessageRepository_WebhookUpdatesScopeTenant(t *testing.T) {
 	tenantID := uuid.New()
-	id := uuid.New()
 	db := openCaptureDB(t)
 	repo := NewMessageRepository()
 	operations := map[string]func() error{
 		"message status": func() error {
 			return repo.UpdateStatusByWebhookID(context.Background(), db, tenantID, "shared-provider-id", "delivered")
-		},
-		"provider ID": func() error {
-			return repo.UpdateWebhookID(context.Background(), db, tenantID, id, "shared-provider-id")
 		},
 	}
 	for name, operation := range operations {

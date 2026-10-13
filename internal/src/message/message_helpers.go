@@ -2,6 +2,7 @@ package message
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"mime"
 	"strings"
@@ -61,3 +62,32 @@ func normalizeMessageContent(req SendMessageRequest) (*string, json.RawMessage, 
 	raw, err := json.Marshal(att)
 	return text, raw, err
 }
+
+func buildProviderQuote(quote *Quote, remoteJID string) (json.RawMessage, error) {
+	content := map[string]interface{}{}
+	if len(quote.Attachment) > 0 && string(quote.Attachment) != "null" {
+		var att Attachment
+		if err := json.Unmarshal(quote.Attachment, &att); err != nil {
+			return nil, err
+		}
+		names := map[string]string{"image": "imageMessage", "video": "videoMessage", "audio": "audioMessage", "document": "documentMessage", "sticker": "stickerMessage"}
+		name, ok := names[att.Type]
+		if !ok {
+			return nil, fmt.Errorf("cannot quote unsupported message type")
+		}
+		content[name] = map[string]interface{}{"mimetype": att.Mimetype, "caption": att.Caption, "fileName": att.FileName, "isAnimated": att.IsAnimated}
+	} else if quote.Text != nil {
+		content["conversation"] = *quote.Text
+	} else {
+		return nil, fmt.Errorf("reply target has no supported content")
+	}
+	return json.Marshal(map[string]interface{}{"key": map[string]interface{}{"id": quote.ProviderMessageID, "remoteJid": remoteJID, "fromMe": quote.SenderType != "contact"}, "message": content})
+}
+
+// The indexed mutation projection keeps message/quote/reaction reads in one query.
+const messageSelectColumns = `messages.id,messages.tenant_id,messages.text,messages.attachment,messages.status,messages.sender_id,messages.sender_type,messages.webhook_message_id,messages.webhook_message_reply_id,messages.conversation_id,messages.created_at,messages.updated_at,messages.edited_at,messages.quote,
+ COALESCE((SELECT jsonb_agg(jsonb_build_object('actor_key',e.actor_key,'sender_type',e.payload->>'sender_type','emoji',e.payload->>'emoji','reacted_at',e.event_at) ORDER BY e.actor_key)
+ FROM message_mutations e JOIN conversations c ON c.profile_id=e.profile_id AND c.channel_id=e.channel_id AND c.tenant_id=e.tenant_id
+ WHERE c.id=messages.conversation_id AND e.tenant_id=messages.tenant_id AND e.target_provider_id=messages.webhook_message_id AND e.kind='reaction' AND COALESCE(e.payload->>'emoji','')<>''),'[]'::jsonb)`
+
+var ErrMessageNotFound = errors.New("message not found")

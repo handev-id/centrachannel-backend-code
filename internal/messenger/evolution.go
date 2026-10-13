@@ -56,6 +56,9 @@ func (s *EvolutionSender) sendText(msg *OutgoingMessage) (string, error) {
 		"text":   *msg.Text,
 		"delay":  1200,
 	}
+	if len(msg.Quoted) > 0 {
+		payload["quoted"] = msg.Quoted
+	}
 
 	return s.doRequest(endpoint, payload)
 }
@@ -90,6 +93,9 @@ func (s *EvolutionSender) sendMedia(msg *OutgoingMessage) (string, error) {
 		"mediatype": mediaType,
 		"media":     att.URL,
 		"delay":     1200,
+	}
+	if len(msg.Quoted) > 0 {
+		payload["quoted"] = msg.Quoted
 	}
 	if att.Caption != "" {
 		payload["caption"] = att.Caption

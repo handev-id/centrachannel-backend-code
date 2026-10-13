@@ -179,8 +179,25 @@ func (m *mockConvRepo) FindOpenByProfileAndChannel(ctx context.Context, q conver
 }
 
 type mockMsgRepo struct {
+	getByProviderIDFunc func(context.Context, message.DBTX, uuid.UUID, uuid.UUID, uuid.UUID, string) (*message.Message, error)
+	applyMutationFunc   func(context.Context, *sql.DB, uuid.UUID, uuid.UUID, uuid.UUID, message.Mutation) (*message.Message, error)
+	message.MessageRepository
 	createFunc                  func(ctx context.Context, q message.DBTX, msg *message.Message) (uuid.UUID, error)
 	updateStatusByWebhookIDFunc func(ctx context.Context, q message.DBTX, tenantID uuid.UUID, webhookMessageID string, status string) error
+}
+
+func (m *mockMsgRepo) GetByProviderID(ctx context.Context, q message.DBTX, tenantID, profileID, channelID uuid.UUID, providerID string) (*message.Message, error) {
+	if m.getByProviderIDFunc != nil {
+		return m.getByProviderIDFunc(ctx, q, tenantID, profileID, channelID, providerID)
+	}
+	return nil, message.ErrMessageNotFound
+}
+
+func (m *mockMsgRepo) ApplyMutation(ctx context.Context, db *sql.DB, tenantID, profileID, channelID uuid.UUID, event message.Mutation) (*message.Message, error) {
+	if m.applyMutationFunc != nil {
+		return m.applyMutationFunc(ctx, db, tenantID, profileID, channelID, event)
+	}
+	return nil, nil
 }
 
 func (m *mockMsgRepo) Create(ctx context.Context, db *sql.DB, msg *message.Message, lastMessageJSON []byte, lastAgentID *uuid.UUID, conversations conversation.ConversationRepository) (uuid.UUID, error) {
@@ -206,7 +223,7 @@ func (m *mockMsgRepo) UpdateStatusByWebhookID(ctx context.Context, q message.DBT
 func (m *mockMsgRepo) ListCursor(ctx context.Context, q message.DBTX, tenantID uuid.UUID, conversationID uuid.UUID, limit int, lastID uuid.UUID) ([]*message.Message, error) {
 	return nil, nil
 }
-func (m *mockMsgRepo) UpdateWebhookID(ctx context.Context, q message.DBTX, tenantID uuid.UUID, id uuid.UUID, webhookMessageID string) error {
+func (m *mockMsgRepo) UpdateWebhookID(ctx context.Context, db *sql.DB, tenantID uuid.UUID, id uuid.UUID, webhookMessageID string) error {
 	return nil
 }
 func (m *mockMsgRepo) MarkReadByConversation(ctx context.Context, q message.DBTX, tenantID uuid.UUID, conversationID uuid.UUID) error {

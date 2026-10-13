@@ -82,6 +82,7 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	}
 	req.Text, req.Attachment = text, attachment
 	msg := &Message{
+		Reactions:      []Reaction{},
 		TenantID:       tenantID,
 		Text:           req.Text,
 		Attachment:     req.Attachment,
@@ -89,6 +90,28 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 		SenderID:       req.SenderID,
 		SenderType:     req.SenderType,
 		ConversationID: conversationID,
+	}
+	if req.ReplyToID != uuid.Nil {
+		target, err := s.repo.GetByID(ctx, s.db, tenantID, conversationID, req.ReplyToID)
+		if err != nil {
+			return nil, fmt.Errorf("reply target: %w", err)
+		}
+		if target == nil || target.WebhookMessageID == nil || *target.WebhookMessageID == "" {
+			return nil, fmt.Errorf("reply target has no provider message ID")
+		}
+		conv, err := s.convRepo.GetByID(ctx, s.db, tenantID, conversationID)
+		if err != nil || conv == nil {
+			return nil, fmt.Errorf("reply conversation not found")
+		}
+		ch, err := s.channelRepo.GetByID(ctx, s.db, conv.ChannelID)
+		if err != nil || ch == nil || ch.Type != "whatsapp" {
+			return nil, fmt.Errorf("reply is supported on WhatsApp devices only")
+		}
+		msg.Reply = &Quote{MessageID: &target.ID, ProviderMessageID: *target.WebhookMessageID, Text: target.Text, Attachment: target.Attachment, SenderType: target.SenderType}
+		if _, err := buildProviderQuote(msg.Reply, ""); err != nil {
+			return nil, err
+		}
+		msg.WebhookMessageReplyID = &msg.Reply.ProviderMessageID
 	}
 
 	var lastMsgJSON []byte
@@ -115,8 +138,12 @@ func (s *messageService) Send(ctx context.Context, req SendMessageRequest, tenan
 	}
 
 	msg.ID = id
-	msg.CreatedAt = time.Now()
-	msg.UpdatedAt = time.Now()
+	if msg.CreatedAt.IsZero() {
+		msg.CreatedAt = time.Now()
+	}
+	if msg.UpdatedAt.IsZero() {
+		msg.UpdatedAt = time.Now()
+	}
 
 	if s.notifier != nil {
 		s.notifier.Notify(tenantID, "new-message", msg)
@@ -227,6 +254,12 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 		Text:        msg.Text,
 		Attachment:  msg.Attachment,
 	}
+	if msg.Reply != nil {
+		extMsg.Quoted, err = buildProviderQuote(msg.Reply, prof.ExternalID+"@s.whatsapp.net")
+		if err != nil {
+			return err
+		}
+	}
 
 	extID, err := sender.Send(extMsg)
 	if err != nil {
@@ -246,6 +279,14 @@ func (s *messageService) deliverToExternal(tenantID uuid.UUID, conversationID uu
 		return err
 	}
 	if s.notifier != nil {
+		stored, err := s.repo.GetByID(ctx, s.db, tenantID, msg.ConversationID, msg.ID)
+		if err != nil {
+			s.logger.Error("read sent message for content notification: %v", err)
+		}
+		if stored != nil && (stored.IsEdited || len(stored.Reactions) > 0) {
+			s.notifier.Notify(tenantID, "message-updated", stored)
+			s.notifier.Notify(tenantID, "conversation-updated", map[string]interface{}{"id": stored.ConversationID})
+		}
 		s.notifier.Notify(tenantID, "message-status-updated", nil)
 	}
 	return nil

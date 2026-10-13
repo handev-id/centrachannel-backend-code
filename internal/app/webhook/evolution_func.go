@@ -33,7 +33,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		return err
 	}
 	data.RawMessage = original.Message
-	if strings.HasSuffix(data.Key.RemoteJid, "@g.us") {
+	if isEvolutionGroup(data.Key.RemoteJid) {
 		return nil
 	}
 
@@ -115,6 +115,9 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		p.ID = pid
 	}
 
+	if handled, err := s.applyEvolutionContentMutation(ctx, tenantID, p.ID, ch.ID, data.Key, data.Message, data.MessageTimestamp); handled {
+		return err
+	}
 	text, attachment := extractMessageContent(data.Message, data.MessageType)
 	if len(attachment) > 0 && s.media != nil {
 		stored, err := s.media.Store(ctx, payload.Instance, &data, attachment)
@@ -148,6 +151,7 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 	}
 
 	msg := &message.Message{
+		Reactions:        []message.Reaction{},
 		TenantID:         tenantID,
 		Text:             text,
 		Attachment:       attachment,
@@ -156,6 +160,9 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		SenderType:       "contact",
 		WebhookMessageID: &data.Key.ID,
 		ConversationID:   conv.ID,
+	}
+	if err := s.populateEvolutionQuote(ctx, msg, data, p.ID, ch.ID, c); err != nil {
+		return err
 	}
 
 	mid, err := s.msgRepo.Create(ctx, s.db, msg, lastMsgJSON, nil, s.convRepo)
@@ -166,8 +173,12 @@ func (s *webhookService) handleMessageUpsert(ctx context.Context, payload *Evolu
 		return nil
 	}
 	msg.ID = mid
-	msg.CreatedAt = now
-	msg.UpdatedAt = now
+	if msg.CreatedAt.IsZero() {
+		msg.CreatedAt = now
+	}
+	if msg.UpdatedAt.IsZero() {
+		msg.UpdatedAt = now
+	}
 
 	s.notifier.Notify(tenantID, "new-message", msg)
 
@@ -184,6 +195,12 @@ func (s *webhookService) handleMessageUpdate(ctx context.Context, payload *Evolu
 		return fmt.Errorf("failed to parse messages.update data: %w", err)
 	}
 
+	if data.Message != nil {
+		content := unwrapEvolutionMessage(*data.Message)
+		if content.EditedMessage != nil || content.ProtocolMessage != nil || content.SecretEncryptedMessage != nil {
+			return s.handleEvolutionEditedUpdate(ctx, payload, data)
+		}
+	}
 	msgStatus := "sent"
 	switch data.Status {
 	case "DELIVERED", "DELIVERY_ACK":
@@ -328,6 +345,9 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		p.ID = pid
 	}
 
+	if handled, err := s.applyEvolutionContentMutation(ctx, tenantID, p.ID, ch.ID, data.Key, data.Message, data.MessageTimestamp); handled {
+		return err
+	}
 	text, attachment := extractMessageContent(data.Message, data.MessageType)
 	if len(attachment) > 0 && s.media != nil {
 		stored, err := s.media.Store(ctx, payload.Instance, data, attachment)
@@ -361,6 +381,7 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 	}
 
 	msg := &message.Message{
+		Reactions:        []message.Reaction{},
 		TenantID:         tenantID,
 		Text:             text,
 		Attachment:       attachment,
@@ -369,6 +390,9 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		SenderType:       "user",
 		WebhookMessageID: &data.Key.ID,
 		ConversationID:   conv.ID,
+	}
+	if err := s.populateEvolutionQuote(ctx, msg, *data, p.ID, ch.ID, c); err != nil {
+		return err
 	}
 
 	mid, err := s.msgRepo.Create(ctx, s.db, msg, lastMsgJSON, nil, s.convRepo)
@@ -379,8 +403,12 @@ func (s *webhookService) handleOutgoingMessageSync(ctx context.Context, payload 
 		return nil
 	}
 	msg.ID = mid
-	msg.CreatedAt = now
-	msg.UpdatedAt = now
+	if msg.CreatedAt.IsZero() {
+		msg.CreatedAt = now
+	}
+	if msg.UpdatedAt.IsZero() {
+		msg.UpdatedAt = now
+	}
 
 	s.notifier.Notify(tenantID, "new-message", msg)
 

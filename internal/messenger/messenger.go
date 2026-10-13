@@ -7,6 +7,7 @@ type OutgoingMessage struct {
 	RecipientID string
 	Text        *string
 	Attachment  json.RawMessage
+	Quoted      json.RawMessage
 }
 
 type Messenger interface {

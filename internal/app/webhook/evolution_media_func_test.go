@@ -139,3 +139,18 @@ func TestExtractMessageContent_Base64Fallback(t *testing.T) {
 		t.Error("expected url to be set from base64 data URL")
 	}
 }
+
+func TestExtractMessageContent_AnimatedSticker(t *testing.T) {
+	var incoming EvolutionMessage
+	if err := json.Unmarshal([]byte(`{"stickerMessage":{"url":"https://cdn.example/sticker.enc","mimetype":"image/webp","isAnimated":true},"base64":"d2VicA=="}`), &incoming); err != nil {
+		t.Fatal(err)
+	}
+	text, raw := extractMessageContent(incoming, "stickerMessage")
+	var att map[string]interface{}
+	if err := json.Unmarshal(raw, &att); err != nil {
+		t.Fatal(err)
+	}
+	if text != nil || att["type"] != "sticker" || att["is_animated"] != true || att["mimetype"] != "image/webp" || att["base64"] != "d2VicA==" {
+		t.Fatalf("expected playable animated sticker metadata, got text=%v attachment=%s", text, raw)
+	}
+}

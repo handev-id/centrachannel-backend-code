@@ -259,7 +259,7 @@ func TestUUIDMigrationRoundTrip(t *testing.T) {
 		t.Fatalf("UUID seed: %v\n%s", err, output)
 	}
 	var invalid int
-	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=current_schema() AND (column_name='id' OR column_name LIKE '%\_id' ESCAPE '\' OR column_name='created_by') AND column_name NOT IN ('external_id','linked_device_whatsapp_id','whatsapp_id','webhook_message_id','webhook_message_reply_id') AND udt_name != 'uuid'`).Scan(&invalid); err != nil || invalid != 0 {
+	if err := db.QueryRow(`SELECT COUNT(*) FROM information_schema.columns WHERE table_schema=current_schema() AND (column_name='id' OR column_name LIKE '%\_id' ESCAPE '\' OR column_name='created_by') AND column_name NOT IN ('external_id','linked_device_whatsapp_id','whatsapp_id','webhook_message_id','webhook_message_reply_id','target_provider_id','event_id') AND udt_name != 'uuid'`).Scan(&invalid); err != nil || invalid != 0 {
 		t.Fatalf("non-UUID internal IDs=%d, err=%v", invalid, err)
 	}
 	files, err := filepath.Glob("migrations/*.down.sql")
