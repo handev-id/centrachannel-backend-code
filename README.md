@@ -144,3 +144,10 @@ Tenant is resolved from a registered active hostname in `domains`, including cus
 make docker-build
 make docker-run
 ```
+
+## Deployment environments
+
+- [Production deployment](PRODUCTION_DEPLOYMENT.md): all backend tags build on GitHub Actions and deploy immutable SHA images to the separate production runtime directory.
+- [Retired staging](STAGING_DEPLOYMENT.md): staging workflow/configuration and database are preserved, but its workflow must remain disabled in GitHub and its application runtime stopped.
+- FE and BE release independently in their own repositories. No recurring migrations or seeds run from deployment or container startup.
+- Do not run builds, Go checks/tests, dependency installs, or Docker builds on the constrained production server; use GitHub Actions.

@@ -1,4 +1,4 @@
-name: Backend CI/CD
+name: Backend staging CI/CD
 
 on:
   pull_request:
@@ -18,6 +18,8 @@ env:
 
 jobs:
   checks:
+    # Safety gate: workflow also stays disabled in GitHub Actions.
+    if: vars.STAGING_ENABLED == 'true'
     name: Go checks and Docker build
     runs-on: ubuntu-latest
     steps:
